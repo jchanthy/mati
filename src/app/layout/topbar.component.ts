@@ -24,6 +24,10 @@ import { RouterModule } from '@angular/router';
       </div>
 
       <div class="flex items-center gap-3">
+        <a routerLink="/dashboard" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xs">
+          <i class="pi pi-plus text-xs"></i>
+          <span>Create Room</span>
+        </a>
         <a routerLink="/stage/MATI01" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 transition-all border border-indigo-200 dark:border-indigo-800">
           <i class="pi pi-desktop text-sm"></i>
           <span>Launch Stage</span>

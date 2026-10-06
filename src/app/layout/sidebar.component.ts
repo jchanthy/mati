@@ -23,6 +23,13 @@ import { RouterModule } from '@angular/router';
           <span>Live Controller</span>
         </a>
 
+        <div class="my-2">
+          <a routerLink="/dashboard" class="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer">
+            <i class="pi pi-plus"></i>
+            <span>Create New Room</span>
+          </a>
+        </div>
+
         <div class="mt-4 px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
           Audience Stages
         </div>

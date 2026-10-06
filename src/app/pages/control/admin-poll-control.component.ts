@@ -8,6 +8,8 @@ import { ButtonModule } from 'primeng/button';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TagModule } from 'primeng/tag';
 import { ProgressBarModule } from 'primeng/progressbar';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { MatiPollService } from '../../services/mati-poll.service';
@@ -25,6 +27,8 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
     ToggleSwitchModule,
     TagModule,
     ProgressBarModule,
+    DialogModule,
+    InputTextModule,
     ToastModule
   ],
   providers: [MessageService],
@@ -58,7 +62,14 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
             </button>
           }
 
-          <a routerLink="/stage/MATI01" target="_blank" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all">
+          <button 
+            type="button" 
+            (click)="showNewRoomDialog = true" 
+            class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer">
+            <i class="pi pi-plus"></i>
+            <span>New Room</span>
+          </button>
+          <a routerLink="/stage/MATI01" target="_blank" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
             <i class="pi pi-desktop"></i>
             <span>Stage (TV)</span>
           </a>
@@ -399,12 +410,34 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
           }
         </div>
       </div>
+
+      <!-- Create Room Dialog -->
+      <p-dialog header="Create New Mati Room" [(visible)]="showNewRoomDialog" [modal]="true" [style]="{width: '450px'}" class="p-fluid">
+        <div class="space-y-4 pt-2">
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Room Title</label>
+            <input pInputText type="text" [(ngModel)]="newRoomTitle" placeholder="e.g. AI & Tech Summit 2026" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Room Code (PIN)</label>
+            <input pInputText type="text" [(ngModel)]="newRoomCode" placeholder="Leave blank for auto PIN (e.g. MATI02)" class="w-full uppercase" />
+          </div>
+        </div>
+        <ng-template pTemplate="footer">
+          <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showNewRoomDialog = false"></button>
+          <button pButton label="Create Room" icon="pi pi-check" class="p-button-primary" [disabled]="!newRoomTitle.trim()" (click)="createNewRoom()"></button>
+        </ng-template>
+      </p-dialog>
     </div>
   `
 })
 export class AdminPollControlComponent implements OnInit, OnDestroy {
   private pollService = inject(MatiPollService);
   private messageService = inject(MessageService);
+
+  showNewRoomDialog = false;
+  newRoomTitle = '';
+  newRoomCode = '';
 
   polls = signal<Poll[]>([]);
   currentPoll = this.pollService.currentPoll;
@@ -468,6 +501,19 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       detail: mode === 'survey'
         ? 'Audience can now freely browse and answer all 30 questions at their own pace!'
         : 'Audience phones are now synchronized to your live active question.'
+    });
+  }
+
+  async createNewRoom() {
+    if (!this.newRoomTitle.trim()) return;
+    const code = await this.pollService.createRoom(this.newRoomTitle, this.newRoomCode || undefined);
+    this.showNewRoomDialog = false;
+    this.newRoomTitle = '';
+    this.newRoomCode = '';
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Room Created! 🎉',
+      detail: `New room ${code} has been created and is ready!`
     });
   }
 
