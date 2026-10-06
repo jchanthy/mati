@@ -285,7 +285,41 @@ export class MatiPollService {
   }
 
   /**
+   * Sets or clears synchronized countdown timer for the room.
+   * When durationSeconds is a positive number, sets timerEndsAt = Date.now() + durationSeconds * 1000.
+   * When null or 0, clears the timer.
+   */
+  async setPollTimer(roomCode: string, durationSeconds: number | null): Promise<void> {
+    const code = roomCode.toUpperCase();
+    const timerDuration = durationSeconds && durationSeconds > 0 ? durationSeconds : null;
+    const timerEndsAt = durationSeconds && durationSeconds > 0 ? Date.now() + durationSeconds * 1000 : null;
+
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, {
+          timerDuration,
+          timerEndsAt
+        });
+      } catch (err) {
+        console.warn('[Mati] Firebase setPollTimer error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room) {
+      room.timerDuration = timerDuration ?? undefined;
+      room.timerEndsAt = timerEndsAt;
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+  }
+
+  /**
    * Step 2: submitVote(roomCode: string, pollId: string, voterId: string, optionId: number)
+
    * Records vote in sub-collection atomically.
    */
   async submitVote(roomCode: string, pollId: string, voterId: string, optionId: number): Promise<void> {
@@ -345,6 +379,24 @@ export class MatiPollService {
       let unsubPoll: Unsubscribe | null = null;
       let unsubVotes: Unsubscribe | null = null;
       let currentActivePollId: string | null = null;
+      let latestRoomData: Room | null = null;
+      let latestPollData: Poll | null = null;
+      let latestVotes: Vote[] = [];
+
+      const emitCurrentStats = () => {
+        if (!latestPollData) {
+          subscriber.next(null);
+          return;
+        }
+        const stats = this.computeStats(
+          latestPollData, 
+          latestVotes, 
+          latestRoomData?.timerDuration, 
+          latestRoomData?.timerEndsAt
+        );
+        this.currentStats.set(stats);
+        subscriber.next(stats);
+      };
 
       // Local subscription fallback
       const localSub = combineLatest([
@@ -367,7 +419,7 @@ export class MatiPollService {
 
         const voteKey = `${code}_${poll.id}`;
         const votes = votesMap.get(voteKey) || [];
-        const stats = this.computeStats(poll, votes);
+        const stats = this.computeStats(poll, votes, room.timerDuration, room.timerEndsAt);
         if (!this.firestore) {
           this.currentPoll.set(poll);
           this.currentStats.set(stats);
@@ -380,17 +432,16 @@ export class MatiPollService {
         try {
           const roomRef = doc(this.firestore, `rooms/${code}`);
           unsubRoom = onSnapshot(roomRef, (roomSnap) => {
-            let activeId: string | null = null;
             if (roomSnap.exists()) {
-              const roomData = roomSnap.data() as Room;
-              activeId = roomData?.activePollId;
+              latestRoomData = roomSnap.data() as Room;
             } else {
-              // fallback to mock
-              const localRoom = this.mockRooms$.getValue().get(code);
-              activeId = localRoom?.activePollId || null;
+              latestRoomData = this.mockRooms$.getValue().get(code) || null;
             }
 
+            const activeId = latestRoomData?.activePollId || null;
+
             if (!activeId) {
+              latestPollData = null;
               subscriber.next(null);
               if (unsubPoll) unsubPoll();
               if (unsubVotes) unsubVotes();
@@ -404,65 +455,55 @@ export class MatiPollService {
 
               const pollRef = doc(this.firestore!, `rooms/${code}/polls/${activeId}`);
               unsubPoll = onSnapshot(pollRef, (pollSnap) => {
-                let pollData: Poll | null = null;
                 if (pollSnap.exists()) {
-                  pollData = { id: pollSnap.id, ...pollSnap.data() } as Poll;
+                  latestPollData = { id: pollSnap.id, ...pollSnap.data() } as Poll;
                 } else {
-                  // check mock
                   const localPolls = this.mockPolls$.getValue().get(code) || [];
-                  pollData = localPolls.find(p => p.id === activeId) || null;
+                  latestPollData = localPolls.find(p => p.id === activeId) || null;
                 }
 
-                if (!pollData) {
-                  subscriber.next(null);
-                  return;
+                if (latestPollData) {
+                  this.currentPoll.set(latestPollData);
                 }
-
-                this.currentPoll.set(pollData);
-
-                // Listen to votes subcollection
-                const votesCol = collection(this.firestore!, `rooms/${code}/polls/${activeId}/votes`);
-                unsubVotes = onSnapshot(votesCol, (votesSnap) => {
-                  let votes: Vote[] = [];
-                  if (!votesSnap.empty) {
-                    votes = votesSnap.docs.map(d => d.data() as Vote);
-                  } else {
-                    const localVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
-                    votes = localVotes;
-                  }
-                  const stats = this.computeStats(pollData!, votes);
-                  this.currentStats.set(stats);
-                  subscriber.next(stats);
-                }, (err) => {
-                  console.warn('[Mati] Votes listener error, fallback to local votes:', err);
-                  const localVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
-                  const stats = this.computeStats(pollData!, localVotes);
-                  this.currentStats.set(stats);
-                  subscriber.next(stats);
-                });
+                emitCurrentStats();
               }, (err) => {
                 console.warn('[Mati] Poll listener error, fallback to local poll:', err);
                 const localPolls = this.mockPolls$.getValue().get(code) || [];
-                const pollData = localPolls.find(p => p.id === activeId) || null;
-                if (pollData) {
-                  const localVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
-                  const stats = this.computeStats(pollData, localVotes);
-                  this.currentStats.set(stats);
-                  subscriber.next(stats);
+                latestPollData = localPolls.find(p => p.id === activeId) || null;
+                if (latestPollData) {
+                  this.currentPoll.set(latestPollData);
                 }
+                emitCurrentStats();
               });
+
+              // Listen to votes subcollection
+              const votesCol = collection(this.firestore!, `rooms/${code}/polls/${activeId}/votes`);
+              unsubVotes = onSnapshot(votesCol, (votesSnap) => {
+                if (!votesSnap.empty) {
+                  latestVotes = votesSnap.docs.map(d => d.data() as Vote);
+                } else {
+                  latestVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
+                }
+                emitCurrentStats();
+              }, (err) => {
+                console.warn('[Mati] Votes listener error, fallback to local votes:', err);
+                latestVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
+                emitCurrentStats();
+              });
+            } else {
+              // Same active poll, but room properties (e.g. timer duration or countdown) changed!
+              emitCurrentStats();
             }
           }, (err) => {
             console.warn('[Mati] Room listener error, fallback to mock pipeline:', err);
             const localRoom = this.mockRooms$.getValue().get(code);
+            latestRoomData = localRoom || null;
             if (localRoom?.activePollId) {
               const localPolls = this.mockPolls$.getValue().get(code) || [];
-              const poll = localPolls.find(p => p.id === localRoom.activePollId);
-              if (poll) {
-                const localVotes = this.mockVotes$.getValue().get(`${code}_${poll.id}`) || [];
-                const stats = this.computeStats(poll, localVotes);
-                this.currentStats.set(stats);
-                subscriber.next(stats);
+              latestPollData = localPolls.find(p => p.id === localRoom.activePollId) || null;
+              if (latestPollData) {
+                latestVotes = this.mockVotes$.getValue().get(`${code}_${latestPollData.id}`) || [];
+                emitCurrentStats();
               }
             }
           });
@@ -526,6 +567,23 @@ export class MatiPollService {
    */
   listenToRoom(roomCode: string): Observable<Room | null> {
     const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      return new Observable<Room | null>((subscriber) => {
+        const roomRef = doc(this.firestore!, `rooms/${code}`);
+        const unsub = onSnapshot(roomRef, (snap) => {
+          if (snap.exists()) {
+            subscriber.next(snap.data() as Room);
+          } else {
+            subscriber.next(this.mockRooms$.getValue().get(code) || null);
+          }
+        }, (err) => {
+          console.warn('[Mati] Firestore listenToRoom error:', err);
+          subscriber.next(this.mockRooms$.getValue().get(code) || null);
+        });
+        return () => unsub();
+      });
+    }
+
     return this.mockRooms$.pipe(
       map(mapData => mapData.get(code) || null)
     );
@@ -534,7 +592,7 @@ export class MatiPollService {
   /**
    * Helper: compute aggregated stats
    */
-  computeStats(poll: Poll, votes: Vote[]): PollStats {
+  computeStats(poll: Poll, votes: Vote[], timerDuration?: number, timerEndsAt?: number | null): PollStats {
     const totalVotes = votes.length;
     const votesPerOption: { [optionId: number]: number } = {};
     const percentages: { [optionId: number]: number } = {};
@@ -559,7 +617,9 @@ export class MatiPollService {
       poll,
       totalVotes,
       votesPerOption,
-      percentages
+      percentages,
+      timerDuration,
+      timerEndsAt
     };
   }
 

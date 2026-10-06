@@ -19,6 +19,8 @@ export interface Room {
   activePollId: string | null;
   status: 'draft' | 'active' | 'closed';
   createdAt: any;
+  timerDuration?: number;
+  timerEndsAt?: number | null;
 }
 
 export interface Vote {
@@ -32,4 +34,7 @@ export interface PollStats {
   totalVotes: number;
   votesPerOption: { [optionId: number]: number };
   percentages: { [optionId: number]: number };
+  timerDuration?: number;
+  timerEndsAt?: number | null;
 }
+

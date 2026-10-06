@@ -1,4 +1,5 @@
-import { Component, inject, signal, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
+
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -52,13 +53,34 @@ import QRCode from 'qrcode';
         @if (pollStats(); as stats) {
           <!-- Question Title Bar -->
           <div class="text-center mb-4 sm:mb-6 space-y-2 shrink-0">
-            <div class="flex items-center justify-center gap-2">
+            <div class="flex items-center justify-center gap-3">
               <span class="inline-block px-3 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                 Question #{{ stats.poll.order }}
               </span>
-              @if (stats.poll.isLocked) {
+
+              @if (remainingSeconds() !== null) {
+                @if (remainingSeconds()! > 10) {
+                  <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs sm:text-sm font-black border border-emerald-500/40 font-mono shadow-md">
+                    <i class="pi pi-clock text-emerald-400"></i> {{ remainingSeconds() }}s
+                  </span>
+                } @else if (remainingSeconds()! <= 10 && remainingSeconds()! > 5) {
+                  <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs sm:text-sm font-black border border-amber-500/40 font-mono shadow-md">
+                    <i class="pi pi-clock text-amber-400"></i> {{ remainingSeconds() }}s
+                  </span>
+                } @else if (remainingSeconds()! <= 5 && remainingSeconds()! > 0) {
+                  <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-red-500/30 text-red-300 text-xs sm:text-sm font-black border border-red-500/50 font-mono shadow-lg shadow-red-500/30 animate-pulse">
+                    <i class="pi pi-clock text-red-400"></i> {{ remainingSeconds() }}s left!
+                  </span>
+                } @else if (remainingSeconds() === 0) {
+                  <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-red-600/30 text-red-200 text-xs sm:text-sm font-black border border-red-500/60 font-mono">
+                    <i class="pi pi-times-circle text-red-400"></i> Time's Up!
+                  </span>
+                }
+              }
+
+              @if (stats.poll.isLocked || isTimeUp()) {
                 <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-red-500/20 text-red-300 text-xs font-bold border border-red-500/30">
-                  <i class="pi pi-lock text-[10px]"></i> Voting Locked
+                  <i class="pi pi-lock text-[10px]"></i> {{ isTimeUp() ? "Time's Up" : "Voting Locked" }}
                 </span>
               }
             </div>
@@ -66,6 +88,20 @@ import QRCode from 'qrcode';
             <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-relaxed max-w-5xl mx-auto px-4 break-words">
               {{ stats.poll.question }}
             </h1>
+
+            <!-- Slim Glowing TV Stage Progress Bar -->
+            @if (remainingSeconds() !== null && remainingSeconds()! > 0) {
+              <div class="max-w-md mx-auto h-1.5 w-full bg-slate-800/80 rounded-full overflow-hidden mt-3 shadow-inner">
+                <div class="h-full transition-all duration-300 ease-linear rounded-full"
+                  [style.width.%]="timerPercent()"
+                  [ngClass]="{
+                    'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]': remainingSeconds()! > 10,
+                    'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)]': remainingSeconds()! <= 10 && remainingSeconds()! > 5,
+                    'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)]': remainingSeconds()! <= 5
+                  }">
+                </div>
+              </div>
+            }
           </div>
 
           <!-- Hidden Results Overlay Mode -->
@@ -157,6 +193,19 @@ export class StageComponent implements OnInit, OnDestroy {
   fullJoinUrl = signal<string>('');
   joinUrlShort = signal<string>('');
 
+  // Synchronized countdown timer
+  remainingSeconds = signal<number | null>(null);
+  timerDuration = signal<number | null>(null);
+  private timerInterval: any = null;
+
+  isTimeUp = computed(() => this.remainingSeconds() !== null && this.remainingSeconds()! <= 0);
+  timerPercent = computed(() => {
+    const rem = this.remainingSeconds();
+    const dur = this.timerDuration();
+    if (rem === null || !dur || dur <= 0) return 0;
+    return Math.min(100, Math.max(0, Math.round((rem / dur) * 100)));
+  });
+
   private pollSub?: Subscription;
 
   ngOnInit() {
@@ -171,6 +220,7 @@ export class StageComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.pollSub?.unsubscribe();
+    this.stopLocalTimer();
   }
 
   private setupUrls(code: string) {
@@ -205,6 +255,37 @@ export class StageComponent implements OnInit, OnDestroy {
     this.pollSub?.unsubscribe();
     this.pollSub = this.pollService.listenToActivePoll(code).subscribe(stats => {
       this.pollStats.set(stats);
+      if (stats?.timerEndsAt && stats.timerEndsAt > 0) {
+        this.timerDuration.set(stats.timerDuration || 30);
+        this.startLocalTimer(stats.timerEndsAt);
+      } else {
+        this.stopLocalTimer();
+      }
     });
+  }
+
+  private startLocalTimer(timerEndsAt: number) {
+    this.stopLocalTimer();
+    const updateCountdown = () => {
+      const diff = Math.ceil((timerEndsAt - Date.now()) / 1000);
+      if (diff <= 0) {
+        this.remainingSeconds.set(0);
+        this.stopLocalTimer();
+      } else {
+        this.remainingSeconds.set(diff);
+      }
+    };
+    updateCountdown();
+    this.timerInterval = setInterval(updateCountdown, 500);
+  }
+
+  private stopLocalTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+    if (this.remainingSeconds() !== 0) {
+      this.remainingSeconds.set(null);
+    }
   }
 }

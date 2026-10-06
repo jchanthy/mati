@@ -87,7 +87,7 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
                   </span>
                 }
               </div>
-              <div class="text-xs text-gray-500">Automatically advance to the next question when timer expires</div>
+              <div class="text-xs text-gray-500">Automatically advance & synchronize countdown on voter phones and TV stage</div>
             </div>
             <div class="flex items-center gap-2">
               @if (autoAdvanceEnabled) {
@@ -100,6 +100,20 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
                 </select>
               }
               <p-toggleswitch [(ngModel)]="autoAdvanceEnabled" (onChange)="toggleAutoAdvance()"></p-toggleswitch>
+            </div>
+          </div>
+
+          <!-- Quick One-Shot Timer Bar -->
+          <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800 text-xs">
+            <div>
+              <div class="font-bold text-gray-900 dark:text-white">Live Broadcast Timer</div>
+              <div class="text-gray-500 text-[11px]">Sync countdown to participant phones & TV</div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" (click)="triggerQuestionTimer(15)" class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-indigo-950/60 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold border border-gray-200 dark:border-gray-700 transition-all cursor-pointer">15s</button>
+              <button type="button" (click)="triggerQuestionTimer(30)" class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-indigo-950/60 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold border border-gray-200 dark:border-gray-700 transition-all cursor-pointer">30s</button>
+              <button type="button" (click)="triggerQuestionTimer(60)" class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-indigo-950/60 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold border border-gray-200 dark:border-gray-700 transition-all cursor-pointer">60s</button>
+              <button type="button" (click)="clearQuestionTimer()" class="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 font-bold border border-red-200 dark:border-red-900 transition-all cursor-pointer">Stop</button>
             </div>
           </div>
 
@@ -240,13 +254,15 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   toggleAutoAdvance() {
     if (this.autoAdvanceEnabled) {
+      this.pollService.setPollTimer('MATI01', this.timerDuration);
       this.startTimer();
       this.messageService.add({
         severity: 'info',
         summary: 'Auto Next Enabled',
-        detail: `Next question will auto-launch every ${this.timerDuration} seconds.`
+        detail: `Next question will auto-launch every ${this.timerDuration}s with synchronized timer on voter phones & TV.`
       });
     } else {
+      this.pollService.setPollTimer('MATI01', null);
       this.stopTimer();
       this.messageService.add({
         severity: 'secondary',
@@ -256,9 +272,33 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     }
   }
 
+  async triggerQuestionTimer(seconds: number) {
+    this.countdownSeconds = seconds;
+    await this.pollService.setPollTimer('MATI01', seconds);
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Question Timer Broadcasted',
+      detail: `Synchronized ${seconds}s countdown sent to voter phones and TV stage.`
+    });
+  }
+
+  async clearQuestionTimer() {
+    if (this.autoAdvanceEnabled) {
+      this.autoAdvanceEnabled = false;
+      this.stopTimer();
+    }
+    await this.pollService.setPollTimer('MATI01', null);
+    this.messageService.add({
+      severity: 'secondary',
+      summary: 'Timer Stopped',
+      detail: 'Countdown cleared from all participant screens.'
+    });
+  }
+
   resetTimer() {
     this.countdownSeconds = this.timerDuration;
     if (this.autoAdvanceEnabled) {
+      this.pollService.setPollTimer('MATI01', this.timerDuration);
       this.stopTimer();
       this.startTimer();
     }
