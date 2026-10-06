@@ -860,8 +860,60 @@ export class MatiPollService {
     return local;
   }
 
+  /**
+   * Real-time observable of all rooms in Firestore and local store
+   */
+  listenToRooms(): Observable<Room[]> {
+    if (this.firestore) {
+      return new Observable<Room[]>((subscriber) => {
+        // Emit in-memory fallback first for immediate responsiveness
+        const initialMock = Array.from(this.mockRooms$.getValue().values());
+        if (initialMock.length > 0) {
+          subscriber.next(initialMock);
+        }
+
+        const roomsCol = collection(this.firestore!, 'rooms');
+        const unsub = onSnapshot(roomsCol, (snapshot) => {
+          const firestoreRooms = snapshot.docs.map(d => ({ code: d.id, ...d.data() } as Room));
+          const localRooms = Array.from(this.mockRooms$.getValue().values());
+
+          const map = new Map<string, Room>();
+          for (const r of localRooms) map.set(r.code, r);
+          for (const r of firestoreRooms) map.set(r.code, r);
+
+          const merged = Array.from(map.values());
+          subscriber.next(merged);
+        }, (err) => {
+          console.warn('[Mati] Firestore rooms listener error, fallback to local store:', err);
+          subscriber.next(Array.from(this.mockRooms$.getValue().values()));
+        });
+
+        return () => unsub();
+      });
+    }
+
+    return this.mockRooms$.pipe(
+      map(m => Array.from(m.values()))
+    );
+  }
+
   async listRooms(): Promise<Room[]> {
-    return Array.from(this.mockRooms$.getValue().values());
+    const local = Array.from(this.mockRooms$.getValue().values());
+    if (this.firestore) {
+      try {
+        const snap = await getDocs(collection(this.firestore, 'rooms'));
+        if (!snap.empty) {
+          const firestoreRooms = snap.docs.map(d => ({ code: d.id, ...d.data() } as Room));
+          const map = new Map<string, Room>();
+          for (const r of local) map.set(r.code, r);
+          for (const r of firestoreRooms) map.set(r.code, r);
+          return Array.from(map.values());
+        }
+      } catch (e) {
+        console.warn('[Mati] Could not fetch Firestore rooms:', e);
+      }
+    }
+    return local;
   }
 
   private generateRoomCode(): string {

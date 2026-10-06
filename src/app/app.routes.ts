@@ -16,6 +16,11 @@ export const routes: Routes = [
         path: 'control',
         loadComponent: () =>
           import('./pages/control/admin-poll-control.component').then(m => m.AdminPollControlComponent)
+      },
+      {
+        path: 'control/:roomCode',
+        loadComponent: () =>
+          import('./pages/control/admin-poll-control.component').then(m => m.AdminPollControlComponent)
       }
     ]
   },

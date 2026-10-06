@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
@@ -43,13 +43,29 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
             <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
             <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Live Stage Remote Control</span>
           </div>
-          <h1 class="text-2xl font-black text-gray-900 dark:text-white mt-1">
-            Mati Controller: Room <span class="text-indigo-600 dark:text-indigo-400">MATI01</span>
-          </h1>
-          <p class="text-xs text-gray-500">Live orchestrator for questions, lock status, and projection stage visibility.</p>
+          <div class="flex items-center gap-3 mt-1 flex-wrap">
+            <h1 class="text-2xl font-black text-gray-900 dark:text-white">
+              Mati Controller: <span class="text-indigo-600 dark:text-indigo-400">{{ roomCode() }}</span>
+            </h1>
+            <!-- Room Switcher Dropdown -->
+            <div class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700">
+              <i class="pi pi-compass text-indigo-600 dark:text-indigo-400 text-xs"></i>
+              <select 
+                [ngModel]="roomCode()" 
+                (ngModelChange)="switchRoom($event)" 
+                class="bg-transparent text-xs font-black text-gray-800 dark:text-gray-200 focus:outline-hidden cursor-pointer">
+                @for (r of allRooms(); track r.code) {
+                  <option [value]="r.code" class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+                    {{ r.code }} - {{ r.title }}
+                  </option>
+                }
+              </select>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">Live orchestrator for questions, lock status, and projection stage visibility.</p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           @if (room()?.status === 'completed') {
             <button type="button" (click)="restartSession()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
               <i class="pi pi-replay"></i>
@@ -69,9 +85,13 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
             <i class="pi pi-plus"></i>
             <span>New Room</span>
           </button>
-          <a routerLink="/stage/MATI01" target="_blank" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
+          <a [routerLink]="['/stage', roomCode()]" target="_blank" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
             <i class="pi pi-desktop"></i>
             <span>Stage (TV)</span>
+          </a>
+          <a [routerLink]="['/vote', roomCode()]" target="_blank" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
+            <i class="pi pi-mobile"></i>
+            <span>Voter</span>
           </a>
           <a routerLink="/dashboard" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-all">
             Studio
@@ -432,6 +452,8 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
   `
 })
 export class AdminPollControlComponent implements OnInit, OnDestroy {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private pollService = inject(MatiPollService);
   private messageService = inject(MessageService);
 
@@ -439,6 +461,8 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   newRoomTitle = '';
   newRoomCode = '';
 
+  roomCode = signal<string>('MATI01');
+  allRooms = signal<Room[]>([]);
   polls = signal<Poll[]>([]);
   currentPoll = this.pollService.currentPoll;
   stats = signal<PollStats | null>(null);
@@ -467,17 +491,55 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   private pollSub?: Subscription;
   private pollsListSub?: Subscription;
   private roomSub?: Subscription;
+  private allRoomsSub?: Subscription;
+  private routeParamSub?: Subscription;
 
   ngOnInit() {
-    this.pollsListSub = this.pollService.listenToRoomPolls('MATI01').subscribe(list => {
+    this.allRoomsSub = this.pollService.listenToRooms().subscribe(rooms => {
+      this.allRooms.set(rooms);
+    });
+
+    this.routeParamSub = this.route.paramMap.subscribe(params => {
+      const codeFromRoute = params.get('roomCode');
+      if (codeFromRoute && codeFromRoute.toUpperCase() !== this.roomCode()) {
+        this.roomCode.set(codeFromRoute.toUpperCase());
+        this.subscribeToRoom(this.roomCode());
+      } else if (!codeFromRoute) {
+        const queryCode = this.route.snapshot.queryParamMap.get('room');
+        const activeCode = (queryCode || this.roomCode() || 'MATI01').toUpperCase();
+        this.roomCode.set(activeCode);
+        this.subscribeToRoom(activeCode);
+      } else {
+        this.subscribeToRoom(this.roomCode());
+      }
+    });
+  }
+
+  switchRoom(code: string) {
+    if (!code) return;
+    const targetCode = code.toUpperCase();
+    this.roomCode.set(targetCode);
+    this.router.navigate(['/dashboard/control', targetCode]);
+    this.subscribeToRoom(targetCode);
+  }
+
+  private subscribeToRoom(code: string) {
+    this.stopTimer();
+    this.autoAdvanceEnabled = false;
+
+    this.pollSub?.unsubscribe();
+    this.pollsListSub?.unsubscribe();
+    this.roomSub?.unsubscribe();
+
+    this.pollsListSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
       this.polls.set(list);
     });
 
-    this.roomSub = this.pollService.listenToRoom('MATI01').subscribe(roomData => {
+    this.roomSub = this.pollService.listenToRoom(code).subscribe(roomData => {
       this.room.set(roomData);
     });
 
-    this.pollSub = this.pollService.listenToActivePoll('MATI01').subscribe(pollStats => {
+    this.pollSub = this.pollService.listenToActivePoll(code).subscribe(pollStats => {
       this.stats.set(pollStats);
       if (pollStats?.poll) {
         this.isLocked = pollStats.poll.isLocked;
@@ -491,10 +553,12 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.pollSub?.unsubscribe();
     this.pollsListSub?.unsubscribe();
     this.roomSub?.unsubscribe();
+    this.allRoomsSub?.unsubscribe();
+    this.routeParamSub?.unsubscribe();
   }
 
   async setRoomMode(mode: 'live' | 'survey') {
-    await this.pollService.setRoomMode('MATI01', mode);
+    await this.pollService.setRoomMode(this.roomCode(), mode);
     this.messageService.add({
       severity: 'success',
       summary: mode === 'survey' ? '📋 Survey Mode Activated' : '🎯 Live Sync Mode Activated',
@@ -515,11 +579,12 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       summary: 'Room Created! 🎉',
       detail: `New room ${code} has been created and is ready!`
     });
+    this.switchRoom(code);
   }
 
   toggleAutoAdvance() {
     if (this.autoAdvanceEnabled) {
-      this.pollService.setPollTimer('MATI01', this.timerDuration);
+      this.pollService.setPollTimer(this.roomCode(), this.timerDuration);
       this.startTimer();
       this.messageService.add({
         severity: 'info',
@@ -527,7 +592,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
         detail: `Next question will auto-launch every ${this.timerDuration}s with synchronized timer on voter phones & TV.`
       });
     } else {
-      this.pollService.setPollTimer('MATI01', null);
+      this.pollService.setPollTimer(this.roomCode(), null);
       this.stopTimer();
       this.messageService.add({
         severity: 'secondary',
@@ -539,7 +604,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   async triggerQuestionTimer(seconds: number) {
     this.countdownSeconds = seconds;
-    await this.pollService.setPollTimer('MATI01', seconds);
+    await this.pollService.setPollTimer(this.roomCode(), seconds);
     this.messageService.add({
       severity: 'info',
       summary: 'Question Timer Broadcasted',
@@ -552,7 +617,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       this.autoAdvanceEnabled = false;
       this.stopTimer();
     }
-    await this.pollService.setPollTimer('MATI01', null);
+    await this.pollService.setPollTimer(this.roomCode(), null);
     this.messageService.add({
       severity: 'secondary',
       summary: 'Timer Stopped',
@@ -563,7 +628,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   resetTimer() {
     this.countdownSeconds = this.timerDuration;
     if (this.autoAdvanceEnabled) {
-      this.pollService.setPollTimer('MATI01', this.timerDuration);
+      this.pollService.setPollTimer(this.roomCode(), this.timerDuration);
       this.stopTimer();
       this.startTimer();
     }
@@ -609,7 +674,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   async finishSession() {
     this.autoAdvanceEnabled = false;
     this.stopTimer();
-    await this.pollService.completeSession('MATI01');
+    await this.pollService.completeSession(this.roomCode());
     this.messageService.add({
       severity: 'success',
       summary: 'Session Completed! 🎉',
@@ -620,7 +685,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   async restartSession() {
     this.autoAdvanceEnabled = false;
     this.stopTimer();
-    await this.pollService.restartSession('MATI01');
+    await this.pollService.restartSession(this.roomCode());
     this.messageService.add({
       severity: 'info',
       summary: 'Session Restarted',
@@ -631,7 +696,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   async onLockChange() {
     const poll = this.currentPoll();
     if (!poll) return;
-    await this.pollService.toggleLockPoll('MATI01', poll.id, this.isLocked);
+    await this.pollService.toggleLockPoll(this.roomCode(), poll.id, this.isLocked);
     this.messageService.add({
       severity: this.isLocked ? 'warn' : 'info',
       summary: this.isLocked ? 'Voting Locked' : 'Voting Opened',
@@ -642,7 +707,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   async onShowResultsChange() {
     const poll = this.currentPoll();
     if (!poll) return;
-    await this.pollService.toggleShowResults('MATI01', poll.id, this.showResults);
+    await this.pollService.toggleShowResults(this.roomCode(), poll.id, this.showResults);
     this.messageService.add({
       severity: 'info',
       summary: this.showResults ? 'Results Revealed' : 'Results Hidden',
@@ -674,7 +739,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   async onSelectQuestion(pollId: string) {
     if (!pollId) return;
-    await this.pollService.setActivePoll('MATI01', pollId);
+    await this.pollService.setActivePoll(this.roomCode(), pollId);
     if (this.autoAdvanceEnabled) {
       this.resetTimer();
     }
@@ -691,7 +756,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     if (!poll || list.length === 0) return;
     const idx = list.findIndex(p => p.id === poll.id);
     if (idx > 0) {
-      await this.pollService.setActivePoll('MATI01', list[idx - 1].id);
+      await this.pollService.setActivePoll(this.roomCode(), list[idx - 1].id);
       if (this.autoAdvanceEnabled) {
         this.resetTimer();
       }
@@ -704,7 +769,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     if (!poll || list.length === 0) return;
     const idx = list.findIndex(p => p.id === poll.id);
     if (idx >= 0 && idx < list.length - 1) {
-      await this.pollService.setActivePoll('MATI01', list[idx + 1].id);
+      await this.pollService.setActivePoll(this.roomCode(), list[idx + 1].id);
       if (this.autoAdvanceEnabled) {
         this.resetTimer();
       }

@@ -1,7 +1,8 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
@@ -84,39 +85,42 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
       <!-- Quick Metrics Grid -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex items-center gap-4">
-          <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl">
+          <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl shrink-0">
             <i class="pi pi-desktop"></i>
           </div>
-          <div>
-            <div class="text-xs font-bold uppercase tracking-wider text-gray-400">Active Room</div>
-            <div class="text-2xl font-extrabold text-gray-900 dark:text-white">MATI01</div>
-            <div class="text-xs text-emerald-600 font-medium">Status: Active & Listening</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-bold uppercase tracking-wider text-gray-400">Managing Room</div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">{{ selectedRoomCode() }}</span>
+              <span class="text-xs text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">Live</span>
+            </div>
+            <div class="text-xs text-gray-500 truncate">{{ getSelectedRoomTitle() }}</div>
           </div>
         </div>
 
         <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex items-center gap-4">
-          <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl">
+          <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl shrink-0">
             <i class="pi pi-chart-bar"></i>
           </div>
           <div>
             <div class="text-xs font-bold uppercase tracking-wider text-gray-400">Total Polls</div>
             <div class="text-2xl font-extrabold text-gray-900 dark:text-white">{{ polls().length }}</div>
-            <div class="text-xs text-gray-500">In MATI01 session</div>
+            <div class="text-xs text-gray-500">In {{ selectedRoomCode() }} session</div>
           </div>
         </div>
 
         <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex items-center gap-4">
-          <div class="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl">
+          <div class="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl shrink-0">
             <i class="pi pi-users"></i>
           </div>
           <div>
             <div class="text-xs font-bold uppercase tracking-wider text-gray-400">Audience Links</div>
             <div class="flex items-center gap-2 mt-1">
-              <a routerLink="/stage/MATI01" target="_blank" class="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1">
+              <a [routerLink]="['/stage', selectedRoomCode()]" target="_blank" class="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1">
                 <i class="pi pi-external-link text-[10px]"></i> Stage View
               </a>
               <span class="text-gray-300">•</span>
-              <a routerLink="/join/MATI01" target="_blank" class="text-xs font-semibold text-emerald-600 hover:underline flex items-center gap-1">
+              <a [routerLink]="['/join', selectedRoomCode()]" target="_blank" class="text-xs font-semibold text-emerald-600 hover:underline flex items-center gap-1">
                 <i class="pi pi-external-link text-[10px]"></i> Mobile View
               </a>
             </div>
@@ -125,11 +129,121 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
         </div>
       </div>
 
+      <!-- Rooms in System (All Rooms from Database) -->
+      <div class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base">
+              <i class="pi pi-building"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-lg font-black text-gray-900 dark:text-white">
+                  Rooms in Your System
+                </h2>
+                <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold font-mono">
+                  {{ rooms().length }} Active in Database
+                </span>
+              </div>
+              <p class="text-xs text-gray-500">
+                Click any room to select and manage its polls or launch its presentation stage.
+              </p>
+            </div>
+          </div>
+
+          <button 
+            type="button" 
+            (click)="showNewRoomDialog = true" 
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer self-start sm:self-center">
+            <i class="pi pi-plus"></i>
+            <span>Create New Room</span>
+          </button>
+        </div>
+
+        <!-- Rooms Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (r of rooms(); track r.code) {
+            <div 
+              class="p-4 rounded-2xl border transition-all flex flex-col justify-between gap-4"
+              [ngClass]="selectedRoomCode() === r.code 
+                ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/30 ring-2 ring-indigo-400/50 shadow-md' 
+                : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40 hover:border-gray-300 dark:hover:border-gray-700'">
+              
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="px-2.5 py-1 rounded-xl bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-mono font-black text-xs border border-gray-200 dark:border-gray-700 shadow-2xs">
+                    PIN: {{ r.code }}
+                  </span>
+                  <div class="flex items-center gap-1">
+                    @if (r.mode === 'survey') {
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                        Survey
+                      </span>
+                    }
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider"
+                      [ngClass]="r.status === 'completed' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'">
+                      {{ r.status || 'Active' }}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 class="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-2">
+                    {{ r.title || ('Room ' + r.code) }}
+                  </h3>
+                  <div class="text-[11px] text-gray-500 mt-1 flex items-center gap-2">
+                    <span>{{ selectedRoomCode() === r.code ? polls().length + ' polls loaded' : 'Room ready' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="pt-2 border-t border-gray-200/80 dark:border-gray-800 flex items-center justify-between gap-1.5 flex-wrap">
+                <button 
+                  type="button" 
+                  (click)="switchRoom(r.code)"
+                  [ngClass]="selectedRoomCode() === r.code ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100'"
+                  class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer">
+                  <i class="pi pi-check text-[10px]"></i>
+                  <span>{{ selectedRoomCode() === r.code ? 'Selected' : 'Manage' }}</span>
+                </button>
+
+                <a 
+                  [routerLink]="['/dashboard/control', r.code]" 
+                  class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all flex items-center gap-1">
+                  <i class="pi pi-sliders-h text-[10px]"></i> Controller
+                </a>
+
+                <a 
+                  [routerLink]="['/stage', r.code]" 
+                  target="_blank" 
+                  class="p-1.5 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" 
+                  title="Open Projector Stage">
+                  <i class="pi pi-desktop text-sm"></i>
+                </a>
+
+                <a 
+                  [routerLink]="['/join', r.code]" 
+                  target="_blank" 
+                  class="p-1.5 rounded-xl text-gray-500 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" 
+                  title="Open Voter Phone View">
+                  <i class="pi pi-mobile text-sm"></i>
+                </a>
+              </div>
+            </div>
+          } @empty {
+            <div class="col-span-full text-center py-8 text-gray-400 text-xs">
+              No rooms found in database. Click "Create New Room" to get started!
+            </div>
+          }
+        </div>
+      </div>
+
       <!-- Polls Management List -->
       <div class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
         <div class="flex items-center justify-between mb-6">
           <div>
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Active Room Polls: MATI01</h2>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Active Room Polls: {{ selectedRoomCode() }}</h2>
             <p class="text-xs text-gray-500">Select which question to project live onto the presenter stage.</p>
           </div>
           <div class="flex items-center gap-2">
@@ -290,12 +404,17 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
     </div>
   `
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   private pollService = inject(MatiPollService);
   private messageService = inject(MessageService);
 
+  rooms = signal<Room[]>([]);
+  selectedRoomCode = signal<string>('MATI01');
   polls = signal<Poll[]>([]);
   currentRoom = this.pollService.currentRoom;
+
+  private roomsSub?: Subscription;
+  private pollsSub?: Subscription;
 
   showNewRoomDialog = false;
   showNewPollDialog = false;
@@ -311,17 +430,39 @@ export class DashboardComponent implements OnInit {
   isImporting = false;
 
   ngOnInit() {
-    this.pollService.listenToRoomPolls('MATI01').subscribe(list => {
+    this.roomsSub = this.pollService.listenToRooms().subscribe(list => {
+      this.rooms.set(list);
+      if (list.length > 0 && !list.some(r => r.code === this.selectedRoomCode())) {
+        this.switchRoom(list[0].code);
+      }
+    });
+    this.switchRoom(this.selectedRoomCode());
+  }
+
+  ngOnDestroy() {
+    this.roomsSub?.unsubscribe();
+    this.pollsSub?.unsubscribe();
+  }
+
+  switchRoom(code: string) {
+    this.selectedRoomCode.set(code);
+    this.pollsSub?.unsubscribe();
+    this.pollsSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
       this.polls.set(list);
     });
   }
 
+  getSelectedRoomTitle(): string {
+    const r = this.rooms().find(rm => rm.code === this.selectedRoomCode());
+    return r?.title || 'Interactive Session';
+  }
+
   async setAsLive(pollId: string) {
-    await this.pollService.setActivePoll('MATI01', pollId);
+    await this.pollService.setActivePoll(this.selectedRoomCode(), pollId);
     this.messageService.add({
       severity: 'success',
       summary: 'Poll Activated',
-      detail: 'Question is now live on the presenter stage!'
+      detail: `Question is now live in room ${this.selectedRoomCode()}!`
     });
   }
 
@@ -331,10 +472,11 @@ export class DashboardComponent implements OnInit {
     this.showNewRoomDialog = false;
     this.newRoomTitle = '';
     this.newRoomCode = '';
+    this.switchRoom(code);
     this.messageService.add({
       severity: 'success',
-      summary: 'Room Created',
-      detail: `Room ${code} is ready!`
+      summary: 'Room Created! 🎉',
+      detail: `Room ${code} is ready and selected!`
     });
   }
 
@@ -354,13 +496,13 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    await this.pollService.createPoll('MATI01', this.newPollQuestion, opts);
+    await this.pollService.createPoll(this.selectedRoomCode(), this.newPollQuestion, opts);
     this.showNewPollDialog = false;
     this.newPollQuestion = '';
     this.messageService.add({
       severity: 'success',
       summary: 'Question Created',
-      detail: 'Question added to MATI01!'
+      detail: `Question added to ${this.selectedRoomCode()}!`
     });
   }
 
@@ -439,14 +581,15 @@ export class DashboardComponent implements OnInit {
     if (this.parsedQuestions.length === 0 || this.isImporting) return;
     this.isImporting = true;
     try {
-      const count = await this.pollService.createPollsBatch('MATI01', this.parsedQuestions);
+      const targetRoom = this.selectedRoomCode();
+      const count = await this.pollService.createPollsBatch(targetRoom, this.parsedQuestions);
       this.showImportDialog = false;
       this.xmlContent = '';
       this.parsedQuestions = [];
       this.messageService.add({
         severity: 'success',
         summary: 'Questions Imported',
-        detail: `Successfully added ${count} question(s) to room MATI01!`
+        detail: `Successfully added ${count} question(s) to room ${targetRoom}!`
       });
     } catch (err: any) {
       this.messageService.add({
