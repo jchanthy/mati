@@ -487,19 +487,31 @@ export class MatiPollService {
     const code = roomCode.toUpperCase();
     if (this.firestore) {
       return new Observable<Poll[]>((subscriber) => {
+        // Emit in-memory polls first for instant UI response
+        const initialMock = this.mockPolls$.getValue().get(code) || [];
+        if (initialMock.length > 0) {
+          subscriber.next(initialMock);
+        }
+
         const pollsCol = collection(this.firestore!, `rooms/${code}/polls`);
-        const q = query(pollsCol, orderBy('order', 'asc'));
-        const unsub = onSnapshot(q, (snapshot) => {
-          if (!snapshot.empty) {
-            const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Poll));
-            subscriber.next(list);
-          } else {
-            subscriber.next(this.mockPolls$.getValue().get(code) || []);
-          }
+        // Listen without requiring complex compound indices
+        const unsub = onSnapshot(pollsCol, (snapshot) => {
+          const firestoreList = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Poll));
+          const localList = this.mockPolls$.getValue().get(code) || [];
+
+          // Merge by ID to guarantee nothing disappears
+          const map = new Map<string, Poll>();
+          for (const p of localList) map.set(p.id, p);
+          for (const p of firestoreList) map.set(p.id, p);
+
+          const merged = Array.from(map.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
+          this.mockPolls$.getValue().set(code, merged);
+          subscriber.next(merged);
         }, (err) => {
-          console.warn('[Mati] Firestore room polls listener error:', err);
+          console.warn('[Mati] Firestore room polls listener error, falling back to local store:', err);
           subscriber.next(this.mockPolls$.getValue().get(code) || []);
         });
+
         return () => unsub();
       });
     }
