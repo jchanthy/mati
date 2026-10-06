@@ -12,24 +12,24 @@ import QRCode from 'qrcode';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <div class="stage-container h-screen max-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none overflow-hidden relative">
+    <div class="stage-container h-screen max-h-screen bg-slate-950 text-white flex flex-col justify-between p-2.5 sm:p-4 lg:p-5 select-none overflow-hidden relative">
       <!-- Background Ambient Glow -->
       <div class="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
 
-      <!-- Top Bar: Brand, Join instructions, PIN, and QR Code in header to save screen space -->
-      <header class="flex items-center justify-between gap-4 z-10 border-b border-slate-800/80 pb-3 shrink-0">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-indigo-500/30">
+      <!-- Top Bar -->
+      <header class="flex items-center justify-between gap-3 z-10 border-b border-slate-800/80 pb-2 sm:pb-2.5 shrink-0">
+        <div class="flex items-center gap-2.5 sm:gap-3">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white text-lg sm:text-xl font-black shadow-lg shadow-indigo-500/30">
             ម
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <span class="text-2xl font-black tracking-tight text-white">Mati</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-950 text-indigo-400 border border-indigo-800 uppercase tracking-widest">Presenter Stage</span>
+              <span class="text-xl sm:text-2xl font-black tracking-tight text-white leading-none">Mati</span>
+              <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-950 text-indigo-400 border border-indigo-800 uppercase tracking-widest">Presenter Stage</span>
               @if (room()?.mode === 'survey') {
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-950/80 text-amber-300 border border-amber-800 uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                  <i class="pi pi-list-check text-[10px]"></i> Survey Mode
+                <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-950/80 text-amber-300 border border-amber-800 uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                  <i class="pi pi-list-check text-[9px]"></i> Survey Mode
                 </span>
               }
             </div>
@@ -37,24 +37,24 @@ import QRCode from 'qrcode';
         </div>
 
         <!-- Header Right: Live Stage Status Widget -->
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2.5 bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-xl backdrop-blur-md shadow-sm">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span class="text-xs font-semibold text-slate-300">Live Stage</span>
-            <span class="text-slate-700">|</span>
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-xl backdrop-blur-md shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-semibold text-slate-300 hidden sm:inline">Live Stage</span>
+            <span class="text-slate-700 hidden sm:inline">|</span>
             <span class="text-xs font-mono font-bold text-amber-400">PIN: {{ roomCode() }}</span>
           </div>
         </div>
       </header>
 
       <!-- Main Central Presentation Area: Fit to viewport without scrolling -->
-      <main class="flex-1 flex flex-col justify-center py-2 z-10 max-w-7xl mx-auto w-full overflow-hidden">
+      <main class="flex-1 min-h-0 flex flex-col justify-center py-1 sm:py-2 z-10 max-w-7xl mx-auto w-full overflow-hidden">
         @if (room()?.status === 'completed') {
           <!-- Grand Finale Celebration Screen for Big TV / Projector -->
-          <div class="text-center space-y-4 max-w-4xl mx-auto animate-fadein w-full px-4">
+          <div class="text-center space-y-3 sm:space-y-4 max-w-4xl mx-auto animate-fadein w-full px-4">
             <!-- Festive Badge -->
             <div class="flex items-center justify-center">
-              <span class="inline-flex items-center gap-2 px-4 py-1 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-md">
+              <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-md">
                 <span>🎉</span>
                 <span>Poll Completed • ការស្ទង់មតិបានបញ្ចប់</span>
               </span>
@@ -62,10 +62,10 @@ import QRCode from 'qrcode';
 
             <!-- Title & Subtitle -->
             <div class="space-y-1">
-              <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
+              <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight">
                 ការស្ទង់មតិបានបញ្ចប់ដោយជោគជ័យ!
               </h1>
-              <p class="text-sm sm:text-lg font-bold text-indigo-300">
+              <p class="text-sm sm:text-base font-bold text-indigo-300">
                 Thank you for participating in Mati Live Session!
               </p>
               <p class="text-xs text-slate-400 max-w-lg mx-auto">
@@ -73,70 +73,70 @@ import QRCode from 'qrcode';
               </p>
             </div>
 
-            <!-- Grand KPI Summary Cards (Compact, Perfectly Visible) -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1 max-w-3xl mx-auto">
-              <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-1">
-                <div class="text-3xl sm:text-4xl font-black text-emerald-400 font-mono leading-tight">
+            <!-- Grand KPI Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3.5 pt-1 max-w-3xl mx-auto">
+              <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-0.5">
+                <div class="text-2xl sm:text-3xl font-black text-emerald-400 font-mono leading-tight">
                   {{ totalQuestionsCount() }}
                 </div>
-                <div class="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
+                <div class="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Total Questions
                 </div>
               </div>
 
-              <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-1">
-                <div class="text-3xl sm:text-4xl font-black text-indigo-400 font-mono leading-tight">
+              <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-0.5">
+                <div class="text-2xl sm:text-3xl font-black text-indigo-400 font-mono leading-tight">
                   {{ totalVotesCount() }}
                 </div>
-                <div class="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
+                <div class="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Audience Votes Cast
                 </div>
               </div>
 
-              <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-1">
-                <div class="text-3xl sm:text-4xl font-black text-amber-400 font-mono leading-tight">
+              <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-0.5">
+                <div class="text-2xl sm:text-3xl font-black text-amber-400 font-mono leading-tight">
                   100%
                 </div>
-                <div class="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
+                <div class="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Session Completed
                 </div>
               </div>
             </div>
           </div>
         } @else {
-          <!-- Split Stage Layout: Big QR Station on Left + Active Question & Results on Right -->
-          <div class="flex flex-col lg:flex-row items-center lg:items-center gap-6 lg:gap-8 w-full h-full">
+          <!-- Split Stage Layout: Flexible QR Station on Left + Question & Results on Right -->
+          <div class="flex flex-col lg:flex-row items-center lg:items-center gap-4 lg:gap-6 xl:gap-8 w-full h-full min-h-0">
 
-            <!-- LEFT SIDE: Big Scannable QR Station -->
-            <div class="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col items-center">
-              <div class="bg-slate-900/95 border border-slate-800 rounded-3xl p-5 sm:p-6 backdrop-blur-xl shadow-2xl flex flex-col items-center text-center space-y-4 w-full max-w-sm">
+            <!-- LEFT SIDE: Adaptive Big Scannable QR Station -->
+            <div class="w-full lg:w-64 xl:w-72 shrink-0 flex flex-col items-center max-h-full">
+              <div class="bg-slate-900/95 border border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 backdrop-blur-xl shadow-2xl flex flex-col items-center text-center space-y-2 sm:space-y-3 w-full max-w-xs overflow-hidden">
 
-                <!-- Big High-Resolution QR Code -->
-                <div class="p-3 bg-white rounded-2xl shadow-xl ring-4 ring-indigo-500/20">
+                <!-- Responsive QR Code (Adapts smoothly to viewport height) -->
+                <div class="p-2 sm:p-2.5 bg-white rounded-xl sm:rounded-2xl shadow-xl ring-2 sm:ring-4 ring-indigo-500/20 shrink-0">
                   @if (qrCodeDataUrl()) {
-                    <img [src]="qrCodeDataUrl()" alt="Scan to join Mati" class="w-44 h-44 sm:w-52 sm:h-52 object-contain" />
+                    <img [src]="qrCodeDataUrl()" alt="Scan to join Mati" class="h-[min(26vh,11.5rem)] w-[min(26vh,11.5rem)] max-h-48 max-w-48 object-contain" />
                   } @else {
-                    <div class="w-44 h-44 sm:w-52 sm:h-52 flex items-center justify-center bg-gray-100 text-gray-400 rounded-xl">
-                      <i class="pi pi-qrcode text-4xl animate-pulse"></i>
+                    <div class="h-[min(26vh,11.5rem)] w-[min(26vh,11.5rem)] max-h-48 max-w-48 flex items-center justify-center bg-gray-100 text-gray-400 rounded-xl">
+                      <i class="pi pi-qrcode text-3xl animate-pulse"></i>
                     </div>
                   }
                 </div>
 
                 <!-- URL & Instructions -->
-                <div class="space-y-1.5 w-full">
-                  <div class="text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5">
-                    <i class="pi pi-camera text-xs"></i>
+                <div class="space-y-1 w-full shrink-0">
+                  <div class="text-[10px] sm:text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5">
+                    <i class="pi pi-camera text-[10px] sm:text-xs"></i>
                     <span>Scan with phone to join</span>
                   </div>
-                  <div class="text-[11px] font-bold text-slate-300 font-mono truncate px-2.5 py-1.5 bg-slate-950/70 rounded-xl border border-slate-800/80">
+                  <div class="text-[10px] sm:text-[11px] font-bold text-slate-300 font-mono truncate px-2 py-1 bg-slate-950/70 rounded-lg border border-slate-800/80">
                     {{ joinUrlShort() }}
                   </div>
                 </div>
 
                 <!-- Room PIN -->
-                <div class="w-full pt-3 border-t border-slate-800/80">
-                  <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Room PIN</div>
-                  <div class="text-3xl sm:text-4xl font-black font-mono tracking-widest text-amber-400 mt-0.5">
+                <div class="w-full pt-2 border-t border-slate-800/80 shrink-0">
+                  <div class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-400">Room PIN</div>
+                  <div class="text-2xl sm:text-3xl xl:text-4xl font-black font-mono tracking-widest text-amber-400 leading-tight">
                     {{ roomCode() }}
                   </div>
                 </div>
@@ -145,49 +145,49 @@ import QRCode from 'qrcode';
             </div>
 
             <!-- RIGHT SIDE: Active Question & Live Vote Option Bars -->
-            <div class="flex-1 flex flex-col justify-center min-w-0 w-full">
+            <div class="flex-1 min-h-0 flex flex-col justify-center min-w-0 w-full overflow-hidden">
               @if (pollStats(); as stats) {
                 <!-- Question Title Bar -->
-                <div class="text-center mb-4 sm:mb-6 space-y-2 shrink-0">
-                  <div class="flex items-center justify-center gap-3">
-                    <span class="inline-block px-3 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <div class="text-center mb-2 sm:mb-3 space-y-1 sm:space-y-1.5 shrink-0">
+                  <div class="flex items-center justify-center gap-2 flex-wrap">
+                    <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                       Question #{{ stats.poll.order }}
                     </span>
 
                     @if (remainingSeconds() !== null) {
                       @if (remainingSeconds()! > 10) {
-                        <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs sm:text-sm font-black border border-emerald-500/40 font-mono shadow-md">
-                          <i class="pi pi-clock text-emerald-400"></i> {{ remainingSeconds() }}s
+                        <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-500/40 font-mono shadow-sm">
+                          <i class="pi pi-clock text-emerald-400 text-xs"></i> {{ remainingSeconds() }}s
                         </span>
                       } @else if (remainingSeconds()! <= 10 && remainingSeconds()! > 5) {
-                        <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs sm:text-sm font-black border border-amber-500/40 font-mono shadow-md">
-                          <i class="pi pi-clock text-amber-400"></i> {{ remainingSeconds() }}s
+                        <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black border border-amber-500/40 font-mono shadow-sm">
+                          <i class="pi pi-clock text-amber-400 text-xs"></i> {{ remainingSeconds() }}s
                         </span>
                       } @else if (remainingSeconds()! <= 5 && remainingSeconds()! > 0) {
-                        <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-red-500/30 text-red-300 text-xs sm:text-sm font-black border border-red-500/50 font-mono shadow-lg shadow-red-500/30 animate-pulse">
-                          <i class="pi pi-clock text-red-400"></i> {{ remainingSeconds() }}s left!
+                        <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-red-500/30 text-red-300 text-xs font-black border border-red-500/50 font-mono shadow-md shadow-red-500/30 animate-pulse">
+                          <i class="pi pi-clock text-red-400 text-xs"></i> {{ remainingSeconds() }}s left!
                         </span>
                       } @else if (remainingSeconds() === 0) {
-                        <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-red-600/30 text-red-200 text-xs sm:text-sm font-black border border-red-500/60 font-mono">
-                          <i class="pi pi-times-circle text-red-400"></i> Time's Up!
+                        <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-red-600/30 text-red-200 text-xs font-black border border-red-500/60 font-mono">
+                          <i class="pi pi-times-circle text-red-400 text-xs"></i> Time's Up!
                         </span>
                       }
                     }
 
                     @if (stats.poll.isLocked || isTimeUp()) {
-                      <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-red-500/20 text-red-300 text-xs font-bold border border-red-500/30">
+                      <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-red-500/20 text-red-300 text-[11px] font-bold border border-red-500/30">
                         <i class="pi pi-lock text-[10px]"></i> {{ isTimeUp() ? "Time's Up" : "Voting Locked" }}
                       </span>
                     }
                   </div>
 
-                  <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-relaxed max-w-4xl mx-auto px-4 break-words">
+                  <h1 class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight text-white leading-snug max-w-4xl mx-auto px-2 break-words">
                     {{ stats.poll.question }}
                   </h1>
 
                   <!-- Slim Glowing TV Stage Progress Bar -->
                   @if (remainingSeconds() !== null && remainingSeconds()! > 0) {
-                    <div class="max-w-md mx-auto h-1.5 w-full bg-slate-800/80 rounded-full overflow-hidden mt-3 shadow-inner">
+                    <div class="max-w-md mx-auto h-1 w-full bg-slate-800/80 rounded-full overflow-hidden mt-1.5 shadow-inner">
                       <div class="h-full transition-all duration-300 ease-linear rounded-full"
                         [style.width.%]="timerPercent()"
                         [ngClass]="{
@@ -202,23 +202,23 @@ import QRCode from 'qrcode';
 
                 <!-- Hidden Results Overlay Mode -->
                 @if (!stats.poll.showResults) {
-                  <div class="max-w-xl mx-auto p-8 bg-slate-900/80 border border-slate-800 rounded-3xl text-center space-y-3 backdrop-blur-md shadow-2xl w-full">
-                    <div class="w-14 h-14 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto text-xl animate-soft-pulse">
+                  <div class="max-w-md mx-auto p-6 bg-slate-900/80 border border-slate-800 rounded-3xl text-center space-y-2 backdrop-blur-md shadow-2xl w-full">
+                    <div class="w-12 h-12 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto text-lg animate-soft-pulse">
                       <i class="pi pi-eye-slash"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white">Voting in progress...</h3>
+                    <h3 class="text-lg font-bold text-white">Voting in progress...</h3>
                     <p class="text-xs text-slate-400">
                       Audience answers are being recorded. Results will appear on this screen once revealed.
                     </p>
-                    <div class="pt-1 text-indigo-400 font-bold text-base">
+                    <div class="pt-1 text-indigo-400 font-bold text-sm">
                       {{ stats.totalVotes }} participant{{ stats.totalVotes === 1 ? '' : 's' }} answered
                     </div>
                   </div>
                 } @else {
                   <!-- Live Grid Options -->
-                  <div class="grid gap-3.5 w-full" [ngClass]="stats.poll.options.length > 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-3xl mx-auto'">
+                  <div class="grid gap-2 sm:gap-2.5 w-full overflow-y-auto max-h-[calc(100vh-230px)] pr-1" [ngClass]="stats.poll.options.length > 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-3xl mx-auto'">
                     @for (opt of stats.poll.options; track opt.id) {
-                      <div class="bg-slate-900/90 border p-4 rounded-2xl backdrop-blur-md relative overflow-hidden transition-all shadow-lg flex items-center justify-between gap-4"
+                      <div class="bg-slate-900/90 border p-2.5 sm:p-3 rounded-xl sm:rounded-2xl backdrop-blur-md relative overflow-hidden transition-all shadow-md flex items-center justify-between gap-3"
                         [ngClass]="isLeadingOption(stats, opt.id) ? 'border-amber-400/70 ring-1 ring-amber-400/40 shadow-amber-500/10' : 'border-slate-800'">
                         <!-- Animated Progress bar background -->
                         <div 
@@ -228,28 +228,28 @@ import QRCode from 'qrcode';
                         </div>
 
                         <!-- Option Number & Text -->
-                        <div class="relative z-10 flex items-center gap-3.5 flex-1 min-w-0">
-                          <div style="width: 2.25rem; height: 2.25rem; min-width: 2.25rem;" class="rounded-xl flex items-center justify-center font-black text-sm shrink-0 border"
+                        <div class="relative z-10 flex items-center gap-2.5 flex-1 min-w-0">
+                          <div style="width: 2rem; height: 2rem; min-width: 2rem;" class="rounded-lg flex items-center justify-center font-black text-xs shrink-0 border"
                             [ngClass]="isLeadingOption(stats, opt.id) ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' : 'bg-slate-800 text-indigo-400 border-slate-700'">
                             {{ opt.id }}
                           </div>
-                          <div class="text-base sm:text-lg font-bold text-slate-100 leading-snug break-words flex-1">
+                          <div class="text-sm sm:text-base font-bold text-slate-100 leading-snug break-words flex-1">
                             {{ opt.text }}
                           </div>
                           @if (isLeadingOption(stats, opt.id) && stats.totalVotes > 0) {
-                            <span class="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-black uppercase tracking-wider hidden sm:inline-flex items-center gap-1 shrink-0">
+                            <span class="px-1.5 py-0.5 rounded-md bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[9px] font-black uppercase tracking-wider hidden sm:inline-flex items-center gap-1 shrink-0">
                               🏆 Leading
                             </span>
                           }
                         </div>
 
                         <!-- Percentage & Votes count -->
-                        <div class="relative z-10 text-right shrink-0 pl-3">
-                          <div class="text-2xl sm:text-3xl font-black font-mono leading-none"
+                        <div class="relative z-10 text-right shrink-0 pl-2">
+                          <div class="text-xl sm:text-2xl font-black font-mono leading-none"
                             [ngClass]="isLeadingOption(stats, opt.id) ? 'text-amber-300' : 'text-white'">
                             {{ stats.percentages[opt.id] || 0 }}%
                           </div>
-                          <div class="text-[11px] text-slate-400 font-medium mt-1">
+                          <div class="text-[10px] text-slate-400 font-medium mt-0.5">
                             {{ stats.votesPerOption[opt.id] || 0 }} votes
                           </div>
                         </div>
@@ -259,12 +259,12 @@ import QRCode from 'qrcode';
                 }
               } @else {
                 <!-- Waiting Screen on Right Side -->
-                <div class="text-center py-12 space-y-4 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-8 backdrop-blur-md max-w-xl mx-auto w-full">
-                  <div class="w-16 h-16 rounded-full bg-slate-900 text-indigo-400 border border-slate-800 flex items-center justify-center mx-auto text-2xl animate-bounce">
+                <div class="text-center py-8 space-y-3 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-md max-w-md mx-auto w-full">
+                  <div class="w-12 h-12 rounded-full bg-slate-900 text-indigo-400 border border-slate-800 flex items-center justify-center mx-auto text-xl animate-bounce">
                     <i class="pi pi-hourglass"></i>
                   </div>
-                  <h2 class="text-2xl font-black text-white">Waiting for Presenter to launch poll...</h2>
-                  <p class="text-slate-400 max-w-md mx-auto text-xs">
+                  <h2 class="text-xl font-black text-white">Waiting for Presenter to launch poll...</h2>
+                  <p class="text-slate-400 max-w-sm mx-auto text-xs">
                     Scan the QR code on the left or enter PIN <span class="font-mono text-amber-400 font-bold">{{ roomCode() }}</span> to join this session.
                   </p>
                 </div>
@@ -276,11 +276,11 @@ import QRCode from 'qrcode';
       </main>
 
       <!-- Bottom Bar: Compact Footer with total vote counter -->
-      <footer class="flex items-center justify-between gap-4 z-10 border-t border-slate-800/80 pt-3 shrink-0">
+      <footer class="flex items-center justify-between gap-4 z-10 border-t border-slate-800/80 pt-2 shrink-0">
         <div class="flex items-center gap-2 text-xs text-slate-400 font-medium">
           <span class="w-2.5 h-2.5 rounded-full" [ngClass]="room()?.status === 'completed' ? 'bg-amber-400' : 'bg-emerald-500 animate-pulse'"></span>
-          <span>{{ room()?.status === 'completed' ? 'Session Concluded' : 'Mati (មតិ) Live Audience System' }}</span>
-          <span class="text-slate-600">•</span>
+          <span class="hidden sm:inline">{{ room()?.status === 'completed' ? 'Session Concluded' : 'Mati (មតិ) Live Audience System' }}</span>
+          <span class="text-slate-600 hidden sm:inline">•</span>
           <span class="font-mono text-indigo-400">Room {{ roomCode() }}</span>
         </div>
 
