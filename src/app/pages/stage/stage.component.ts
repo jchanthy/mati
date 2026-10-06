@@ -4,7 +4,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService } from '../../services/mati-poll.service';
-import { Poll, PollStats, Room } from '../../models/poll.model';
+import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
 import QRCode from 'qrcode';
 
 @Component({
@@ -50,58 +50,146 @@ import QRCode from 'qrcode';
       <!-- Main Central Presentation Area: Fit to viewport without scrolling -->
       <main class="flex-1 min-h-0 flex flex-col justify-center py-1 sm:py-2 z-10 max-w-7xl mx-auto w-full overflow-hidden">
         @if (room()?.status === 'completed') {
-          <!-- Grand Finale Celebration Screen for Big TV / Projector -->
-          <div class="text-center space-y-3 sm:space-y-4 max-w-4xl mx-auto animate-fadein w-full px-4">
-            <!-- Festive Badge -->
-            <div class="flex items-center justify-center">
-              <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-md">
-                <span>🎉</span>
-                <span>Poll Completed • ការស្ទង់មតិបានបញ្ចប់</span>
-              </span>
-            </div>
-
-            <!-- Title & Subtitle -->
-            <div class="space-y-1">
-              <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight">
+          <!-- Grand Finale Celebration Screen for Big TV / Projector with Results Breakdown -->
+          <div class="h-full max-h-[calc(100vh-120px)] flex flex-col justify-start space-y-3 sm:space-y-4 max-w-5xl mx-auto animate-fadein w-full px-2 sm:px-4 overflow-y-auto pr-1 sm:pr-2">
+            <!-- Festive Badge & Title -->
+            <div class="text-center space-y-1.5 shrink-0 pt-1">
+              <div class="flex items-center justify-center">
+                <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-md">
+                  <span>🎉</span>
+                  <span>Poll Completed • ការស្ទង់មតិបានបញ្ចប់</span>
+                </span>
+              </div>
+              <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
                 ការស្ទង់មតិបានបញ្ចប់ដោយជោគជ័យ!
               </h1>
-              <p class="text-sm sm:text-base font-bold text-indigo-300">
-                Thank you for participating in Mati Live Session!
-              </p>
-              <p class="text-xs text-slate-400 max-w-lg mx-auto">
-                All questions have concluded. Your collective votes have been gathered in real-time.
+              <p class="text-xs sm:text-sm font-medium text-slate-300">
+                Final Audience Results & Performance Summary for Room <span class="font-mono text-amber-400 font-bold">{{ roomCode() }}</span>
               </p>
             </div>
 
-            <!-- Grand KPI Summary Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3.5 pt-1 max-w-3xl mx-auto">
-              <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-0.5">
-                <div class="text-2xl sm:text-3xl font-black text-emerald-400 font-mono leading-tight">
+            <!-- Grand KPI Summary Cards (4 Cards) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 shrink-0">
+              <!-- Total Questions -->
+              <div class="p-3 sm:p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-lg text-center space-y-0.5">
+                <div class="text-2xl sm:text-3xl font-black text-slate-100 font-mono leading-tight">
                   {{ totalQuestionsCount() }}
                 </div>
-                <div class="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
+                <div class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Total Questions
                 </div>
               </div>
 
-              <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-0.5">
+              <!-- Audience Votes Cast -->
+              <div class="p-3 sm:p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-lg text-center space-y-0.5">
                 <div class="text-2xl sm:text-3xl font-black text-indigo-400 font-mono leading-tight">
                   {{ totalVotesCount() }}
                 </div>
-                <div class="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Audience Votes Cast
+                <div class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Total Votes Cast
                 </div>
               </div>
 
-              <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-0.5">
-                <div class="text-2xl sm:text-3xl font-black text-amber-400 font-mono leading-tight">
+              <!-- Overall Accuracy or Top Consensus -->
+              <div class="p-3 sm:p-3.5 rounded-2xl bg-slate-900/90 border backdrop-blur-md shadow-lg text-center space-y-0.5"
+                [ngClass]="sessionStats().hasScoredQuestions ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-amber-500/40 bg-amber-950/20'">
+                <div class="text-2xl sm:text-3xl font-black font-mono leading-tight"
+                  [ngClass]="sessionStats().hasScoredQuestions ? 'text-emerald-400' : 'text-amber-400'">
+                  {{ sessionStats().hasScoredQuestions ? sessionStats().overallAccuracy + '%' : sessionStats().topConsensusPercentage + '%' }}
+                </div>
+                <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
+                  [ngClass]="sessionStats().hasScoredQuestions ? 'text-emerald-300' : 'text-amber-300'">
+                  {{ sessionStats().hasScoredQuestions ? 'Overall Accuracy' : 'Top Consensus' }}
+                </div>
+              </div>
+
+              <!-- Status -->
+              <div class="p-3 sm:p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-lg text-center space-y-0.5">
+                <div class="text-2xl sm:text-3xl font-black text-emerald-400 font-mono leading-tight">
                   100%
                 </div>
-                <div class="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Session Completed
+                <div class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Completed
                 </div>
               </div>
             </div>
+
+            <!-- Detailed Question-by-Question Results Review -->
+            @if (sessionStats().questionResults.length > 0) {
+              <div class="space-y-2.5 pt-1">
+                <div class="flex items-center justify-between px-1">
+                  <h3 class="text-xs sm:text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="pi pi-list-check text-indigo-400"></i>
+                    <span>Question Breakdown & Answer Results</span>
+                  </h3>
+                  <span class="text-[10px] sm:text-xs font-semibold text-slate-400">
+                    {{ sessionStats().questionResults.length }} question{{ sessionStats().questionResults.length === 1 ? '' : 's' }} tallied
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3 pb-4">
+                  @for (q of sessionStats().questionResults; track q.pollId) {
+                    <div class="bg-slate-900/80 border border-slate-800/90 hover:border-slate-700 rounded-2xl p-3 sm:p-3.5 backdrop-blur-md shadow-md space-y-2 transition-all">
+                      <!-- Question header & Accuracy / Top Badge -->
+                      <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-start gap-2 flex-1 min-w-0">
+                          <span class="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-bold text-[11px] shrink-0 border border-indigo-500/30">
+                            #{{ q.order }}
+                          </span>
+                          <h4 class="text-xs sm:text-sm font-bold text-white leading-snug line-clamp-2">
+                            {{ q.question }}
+                          </h4>
+                        </div>
+                        
+                        @if (q.correctOptionId !== undefined) {
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 border"
+                            [ngClass]="q.correctPercentage >= 50 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'">
+                            {{ q.correctPercentage }}% Correct
+                          </span>
+                        } @else {
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 bg-slate-800 text-slate-300 border border-slate-700">
+                            {{ q.totalVotes }} Votes
+                          </span>
+                        }
+                      </div>
+
+                      <!-- Options Mini Progress Bars -->
+                      <div class="space-y-1.5 pt-1">
+                        @for (opt of q.options; track opt.id) {
+                          <div class="relative overflow-hidden rounded-lg bg-slate-950/60 border p-1.5 sm:p-2 text-xs flex items-center justify-between gap-2"
+                            [ngClass]="opt.isCorrect ? 'border-emerald-500/50 bg-emerald-950/20' : (opt.id === q.winningOptionId && q.correctOptionId === undefined ? 'border-indigo-500/40' : 'border-slate-800/80')">
+                            
+                            <!-- Bar fill -->
+                            <div class="absolute top-0 bottom-0 left-0 transition-all duration-500 opacity-25"
+                              [style.width.%]="opt.percentage"
+                              [ngClass]="opt.isCorrect ? 'bg-emerald-500' : 'bg-indigo-500'">
+                            </div>
+
+                            <div class="relative z-10 flex items-center gap-1.5 min-w-0 flex-1">
+                              <span class="w-4 h-4 rounded text-[10px] font-black flex items-center justify-center shrink-0"
+                                [ngClass]="opt.isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-300'">
+                                {{ opt.id }}
+                              </span>
+                              <span class="font-medium text-slate-200 truncate text-[11px] sm:text-xs">
+                                {{ opt.text }}
+                              </span>
+                              @if (opt.isCorrect) {
+                                <i class="pi pi-check text-emerald-400 text-[10px] shrink-0 font-bold"></i>
+                              }
+                            </div>
+
+                            <div class="relative z-10 font-mono text-[11px] font-bold shrink-0 text-slate-300">
+                              <span>{{ opt.percentage }}%</span>
+                              <span class="text-[9px] text-slate-500 ml-1">({{ opt.votes }})</span>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
           </div>
         } @else {
           <!-- Split Stage Layout: Flexible QR Station on Left + Question & Results on Right -->
@@ -303,7 +391,15 @@ export class StageComponent implements OnInit, OnDestroy {
   pollStats = signal<PollStats | null>(null);
   room = signal<Room | null>(null);
   polls = signal<Poll[]>([]);
-  sessionStats = signal<{ totalQuestions: number; totalVotes: number; topQuestion?: string }>({ totalQuestions: 0, totalVotes: 0 });
+  sessionStats = signal<DetailedSessionSummary>({
+    totalQuestions: 0,
+    totalVotes: 0,
+    totalScoredQuestions: 0,
+    overallAccuracy: 0,
+    hasScoredQuestions: false,
+    topConsensusPercentage: 0,
+    questionResults: []
+  });
   qrCodeDataUrl = signal<string>('');
   fullJoinUrl = signal<string>('');
   joinUrlShort = signal<string>('');

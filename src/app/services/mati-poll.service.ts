@@ -17,7 +17,7 @@ import {
   Unsubscribe
 } from '@angular/fire/firestore';
 import { Observable, BehaviorSubject, of, combineLatest, map } from 'rxjs';
-import { Room, Poll, Vote, PollStats } from '../models/poll.model';
+import { Room, Poll, Vote, PollStats, DetailedSessionSummary, QuestionResultSummary } from '../models/poll.model';
 
 @Injectable({
   providedIn: 'root'
@@ -147,7 +147,7 @@ export class MatiPollService {
    * Step 2: createPoll(roomCode: string, question: string, options: string[])
    * Appends poll to sub-collection.
    */
-  async createPoll(roomCode: string, question: string, optionTexts: string[]): Promise<Poll> {
+  async createPoll(roomCode: string, question: string, optionTexts: string[], correctOptionId?: number): Promise<Poll> {
     const code = roomCode.toUpperCase();
     const pollId = 'poll_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
     
@@ -162,7 +162,12 @@ export class MatiPollService {
       order,
       isLocked: false,
       showResults: true,
-      options: optionTexts.map((text, idx) => ({ id: idx + 1, text }))
+      options: optionTexts.map((text, idx) => ({ 
+        id: idx + 1, 
+        text,
+        isCorrect: correctOptionId !== undefined ? (idx + 1 === correctOptionId) : undefined
+      })),
+      ...(correctOptionId !== undefined ? { correctOptionId } : {})
     };
 
     if (this.firestore) {
@@ -193,11 +198,12 @@ export class MatiPollService {
   /**
    * Batch append multiple parsed questions to a room.
    */
-  async createPollsBatch(roomCode: string, questions: { question: string; options: string[] }[]): Promise<number> {
+  async createPollsBatch(roomCode: string, questions: { question: string; options: string[]; correctOptionIndex?: number }[]): Promise<number> {
     const code = roomCode.toUpperCase();
     let count = 0;
     for (const q of questions) {
-      await this.createPoll(code, q.question, q.options);
+      const correctOptionId = (q.correctOptionIndex !== undefined) ? q.correctOptionIndex + 1 : undefined;
+      await this.createPoll(code, q.question, q.options, correctOptionId);
       count++;
     }
     return count;
@@ -412,56 +418,106 @@ export class MatiPollService {
   }
 
   /**
-   * Aggregates overall session summary (total questions, total votes, top question)
+   * Aggregates detailed session summary (total questions, votes, overall accuracy %, question-by-question results)
    */
-  async getSessionSummary(roomCode: string): Promise<{ totalQuestions: number; totalVotes: number; topQuestion?: string }> {
+  async getSessionSummary(roomCode: string): Promise<DetailedSessionSummary> {
     const code = roomCode.toUpperCase();
     const polls = await this.getPollsForRoom(code);
     let totalVotes = 0;
-    let maxVotes = -1;
-    let topQuestion = '';
+    let totalScoredQuestions = 0;
+    let totalScoredVotes = 0;
+    let totalCorrectVotes = 0;
+    let consensusSum = 0;
 
-    if (this.firestore && polls.length > 0) {
-      try {
-        const voteSnaps = await Promise.all(
-          polls.map(p => getDocs(collection(this.firestore!, `rooms/${code}/polls/${p.id}/votes`)).catch(() => null))
-        );
-        voteSnaps.forEach((vSnap, idx) => {
-          const count = vSnap ? vSnap.size : 0;
-          totalVotes += count;
-          if (count > maxVotes) {
-            maxVotes = count;
-            topQuestion = polls[idx]?.question || '';
-          }
-        });
-      } catch (e) {
-        console.warn('[Mati] Firestore getSessionSummary error:', e);
+    const questionResults: QuestionResultSummary[] = [];
+    const votesMap = this.mockVotes$.getValue();
+
+    for (let idx = 0; idx < polls.length; idx++) {
+      const p = polls[idx];
+      let voteList: Vote[] = [];
+
+      if (this.firestore) {
+        try {
+          const vSnap = await getDocs(collection(this.firestore, `rooms/${code}/polls/${p.id}/votes`));
+          voteList = vSnap.docs.map(d => d.data() as Vote);
+        } catch (e) {
+          voteList = votesMap.get(`${code}_${p.id}`) || [];
+        }
+      } else {
+        voteList = votesMap.get(`${code}_${p.id}`) || [];
       }
-    } else {
-      const votesMap = this.mockVotes$.getValue();
-      for (const p of polls) {
-        const votes = votesMap.get(`${code}_${p.id}`) || [];
-        totalVotes += votes.length;
-        if (votes.length > maxVotes) {
-          maxVotes = votes.length;
-          topQuestion = p.question;
+
+      if (voteList.length === 0 && votesMap.has(`${code}_${p.id}`)) {
+        voteList = votesMap.get(`${code}_${p.id}`) || [];
+      }
+
+      const qTotalVotes = voteList.length;
+      totalVotes += qTotalVotes;
+
+      const optCounts: { [optId: number]: number } = {};
+      for (const opt of p.options) optCounts[opt.id] = 0;
+      for (const v of voteList) {
+        if (optCounts[v.optionId] !== undefined) {
+          optCounts[v.optionId]++;
         }
       }
+
+      const correctOptionId = p.correctOptionId;
+      const correctOption = correctOptionId ? p.options.find(o => o.id === correctOptionId) : undefined;
+      const correctVotes = correctOptionId ? (optCounts[correctOptionId] || 0) : 0;
+      const correctPercentage = qTotalVotes > 0 ? Math.round((correctVotes / qTotalVotes) * 100) : 0;
+
+      let winningOpt = p.options[0] || { id: 1, text: '' };
+      let maxOptVotes = -1;
+      for (const opt of p.options) {
+        const c = optCounts[opt.id] || 0;
+        if (c > maxOptVotes) {
+          maxOptVotes = c;
+          winningOpt = opt;
+        }
+      }
+      const winningPercentage = qTotalVotes > 0 ? Math.round((maxOptVotes / qTotalVotes) * 100) : 0;
+      consensusSum += winningPercentage;
+
+      if (correctOptionId !== undefined) {
+        totalScoredQuestions++;
+        totalScoredVotes += qTotalVotes;
+        totalCorrectVotes += correctVotes;
+      }
+
+      questionResults.push({
+        pollId: p.id,
+        order: p.order || (idx + 1),
+        question: p.question,
+        totalVotes: qTotalVotes,
+        correctOptionId,
+        correctOptionText: correctOption?.text,
+        correctVotes,
+        correctPercentage,
+        winningOptionId: winningOpt.id,
+        winningOptionText: winningOpt.text,
+        winningPercentage,
+        options: p.options.map(opt => ({
+          id: opt.id,
+          text: opt.text,
+          votes: optCounts[opt.id] || 0,
+          percentage: qTotalVotes > 0 ? Math.round(((optCounts[opt.id] || 0) / qTotalVotes) * 100) : 0,
+          isCorrect: correctOptionId !== undefined ? (opt.id === correctOptionId) : false
+        }))
+      });
     }
 
-    // Fallback to in-memory vote tallies if Firestore had 0 votes
-    if (totalVotes === 0) {
-      const votesMap = this.mockVotes$.getValue();
-      for (const p of polls) {
-        const votes = votesMap.get(`${code}_${p.id}`) || [];
-        totalVotes += votes.length;
-      }
-    }
+    const overallAccuracy = totalScoredVotes > 0 ? Math.round((totalCorrectVotes / totalScoredVotes) * 100) : 0;
+    const topConsensusPercentage = polls.length > 0 ? Math.round(consensusSum / polls.length) : 0;
 
     return {
       totalQuestions: polls.length,
       totalVotes,
-      topQuestion: maxVotes > 0 ? topQuestion : (polls[0]?.question || '')
+      totalScoredQuestions,
+      overallAccuracy,
+      hasScoredQuestions: totalScoredQuestions > 0,
+      topConsensusPercentage,
+      questionResults
     };
   }
 

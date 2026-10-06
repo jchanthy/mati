@@ -45,23 +45,55 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
       <main class="p-4 sm:p-5 flex-1 flex flex-col justify-start overflow-y-auto">
         @if (room()?.status === 'completed') {
           <!-- Grand Session Completion Card on Phone -->
-          <div class="p-8 bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900 rounded-3xl text-center space-y-5 shadow-xl animate-fadein my-auto">
-            <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center mx-auto text-3xl shadow-xl shadow-indigo-500/30 animate-bounce">
+          <div class="p-6 sm:p-8 bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900 rounded-3xl text-center space-y-4 sm:space-y-5 shadow-xl animate-fadein my-auto">
+            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center mx-auto text-2xl sm:text-3xl shadow-xl shadow-indigo-500/30 animate-bounce">
               🎉
             </div>
-            <div class="space-y-1.5">
+            <div class="space-y-1">
               <span class="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                 Session Completed
               </span>
-              <h2 class="text-2xl font-black text-slate-900 dark:text-white pt-1">
+              <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white pt-1">
                 សូមអរគុណសម្រាប់ការចូលរួម!
               </h2>
               <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                All questions in room <span class="font-mono font-bold text-slate-900 dark:text-white">{{ roomCode() }}</span> have concluded. Your voice was recorded live in Mati!
+                All questions in room <span class="font-mono font-bold text-slate-900 dark:text-white">{{ roomCode() }}</span> have concluded.
               </p>
             </div>
-            <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
-              ✨ Look up at the presenter's screen to see the final overall session tally.
+
+            <!-- Personal Performance Card -->
+            <div class="grid grid-cols-2 gap-2.5 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 text-left">
+              <div class="space-y-0.5">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Questions Answered
+                </div>
+                <div class="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">
+                  {{ answeredCount() }} <span class="text-xs font-normal text-slate-500">/ {{ polls().length }}</span>
+                </div>
+              </div>
+
+              <div class="space-y-0.5 text-right">
+                @if (studentScoredQuestionsCount() > 0) {
+                  <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                    Your Score
+                  </div>
+                  <div class="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                    {{ studentAccuracyPercent() }}%
+                    <span class="text-[10px] font-normal text-slate-500 block">({{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() }} correct)</span>
+                  </div>
+                } @else {
+                  <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                    Participation
+                  </div>
+                  <div class="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                    {{ progressPercent() }}%
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/60 text-xs text-indigo-900 dark:text-indigo-300">
+              ✨ Look up at the presenter's stage screen to see the live class breakdown!
             </div>
           </div>
         } @else if (room()?.mode === 'survey') {
@@ -451,6 +483,28 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     if (list.length === 0) return null;
     const id = this.selectedSurveyPollId();
     return (id ? list.find(p => p.id === id) : null) || list[0];
+  });
+
+  // Personal performance computed values
+  studentScoredQuestionsCount = computed(() => {
+    return this.polls().filter(p => p.correctOptionId !== undefined).length;
+  });
+
+  studentCorrectAnswersCount = computed(() => {
+    const map = this.votedOptionsMap();
+    let correct = 0;
+    for (const p of this.polls()) {
+      if (p.correctOptionId !== undefined && map[p.id] === p.correctOptionId) {
+        correct++;
+      }
+    }
+    return correct;
+  });
+
+  studentAccuracyPercent = computed(() => {
+    const scoredTotal = this.studentScoredQuestionsCount();
+    if (scoredTotal === 0) return 0;
+    return Math.round((this.studentCorrectAnswersCount() / scoredTotal) * 100);
   });
 
   // Synchronized countdown timer
