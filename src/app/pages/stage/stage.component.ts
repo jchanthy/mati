@@ -83,34 +83,33 @@ import QRCode from 'qrcode';
               </div>
             </div>
           } @else {
-            <!-- Live Grid Options: 2 columns if 4 options, full width if 2-3 options to fit TV screen -->
-            <div class="grid gap-3 w-full" [ngClass]="stats.poll.options.length > 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-4xl mx-auto'">
+            <!-- Live Grid Options: 2 columns if >2 options, 1 column if 2 options -->
+            <div class="grid gap-3.5 w-full" [ngClass]="stats.poll.options.length > 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-4xl mx-auto'">
               @for (opt of stats.poll.options; track opt.id) {
-                <div class="bg-slate-900/90 border border-slate-800 p-4 sm:p-5 rounded-2xl backdrop-blur-md relative overflow-hidden transition-all flex flex-col justify-between shadow-lg">
+                <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl backdrop-blur-md relative overflow-hidden transition-all shadow-lg flex items-center justify-between gap-4">
                   <!-- Animated Progress bar background -->
                   <div 
                     class="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-indigo-600/40 via-indigo-500/30 to-blue-500/20 transition-all duration-700 ease-out" 
                     [style.width.%]="stats.percentages[opt.id] || 0">
                   </div>
 
-                  <div class="relative z-10 flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-3.5 flex-1 min-w-0">
-                      <span class="w-8 h-8 rounded-xl bg-slate-800 text-indigo-400 border border-slate-700 flex items-center justify-center font-black text-sm shrink-0">
-                        {{ opt.id }}
-                      </span>
-                      <!-- Full wide option text without vertical compression -->
-                      <span class="text-base sm:text-lg lg:text-xl font-bold text-slate-100 leading-snug break-words">
-                        {{ opt.text }}
-                      </span>
+                  <!-- Option Number & Text -->
+                  <div class="relative z-10 flex items-center gap-3.5 flex-1 min-w-0">
+                    <div style="width: 2.25rem; height: 2.25rem; min-width: 2.25rem;" class="rounded-xl bg-slate-800 text-indigo-400 border border-slate-700 flex items-center justify-center font-black text-sm shrink-0">
+                      {{ opt.id }}
                     </div>
+                    <div class="text-base sm:text-lg font-bold text-slate-100 leading-snug break-words flex-1">
+                      {{ opt.text }}
+                    </div>
+                  </div>
 
-                    <div class="text-right shrink-0 pl-2">
-                      <div class="text-2xl sm:text-3xl font-black text-white font-mono leading-none">
-                        {{ stats.percentages[opt.id] || 0 }}%
-                      </div>
-                      <div class="text-[11px] text-slate-400 font-medium mt-1">
-                        {{ stats.votesPerOption[opt.id] || 0 }} votes
-                      </div>
+                  <!-- Percentage & Votes count -->
+                  <div class="relative z-10 text-right shrink-0 pl-3">
+                    <div class="text-2xl sm:text-3xl font-black text-white font-mono leading-none">
+                      {{ stats.percentages[opt.id] || 0 }}%
+                    </div>
+                    <div class="text-[11px] text-slate-400 font-medium mt-1">
+                      {{ stats.votesPerOption[opt.id] || 0 }} votes
                     </div>
                   </div>
                 </div>
