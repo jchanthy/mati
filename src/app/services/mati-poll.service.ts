@@ -42,8 +42,58 @@ export class MatiPollService {
     this.initDefaultMockData();
     if (this.firestore) {
       this.isConnectedToFirebase.set(true);
+      this.ensureDefaultRoomInFirestore('MATI01');
     }
   }
+
+  /**
+   * Ensures default room MATI01 exists in Firestore with its initial active poll
+   */
+  async ensureDefaultRoomInFirestore(code: string): Promise<void> {
+    if (!this.firestore) return;
+    try {
+      const roomRef = doc(this.firestore, `rooms/${code}`);
+      const snap = await getDoc(roomRef);
+      if (!snap.exists()) {
+        const initialRoom = this.mockRooms$.getValue().get(code);
+        if (initialRoom) {
+          await setDoc(roomRef, {
+            ...initialRoom,
+            createdAt: serverTimestamp()
+          });
+
+          // Also seed initial polls
+          const polls = this.mockPolls$.getValue().get(code) || [];
+          for (const p of polls) {
+            const pRef = doc(this.firestore, `rooms/${code}/polls/${p.id}`);
+            await setDoc(pRef, p);
+          }
+        }
+      } else {
+        const roomData = snap.data() as Room;
+        // If room exists in Firestore but has no activePollId, set default
+        if (!roomData.activePollId) {
+          const pollsSnap = await getDocs(collection(this.firestore, `rooms/${code}/polls`));
+          if (!pollsSnap.empty) {
+            await this.setActivePoll(code, pollsSnap.docs[0].id);
+          } else {
+            // Seed polls if collection is empty
+            const polls = this.mockPolls$.getValue().get(code) || [];
+            for (const p of polls) {
+              const pRef = doc(this.firestore, `rooms/${code}/polls/${p.id}`);
+              await setDoc(pRef, p);
+            }
+            if (polls.length > 0) {
+              await this.setActivePoll(code, polls[0].id);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Mati] Could not sync initial room to Firestore:', e);
+    }
+  }
+
 
   /**
    * Generates or fetches persistent voter ID from localStorage
@@ -330,16 +380,15 @@ export class MatiPollService {
         try {
           const roomRef = doc(this.firestore, `rooms/${code}`);
           unsubRoom = onSnapshot(roomRef, (roomSnap) => {
-            if (!roomSnap.exists()) {
+            let activeId: string | null = null;
+            if (roomSnap.exists()) {
+              const roomData = roomSnap.data() as Room;
+              activeId = roomData?.activePollId;
+            } else {
               // fallback to mock
               const localRoom = this.mockRooms$.getValue().get(code);
-              if (!localRoom) {
-                subscriber.next(null);
-                return;
-              }
+              activeId = localRoom?.activePollId || null;
             }
-            const roomData = roomSnap.data() as Room;
-            const activeId = roomData?.activePollId;
 
             if (!activeId) {
               subscriber.next(null);
@@ -355,19 +404,66 @@ export class MatiPollService {
 
               const pollRef = doc(this.firestore!, `rooms/${code}/polls/${activeId}`);
               unsubPoll = onSnapshot(pollRef, (pollSnap) => {
-                if (!pollSnap.exists()) return;
-                const pollData = { id: pollSnap.id, ...pollSnap.data() } as Poll;
+                let pollData: Poll | null = null;
+                if (pollSnap.exists()) {
+                  pollData = { id: pollSnap.id, ...pollSnap.data() } as Poll;
+                } else {
+                  // check mock
+                  const localPolls = this.mockPolls$.getValue().get(code) || [];
+                  pollData = localPolls.find(p => p.id === activeId) || null;
+                }
+
+                if (!pollData) {
+                  subscriber.next(null);
+                  return;
+                }
+
                 this.currentPoll.set(pollData);
 
                 // Listen to votes subcollection
                 const votesCol = collection(this.firestore!, `rooms/${code}/polls/${activeId}/votes`);
                 unsubVotes = onSnapshot(votesCol, (votesSnap) => {
-                  const votes: Vote[] = votesSnap.docs.map(d => d.data() as Vote);
-                  const stats = this.computeStats(pollData, votes);
+                  let votes: Vote[] = [];
+                  if (!votesSnap.empty) {
+                    votes = votesSnap.docs.map(d => d.data() as Vote);
+                  } else {
+                    const localVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
+                    votes = localVotes;
+                  }
+                  const stats = this.computeStats(pollData!, votes);
+                  this.currentStats.set(stats);
+                  subscriber.next(stats);
+                }, (err) => {
+                  console.warn('[Mati] Votes listener error, fallback to local votes:', err);
+                  const localVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
+                  const stats = this.computeStats(pollData!, localVotes);
                   this.currentStats.set(stats);
                   subscriber.next(stats);
                 });
+              }, (err) => {
+                console.warn('[Mati] Poll listener error, fallback to local poll:', err);
+                const localPolls = this.mockPolls$.getValue().get(code) || [];
+                const pollData = localPolls.find(p => p.id === activeId) || null;
+                if (pollData) {
+                  const localVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
+                  const stats = this.computeStats(pollData, localVotes);
+                  this.currentStats.set(stats);
+                  subscriber.next(stats);
+                }
               });
+            }
+          }, (err) => {
+            console.warn('[Mati] Room listener error, fallback to mock pipeline:', err);
+            const localRoom = this.mockRooms$.getValue().get(code);
+            if (localRoom?.activePollId) {
+              const localPolls = this.mockPolls$.getValue().get(code) || [];
+              const poll = localPolls.find(p => p.id === localRoom.activePollId);
+              if (poll) {
+                const localVotes = this.mockVotes$.getValue().get(`${code}_${poll.id}`) || [];
+                const stats = this.computeStats(poll, localVotes);
+                this.currentStats.set(stats);
+                subscriber.next(stats);
+              }
             }
           });
         } catch (e) {
