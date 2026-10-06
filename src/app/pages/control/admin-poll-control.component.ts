@@ -76,11 +76,29 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
             <p-toggleswitch [(ngModel)]="showResults" (onChange)="onShowResultsChange()"></p-toggleswitch>
           </div>
 
-          <div class="flex items-center justify-between pt-1">
-            <div class="text-xs font-medium text-gray-500">Question Navigation:</div>
-            <div class="flex items-center gap-2">
-              <button pButton label="Prev" icon="pi pi-arrow-left" class="p-button-outlined p-button-sm rounded-xl" [disabled]="isFirstQuestion()" (click)="prevQuestion()"></button>
-              <button pButton label="Next" icon="pi pi-arrow-right" class="p-button-primary p-button-sm rounded-xl" [disabled]="isLastQuestion()" (click)="nextQuestion()"></button>
+          <div class="flex flex-col gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-bold text-gray-700 dark:text-gray-300">
+                Question {{ getCurrentQuestionIndex() }} of {{ polls().length }}
+              </div>
+              <div class="flex items-center gap-2">
+                <button pButton label="Prev" icon="pi pi-arrow-left" class="p-button-outlined p-button-sm rounded-xl" [disabled]="isFirstQuestion()" (click)="prevQuestion()"></button>
+                <button pButton label="Next" icon="pi pi-arrow-right" class="p-button-primary p-button-sm rounded-xl" [disabled]="isLastQuestion()" (click)="nextQuestion()"></button>
+              </div>
+            </div>
+
+            <!-- Direct Jump Selector for 30+ questions -->
+            <div class="pt-1">
+              <select 
+                [ngModel]="currentPoll()?.id" 
+                (ngModelChange)="onSelectQuestion($event)" 
+                class="w-full p-2 text-xs font-semibold rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
+                @for (p of polls(); track p.id; let idx = $index) {
+                  <option [value]="p.id">
+                    #{{ idx + 1 }}: {{ p.question.length > 50 ? (p.question.substring(0, 50) + '...') : p.question }}
+                  </option>
+                }
+              </select>
             </div>
           </div>
         </div>
@@ -221,6 +239,24 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     const list = this.polls();
     if (!poll || list.length === 0) return true;
     return list[list.length - 1].id === poll.id;
+  }
+
+  getCurrentQuestionIndex(): number {
+    const poll = this.currentPoll();
+    const list = this.polls();
+    if (!poll || list.length === 0) return 0;
+    const idx = list.findIndex(p => p.id === poll.id);
+    return idx >= 0 ? idx + 1 : 0;
+  }
+
+  async onSelectQuestion(pollId: string) {
+    if (!pollId) return;
+    await this.pollService.setActivePoll('MATI01', pollId);
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Question Switched',
+      detail: 'Stage updated to selected question.'
+    });
   }
 
   async prevQuestion() {

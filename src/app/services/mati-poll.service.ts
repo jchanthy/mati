@@ -566,6 +566,16 @@ export class MatiPollService {
 
   async getPollsForRoom(roomCode: string): Promise<Poll[]> {
     const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      try {
+        const snap = await getDocs(collection(this.firestore, `rooms/${code}/polls`));
+        if (!snap.empty) {
+          return snap.docs.map(d => ({ id: d.id, ...d.data() } as Poll));
+        }
+      } catch (e) {
+        console.warn('[Mati] Could not fetch Firestore polls:', e);
+      }
+    }
     return this.mockPolls$.getValue().get(code) || [];
   }
 
