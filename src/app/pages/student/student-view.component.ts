@@ -26,39 +26,20 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
         </div>
 
         <div class="flex items-center gap-2">
+          @if (room()?.mode === 'survey') {
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+              <i class="pi pi-list-check text-[9px]"></i> Survey Mode
+            </span>
+          } @else {
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live Stage
+            </span>
+          }
           <div class="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">
             PIN: {{ roomCode() }}
           </div>
         </div>
       </header>
-
-      <!-- Navigation Tabs: Live Sync vs Survey All Questions -->
-      <div class="px-4 py-2 bg-slate-100 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 z-10 shrink-0">
-        <div class="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-800 rounded-xl w-full">
-          <button 
-            type="button" 
-            (click)="setTab('live')"
-            [ngClass]="activeTab() === 'live' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 font-medium'"
-            class="flex-1 py-1.5 text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-            <span class="w-2 h-2 rounded-full" [ngClass]="room()?.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'"></span>
-            <span>Live Stage</span>
-          </button>
-          <button 
-            type="button" 
-            (click)="setTab('survey')"
-            [ngClass]="activeTab() === 'survey' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 font-medium'"
-            class="flex-1 py-1.5 text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-            <i class="pi pi-list-check text-xs"></i>
-            <span>All Questions</span>
-            @if (polls().length > 0) {
-              <span class="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold"
-                [ngClass]="answeredCount() === polls().length ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'">
-                {{ answeredCount() }}/{{ polls().length }}
-              </span>
-            }
-          </button>
-        </div>
-      </div>
 
       <!-- Content Area -->
       <main class="p-4 sm:p-5 flex-1 flex flex-col justify-start overflow-y-auto">
@@ -83,7 +64,7 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
               ✨ Look up at the presenter's screen to see the final overall session tally.
             </div>
           </div>
-        } @else if (activeTab() === 'survey') {
+        } @else if (room()?.mode === 'survey') {
           <!-- SELF-PACED SURVEY MODE VIEW (Choose & vote any question) -->
           <div class="space-y-4 my-auto w-full">
             <!-- Survey Progress Bar -->
@@ -618,6 +599,8 @@ export class StudentViewComponent implements OnInit, OnDestroy {
       this.room.set(roomData);
       if (roomData?.mode === 'survey') {
         this.activeTab.set('survey');
+      } else {
+        this.activeTab.set('live');
       }
     });
   }
