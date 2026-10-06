@@ -1,7 +1,6 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-topbar',
@@ -40,39 +39,15 @@ import { AuthService } from '../services/auth.service';
         
         <div class="h-6 w-px bg-gray-200 dark:bg-gray-800 mx-1"></div>
 
-        <!-- Google User Profile & Logout -->
-        @if (authService.currentUser(); as user) {
-          <div class="flex items-center gap-2.5 pl-1">
-            @if (user.photoURL) {
-              <img [src]="user.photoURL" [alt]="user.displayName || 'Admin'" class="w-8 h-8 rounded-full border border-indigo-200 dark:border-indigo-800 object-cover shadow-xs" />
-            } @else {
-              <div class="w-8 h-8 rounded-full bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
-                <i class="pi pi-user"></i>
-              </div>
-            }
-            <div class="hidden md:flex flex-col text-left">
-              <span class="text-xs font-bold text-gray-900 dark:text-white leading-tight">
-                {{ user.displayName || 'Admin Presenter' }}
-              </span>
-              <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[120px]">
-                {{ user.email }}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              (click)="logout()"
-              title="Sign Out"
-              class="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer ml-1">
-              <i class="pi pi-sign-out text-sm"></i>
-            </button>
+        <!-- Admin Badge -->
+        <div class="flex items-center gap-2 pl-1">
+          <div class="w-8 h-8 rounded-full bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+            <i class="pi pi-user"></i>
           </div>
-        } @else {
-          <a routerLink="/login" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xs">
-            <i class="pi pi-sign-in text-xs"></i>
-            <span>Sign In</span>
-          </a>
-        }
+          <span class="text-xs font-bold text-gray-900 dark:text-white hidden md:inline">
+            Admin
+          </span>
+        </div>
       </div>
     </header>
   `,
@@ -83,15 +58,10 @@ import { AuthService } from '../services/auth.service';
   `]
 })
 export class TopbarComponent {
-  authService = inject(AuthService);
   sidebarVisible = signal(true);
 
   toggleSidebar() {
     this.sidebarVisible.update(v => !v);
-  }
-
-  logout() {
-    this.authService.logout();
   }
 }
 
