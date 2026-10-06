@@ -118,6 +118,11 @@ export class LoginComponent {
         this.errorMessage.set('Sign-in popup was closed. Please try again.');
       } else if (err?.code === 'auth/popup-blocked') {
         this.errorMessage.set('Popup was blocked by your browser. Please allow popups for this site.');
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        const host = typeof window !== 'undefined' ? window.location.hostname : 'mati-five.vercel.app';
+        this.errorMessage.set(
+          `Unauthorized Domain: "${host}" is not added in Firebase. Please go to Firebase Console > Authentication > Settings > Authorized Domains, and add "${host}".`
+        );
       } else {
         this.errorMessage.set(err?.message || 'Google authentication failed. Please try again.');
       }
