@@ -91,12 +91,20 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
 
               <!-- Primary Stats Table (Clean Slido Style) -->
               <div class="max-w-xs mx-auto py-4 space-y-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
-                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span class="text-slate-500 dark:text-slate-400 font-medium">Correct answers:</span>
-                  <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
-                    {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() || polls().length }}
-                  </span>
-                </div>
+                @if (studentScoredQuestionsCount() > 0) {
+                  <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <span class="text-slate-500 dark:text-slate-400 font-medium">Correct answers:</span>
+                    <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
+                      {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <span class="text-slate-500 dark:text-slate-400 font-medium">Your Accuracy:</span>
+                    <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
+                      {{ studentAccuracyPercent() }}%
+                    </span>
+                  </div>
+                }
                 <div class="flex items-center justify-between pt-1">
                   <span class="text-slate-500 dark:text-slate-400 font-medium">Participation:</span>
                   <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
@@ -116,7 +124,11 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     <span class="truncate">{{ participantName() }} (me)</span>
                   </div>
                   <div class="font-mono text-xs text-sky-100 shrink-0">
-                    {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() || polls().length }}
+                    @if (studentScoredQuestionsCount() > 0) {
+                      {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() }}
+                    } @else {
+                      {{ answeredCount() }}/{{ polls().length }}
+                    }
                   </div>
                 </div>
 
@@ -174,8 +186,9 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                           <div class="text-[11px] p-2 rounded-xl flex items-center justify-between border"
                             [ngClass]="{
                               'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold': p.correctOptionId === opt.id,
-                              'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200': getVotedOptionFor(p.id) === opt.id && p.correctOptionId !== opt.id && p.correctOptionId !== undefined,
-                              'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400': p.correctOptionId !== opt.id && getVotedOptionFor(p.id) !== opt.id
+                              'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200 font-medium': getVotedOptionFor(p.id) === opt.id && p.correctOptionId !== opt.id && p.correctOptionId !== undefined,
+                              'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 font-bold': p.correctOptionId === undefined && getVotedOptionFor(p.id) === opt.id,
+                              'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400': (p.correctOptionId !== opt.id || p.correctOptionId === undefined) && getVotedOptionFor(p.id) !== opt.id
                             }">
                             <div class="flex items-center gap-1.5 min-w-0">
                               <span class="font-bold">{{ opt.id }}.</span>
@@ -603,8 +616,18 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.showAnswersBreakdown.update(v => !v);
   }
 
-  // Survey computed values
-  answeredCount = computed(() => Object.keys(this.votedOptionsMap()).length);
+  // Survey and overall computed values
+  answeredCount = computed(() => {
+    const map = this.votedOptionsMap();
+    const code = this.roomCode();
+    let count = 0;
+    for (const p of this.polls()) {
+      if (map[p.id] !== undefined || this.pollService.getVotedOption(code, p.id) !== null) {
+        count++;
+      }
+    }
+    return count;
+  });
   progressPercent = computed(() => {
     const total = this.polls().length;
     if (total === 0) return 0;
@@ -624,9 +647,11 @@ export class StudentViewComponent implements OnInit, OnDestroy {
 
   studentCorrectAnswersCount = computed(() => {
     const map = this.votedOptionsMap();
+    const code = this.roomCode();
     let correct = 0;
     for (const p of this.polls()) {
-      if (p.correctOptionId !== undefined && map[p.id] === p.correctOptionId) {
+      const voted = map[p.id] !== undefined ? map[p.id] : this.pollService.getVotedOption(code, p.id);
+      if (p.correctOptionId !== undefined && voted === p.correctOptionId) {
         correct++;
       }
     }
@@ -692,11 +717,13 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   }
 
   hasVotedFor(pollId: string): boolean {
-    return this.votedOptionsMap()[pollId] !== undefined;
+    return this.getVotedOptionFor(pollId) !== null;
   }
 
   getVotedOptionFor(pollId: string): number | null {
-    return this.votedOptionsMap()[pollId] ?? null;
+    const fromMap = this.votedOptionsMap()[pollId];
+    if (fromMap !== undefined) return fromMap;
+    return this.pollService.getVotedOption(this.roomCode(), pollId);
   }
 
   getSurveyIndex(pollId: string): number {
@@ -775,7 +802,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   }
 
   private refreshVotedOptions(code: string, polls: Poll[]) {
-    const map: { [pollId: string]: number } = {};
+    const map: { [pollId: string]: number } = { ...this.votedOptionsMap() };
     for (const p of polls) {
       const opt = this.pollService.getVotedOption(code, p.id);
       if (opt !== null) {
@@ -790,6 +817,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.roomSub = this.pollService.listenToRoom(code).subscribe(roomData => {
       this.room.set(roomData);
       if (roomData?.status === 'completed') {
+        this.refreshVotedOptions(code, this.polls());
         this.pollService.getSessionSummary(code).then(summary => {
           this.sessionStats.set(summary);
         });
@@ -811,9 +839,16 @@ export class StudentViewComponent implements OnInit, OnDestroy {
         if (votedOpt !== null) {
           this.hasVoted.set(true);
           this.selectedOptionId.set(votedOpt);
+          this.votedOptionsMap.update(m => ({ ...m, [stats.poll.id]: votedOpt }));
         } else {
-          this.hasVoted.set(false);
-          this.selectedOptionId.set(null);
+          const inMap = this.votedOptionsMap()[stats.poll.id];
+          if (inMap !== undefined) {
+            this.hasVoted.set(true);
+            this.selectedOptionId.set(inMap);
+          } else {
+            this.hasVoted.set(false);
+            this.selectedOptionId.set(null);
+          }
         }
 
         // Synchronize timer with stage and server
@@ -868,6 +903,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
       );
       this.selectedOptionId.set(optionId);
       this.hasVoted.set(true);
+      this.votedOptionsMap.update(m => ({ ...m, [stats.poll.id]: optionId }));
     } finally {
       this.isSubmitting.set(false);
     }
@@ -875,5 +911,14 @@ export class StudentViewComponent implements OnInit, OnDestroy {
 
   changeVote() {
     this.hasVoted.set(false);
+    this.selectedOptionId.set(null);
+    const pollId = this.pollStats()?.poll.id;
+    if (pollId) {
+      this.votedOptionsMap.update(m => {
+        const copy = { ...m };
+        delete copy[pollId];
+        return copy;
+      });
+    }
   }
 }
