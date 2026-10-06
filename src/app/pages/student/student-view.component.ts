@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService } from '../../services/mati-poll.service';
-import { Poll, PollStats, Room } from '../../models/poll.model';
+import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
 
 
 @Component({
@@ -52,67 +52,150 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
       <!-- Content Area -->
       <main class="p-4 sm:p-5 flex-1 flex flex-col justify-start overflow-y-auto">
         @if (room()?.status === 'completed') {
-          <!-- Grand Session Completion Card on Phone -->
-          <div class="p-6 sm:p-8 bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900 rounded-3xl text-center space-y-4 sm:space-y-5 shadow-xl animate-fadein my-auto">
-            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center mx-auto text-2xl sm:text-3xl shadow-xl shadow-indigo-500/30 animate-bounce">
-              🎉
-            </div>
-            <div class="space-y-1">
-              <span class="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                Session Completed
-              </span>
-              <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white pt-1">
-                សូមអរគុណសម្រាប់ការចូលរួម!
-              </h2>
-              <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                @if (answeredCount() > 0) {
-                  All questions in room <span class="font-mono font-bold text-slate-900 dark:text-white">{{ roomCode() }}</span> have concluded.
-                } @else {
-                  This polling session in room <span class="font-mono font-bold text-slate-900 dark:text-white">{{ roomCode() }}</span> has concluded.
-                }
-              </p>
-            </div>
+          <!-- Slido-Style Trophy Celebration Card -->
+          <div class="w-full space-y-4 my-auto animate-fadein pb-4">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 text-center shadow-lg relative overflow-hidden">
+              <!-- Soft festive background confetti dots -->
+              <div class="absolute -top-12 -left-12 w-32 h-32 bg-amber-400/10 rounded-full blur-2xl pointer-events-none"></div>
+              <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-            <!-- Personal Performance Card -->
-            <div class="grid grid-cols-2 gap-2.5 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 text-left">
-              <div class="space-y-0.5">
-                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Questions Answered
+              <!-- Big Golden Trophy Icon with Rank Badge -->
+              <div class="relative w-28 h-28 mx-auto flex items-center justify-center mb-3">
+                <!-- SVG Trophy identical to Slido styling -->
+                <svg viewBox="0 0 120 120" class="w-24 h-24 drop-shadow-md">
+                  <!-- Base / Stand -->
+                  <path d="M42 104 h36 v5 h-36 z" fill="#D97706" />
+                  <path d="M48 94 h24 v10 h-24 z" fill="#F59E0B" />
+                  <path d="M54 78 h12 v16 h-12 z" fill="#FBBF24" />
+                  <!-- Handles -->
+                  <path d="M34 38 C18 38 18 64 36 66 L38 58 C26 56 26 44 36 44 Z" fill="#F59E0B" />
+                  <path d="M86 38 C102 38 102 64 84 66 L82 58 C94 56 94 44 84 44 Z" fill="#F59E0B" />
+                  <!-- Cup Body -->
+                  <path d="M36 28 h48 c0 32 -10 52 -24 52 c-14 0 -24 -20 -24 -52 z" fill="#FBBF24" />
+                  <path d="M36 28 h48 v8 h-48 z" fill="#F59E0B" opacity="0.4" />
+                  <!-- Center Medal on Cup -->
+                  <circle cx="60" cy="50" r="14" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="2" />
+                  <text x="60" y="55" font-size="13" font-weight="900" text-anchor="middle" fill="#475569" font-family="sans-serif">1</text>
+                </svg>
+              </div>
+
+              <!-- Main Heading & Name -->
+              <div class="space-y-1">
+                <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                  You finished 1<sup>st</sup>
+                </h2>
+                <p class="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-300">
+                  Well done, {{ participantName() }}!
+                </p>
+              </div>
+
+              <!-- Primary Stats Table (Clean Slido Style) -->
+              <div class="max-w-xs mx-auto py-4 space-y-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <span class="text-slate-500 dark:text-slate-400 font-medium">Correct answers:</span>
+                  <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
+                    {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() || polls().length }}
+                  </span>
                 </div>
-                <div class="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">
-                  {{ answeredCount() }} <span class="text-xs font-normal text-slate-500">/ {{ polls().length }}</span>
+                <div class="flex items-center justify-between pt-1">
+                  <span class="text-slate-500 dark:text-slate-400 font-medium">Participation:</span>
+                  <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
+                    {{ progressPercent() }}% ({{ answeredCount() }}/{{ polls().length }})
+                  </span>
                 </div>
               </div>
 
-              <div class="space-y-0.5 text-right">
-                @if (answeredCount() > 0 && studentScoredQuestionsCount() > 0) {
-                  <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                    Your Score
+              <!-- Slido Top Participant Badges / Leaderboard Cards -->
+              <div class="space-y-2 pt-1 max-w-xs mx-auto">
+                <!-- User's entry -->
+                <div class="flex items-center justify-between px-4 py-3 rounded-2xl bg-sky-700 text-white font-bold text-sm shadow-md">
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-6 h-6 rounded-full bg-white text-sky-800 text-xs font-black flex items-center justify-center shrink-0">
+                      1
+                    </span>
+                    <span class="truncate">{{ participantName() }} (me)</span>
                   </div>
-                  <div class="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                    {{ studentAccuracyPercent() }}%
-                    <span class="text-[10px] font-normal text-slate-500 block">({{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() }} correct)</span>
+                  <div class="font-mono text-xs text-sky-100 shrink-0">
+                    {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() || polls().length }}
                   </div>
-                } @else if (answeredCount() > 0) {
-                  <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                    Participation
-                  </div>
-                  <div class="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                    {{ progressPercent() }}%
-                  </div>
-                } @else {
-                  <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Status
-                  </div>
-                  <div class="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 pt-1">
-                    Concluded
+                </div>
+
+                @if (sessionStats().totalVotes > answeredCount()) {
+                  <div class="flex items-center justify-between px-4 py-3 rounded-2xl bg-sky-800/90 text-white font-bold text-sm">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <span class="w-6 h-6 rounded-full bg-white/20 text-white text-xs font-black flex items-center justify-center shrink-0">
+                        2
+                      </span>
+                      <span class="truncate">Audience Group</span>
+                    </div>
+                    <div class="font-mono text-xs text-sky-200 shrink-0">
+                      {{ sessionStats().overallAccuracy }}% accuracy
+                    </div>
                   </div>
                 }
               </div>
-            </div>
 
-            <div class="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/60 text-xs text-indigo-900 dark:text-indigo-300">
-              ✨ Look up at the presenter's stage screen to see the live class breakdown!
+              <!-- Collapsible "View Answers" button -->
+              <div class="pt-5">
+                <button
+                  type="button"
+                  (click)="toggleViewAnswers()"
+                  class="inline-flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 transition-colors cursor-pointer py-1 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <span>{{ showAnswersBreakdown() ? 'Hide answers' : 'View answers' }}</span>
+                  <i class="pi" [ngClass]="showAnswersBreakdown() ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                </button>
+              </div>
+
+              <!-- Detailed Answers Accordion List -->
+              @if (showAnswersBreakdown()) {
+                <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3 text-left animate-fadein">
+                  @for (p of polls(); track p.id; let idx = $index) {
+                    <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                      <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-start gap-2 flex-1 min-w-0">
+                          <span class="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                            #{{ idx + 1 }}
+                          </span>
+                          <span class="text-xs font-bold text-slate-900 dark:text-white leading-snug">
+                            {{ p.question }}
+                          </span>
+                        </div>
+                        @if (p.correctOptionId !== undefined) {
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase shrink-0 border"
+                            [ngClass]="getVotedOptionFor(p.id) === p.correctOptionId ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' : 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800'">
+                            {{ getVotedOptionFor(p.id) === p.correctOptionId ? '✓ Correct' : '✗ Incorrect' }}
+                          </span>
+                        }
+                      </div>
+
+                      <!-- Options List Review -->
+                      <div class="space-y-1 pt-1">
+                        @for (opt of p.options; track opt.id) {
+                          <div class="text-[11px] p-2 rounded-xl flex items-center justify-between border"
+                            [ngClass]="{
+                              'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold': p.correctOptionId === opt.id,
+                              'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200': getVotedOptionFor(p.id) === opt.id && p.correctOptionId !== opt.id && p.correctOptionId !== undefined,
+                              'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400': p.correctOptionId !== opt.id && getVotedOptionFor(p.id) !== opt.id
+                            }">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                              <span class="font-bold">{{ opt.id }}.</span>
+                              <span class="truncate">{{ opt.text }}</span>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0 font-bold">
+                              @if (getVotedOptionFor(p.id) === opt.id) {
+                                <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">Your choice</span>
+                              }
+                              @if (p.correctOptionId === opt.id) {
+                                <i class="pi pi-check text-emerald-600 dark:text-emerald-400"></i>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
             </div>
           </div>
         } @else if (room()?.mode === 'survey') {
@@ -501,9 +584,24 @@ export class StudentViewComponent implements OnInit, OnDestroy {
 
   voterId = signal<string>('');
   voterIdShort = signal<string>('');
+  participantName = signal<string>('Participant');
+  showAnswersBreakdown = signal<boolean>(false);
+  sessionStats = signal<DetailedSessionSummary>({
+    totalQuestions: 0,
+    totalVotes: 0,
+    totalScoredQuestions: 0,
+    overallAccuracy: 0,
+    hasScoredQuestions: false,
+    topConsensusPercentage: 0,
+    questionResults: []
+  });
   hasVoted = signal<boolean>(false);
   selectedOptionId = signal<number | null>(null);
   isSubmitting = signal<boolean>(false);
+
+  toggleViewAnswers() {
+    this.showAnswersBreakdown.update(v => !v);
+  }
 
   // Survey computed values
   answeredCount = computed(() => Object.keys(this.votedOptionsMap()).length);
@@ -562,6 +660,12 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     const vid = this.pollService.getOrCreateVoterId();
     this.voterId.set(vid);
     this.voterIdShort.set(vid.substring(0, 16) + '...');
+    const savedName = typeof localStorage !== 'undefined' ? localStorage.getItem('mati_voter_name') : null;
+    if (savedName) {
+      this.participantName.set(savedName);
+    } else {
+      this.participantName.set('Participant #' + vid.slice(-4));
+    }
 
     this.route.paramMap.subscribe(params => {
       const code = (params.get('roomCode') || 'MATI01').toUpperCase();
@@ -685,6 +789,11 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.roomSub?.unsubscribe();
     this.roomSub = this.pollService.listenToRoom(code).subscribe(roomData => {
       this.room.set(roomData);
+      if (roomData?.status === 'completed') {
+        this.pollService.getSessionSummary(code).then(summary => {
+          this.sessionStats.set(summary);
+        });
+      }
       if (roomData?.mode === 'survey') {
         this.activeTab.set('survey');
       } else {
