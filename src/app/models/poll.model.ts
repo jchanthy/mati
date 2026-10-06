@@ -25,6 +25,8 @@ export interface Room {
   createdAt: any;
   timerDuration?: number;
   timerEndsAt?: number | null;
+  ownerId?: string;
+  ownerEmail?: string;
 }
 
 export interface Vote {

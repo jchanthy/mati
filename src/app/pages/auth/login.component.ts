@@ -39,9 +39,12 @@ import { AuthService } from '../../services/auth.service';
 
           <!-- Error Alert -->
           @if (errorMessage()) {
-            <div class="p-3 bg-red-950/60 border border-red-800/80 rounded-xl text-red-200 text-xs flex items-center gap-2 animate-fadein">
-              <i class="pi pi-exclamation-circle text-red-400 text-sm shrink-0"></i>
-              <span class="flex-1">{{ errorMessage() }}</span>
+            <div class="p-4 bg-red-950/80 border border-red-800 rounded-2xl text-red-200 text-xs flex items-start gap-3 animate-fadein leading-relaxed">
+              <i class="pi pi-shield text-red-400 text-base shrink-0 mt-0.5"></i>
+              <div class="space-y-0.5">
+                <div class="font-bold text-red-100">Access Denied</div>
+                <div class="text-[11px] text-red-300">{{ errorMessage() }}</div>
+              </div>
             </div>
           }
 

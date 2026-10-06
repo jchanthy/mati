@@ -13,6 +13,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { MatiPollService } from '../../services/mati-poll.service';
+import { AuthService } from '../../services/auth.service';
 import { Poll, PollStats, Room } from '../../models/poll.model';
 
 @Component({
@@ -62,7 +63,7 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
                 [ngModel]="roomCode()" 
                 (ngModelChange)="switchRoom($event)" 
                 class="bg-transparent text-xs font-black text-gray-800 dark:text-gray-200 focus:outline-hidden cursor-pointer">
-                @for (r of allRooms(); track r.code) {
+                @for (r of availableRooms(); track r.code) {
                   <option [value]="r.code" class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
                     {{ r.code }} - {{ r.title }}
                   </option>
@@ -443,20 +444,28 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
                 </div>
               </div>
 
-              <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                @if (currentPoll()?.id === p.id) {
-                  <span class="px-3.5 py-1.5 rounded-xl bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold flex items-center gap-1">
-                    <i class="pi pi-check"></i> Currently Live
-                  </span>
-                } @else {
-                  <button 
-                    type="button" 
-                    (click)="onSelectQuestion(p.id)"
-                    class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
-                    <i class="pi pi-play text-[10px]"></i> Launch (▶)
+                <div class="flex items-center gap-1.5">
+                  @if (currentPoll()?.id === p.id) {
+                    <span class="px-3.5 py-1.5 rounded-xl bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold flex items-center gap-1">
+                      <i class="pi pi-check"></i> Currently Live
+                    </span>
+                  } @else {
+                    <button 
+                      type="button" 
+                      (click)="onSelectQuestion(p.id)"
+                      class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+                      <i class="pi pi-play text-[10px]"></i> Launch (▶)
+                    </button>
+                  }
+
+                  <button
+                    type="button"
+                    (click)="deletePoll(p.id)"
+                    title="Delete Question"
+                    class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer">
+                    <i class="pi pi-trash text-xs"></i>
                   </button>
-                }
-              </div>
+                </div>
             </div>
           } @empty {
             <div class="p-8 text-center text-xs text-gray-400 space-y-1">
@@ -491,7 +500,11 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private pollService = inject(MatiPollService);
+  private authService = inject(AuthService);
   private messageService = inject(MessageService);
+
+  currentUser = this.authService.currentUser;
+  isAdmin = this.authService.isAdmin;
 
   showNewRoomDialog = false;
   newRoomTitle = '';
@@ -499,6 +512,16 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   roomCode = signal<string>('MATI01');
   allRooms = signal<Room[]>([]);
+
+  availableRooms = computed(() => {
+    const list = this.allRooms();
+    const user = this.currentUser();
+    if (!user || this.isAdmin()) return list;
+    const mine = list.filter(r => r.ownerEmail === user.email || r.ownerId === user.uid);
+    if (mine.length > 0) return mine;
+    return list;
+  });
+
   polls = signal<Poll[]>([]);
   currentPoll = this.pollService.currentPoll;
   stats = signal<PollStats | null>(null);
@@ -615,7 +638,13 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   async createNewRoom() {
     if (!this.newRoomTitle.trim()) return;
-    const code = await this.pollService.createRoom(this.newRoomTitle, this.newRoomCode || undefined);
+    const user = this.currentUser();
+    const code = await this.pollService.createRoom(
+      this.newRoomTitle,
+      this.newRoomCode || undefined,
+      user?.uid,
+      user?.email || undefined
+    );
     this.showNewRoomDialog = false;
     this.newRoomTitle = '';
     this.newRoomCode = '';
@@ -625,6 +654,17 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       detail: `New room ${code} has been created and is ready!`
     });
     this.switchRoom(code);
+  }
+
+  async deletePoll(pollId: string) {
+    if (confirm('Are you sure you want to remove this question?')) {
+      await this.pollService.deletePoll(this.roomCode(), pollId);
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Question Removed',
+        detail: 'Question removed from room.'
+      });
+    }
   }
 
   toggleAutoAdvance() {

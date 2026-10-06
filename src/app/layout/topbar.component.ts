@@ -1,6 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-topbar',
@@ -23,31 +24,60 @@ import { RouterModule } from '@angular/router';
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5 sm:gap-3">
         <a routerLink="/dashboard" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xs">
           <i class="pi pi-plus text-xs"></i>
-          <span>Create Room</span>
+          <span class="hidden sm:inline">Create Room</span>
         </a>
         <a routerLink="/stage/MATI01" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 transition-all border border-indigo-200 dark:border-indigo-800">
           <i class="pi pi-desktop text-sm"></i>
           <span>Launch Stage</span>
         </a>
-        <a routerLink="/join/MATI01" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 transition-all border border-emerald-200 dark:border-emerald-800">
+        <a routerLink="/join/MATI01" target="_blank" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 transition-all border border-emerald-200 dark:border-emerald-800">
           <i class="pi pi-mobile text-sm"></i>
           <span>Join Preview</span>
         </a>
         
         <div class="h-6 w-px bg-gray-200 dark:bg-gray-800 mx-1"></div>
 
-        <!-- Admin Badge -->
-        <div class="flex items-center gap-2 pl-1">
-          <div class="w-8 h-8 rounded-full bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
-            <i class="pi pi-user"></i>
+        <!-- Authenticated User Profile & Sign Out -->
+        @if (currentUser(); as user) {
+          <div class="flex items-center gap-2">
+            <!-- User Avatar & Info -->
+            <div class="flex items-center gap-2 pl-1">
+              @if (user.photoURL) {
+                <img [src]="user.photoURL" class="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" alt="Avatar">
+              } @else {
+                <div class="w-8 h-8 rounded-full bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                  {{ (user.displayName || user.email).charAt(0).toUpperCase() }}
+                </div>
+              }
+              <div class="hidden lg:flex flex-col text-left">
+                <span class="text-xs font-bold text-gray-900 dark:text-white truncate max-w-[120px]">
+                  {{ user.displayName || user.email }}
+                </span>
+                <span class="text-[10px] uppercase font-bold tracking-wider"
+                  [ngClass]="user.role === 'admin' ? 'text-purple-600 dark:text-purple-400' : 'text-sky-600 dark:text-sky-400'">
+                  {{ user.role === 'admin' ? 'Administrator' : 'Presenter' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Sign Out Button -->
+            <button
+              type="button"
+              (click)="logout()"
+              title="Sign Out"
+              class="p-2 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+              <i class="pi pi-sign-out text-sm"></i>
+            </button>
           </div>
-          <span class="text-xs font-bold text-gray-900 dark:text-white hidden md:inline">
-            Admin
-          </span>
-        </div>
+        } @else {
+          <a routerLink="/login" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200">
+            <i class="pi pi-user text-xs"></i>
+            <span>Sign In</span>
+          </a>
+        }
       </div>
     </header>
   `,
@@ -58,10 +88,16 @@ import { RouterModule } from '@angular/router';
   `]
 })
 export class TopbarComponent {
+  private authService = inject(AuthService);
   sidebarVisible = signal(true);
+
+  currentUser = this.authService.currentUser;
 
   toggleSidebar() {
     this.sidebarVisible.update(v => !v);
   }
-}
 
+  logout() {
+    this.authService.logout();
+  }
+}

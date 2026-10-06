@@ -6,6 +6,7 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   getDoc,
   getDocs,
   docData,
@@ -113,14 +114,16 @@ export class MatiPollService {
    * Step 2: createRoom(title: string)
    * Generates 6-character room PIN (e.g. MATI01 or MATI99) and initializes room doc.
    */
-  async createRoom(title: string, customCode?: string): Promise<string> {
+  async createRoom(title: string, customCode?: string, ownerId?: string, ownerEmail?: string): Promise<string> {
     const code = (customCode || this.generateRoomCode()).toUpperCase();
     const newRoom: Room = {
       code,
       title: title || 'Mati Live Session',
       activePollId: null,
       status: 'active',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      ...(ownerId ? { ownerId } : {}),
+      ...(ownerEmail ? { ownerEmail } : {})
     };
 
     if (this.firestore) {
@@ -141,6 +144,46 @@ export class MatiPollService {
     this.mockRooms$.next(new Map(rooms));
 
     return code;
+  }
+
+  /**
+   * Delete room and its associated state
+   */
+  async deleteRoom(roomCode: string): Promise<void> {
+    const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await deleteDoc(roomRef);
+      } catch (err) {
+        console.warn('[Mati] Firebase deleteRoom error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    rooms.delete(code);
+    this.mockRooms$.next(new Map(rooms));
+  }
+
+  /**
+   * Delete specific poll from a room
+   */
+  async deletePoll(roomCode: string, pollId: string): Promise<void> {
+    const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      try {
+        const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
+        await deleteDoc(pollRef);
+      } catch (err) {
+        console.warn('[Mati] Firebase deletePoll error:', err);
+      }
+    }
+
+    const pollsMap = this.mockPolls$.getValue();
+    const list = pollsMap.get(code) || [];
+    const filtered = list.filter(p => p.id !== pollId);
+    pollsMap.set(code, filtered);
+    this.mockPolls$.next(new Map(pollsMap));
   }
 
   /**

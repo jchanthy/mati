@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -11,6 +11,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { MatiPollService } from '../../services/mati-poll.service';
+import { AuthService } from '../../services/auth.service';
 import { Room, Poll } from '../../models/poll.model';
 import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
 
@@ -38,7 +39,9 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
         <div class="relative z-10 max-w-3xl">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/30 backdrop-blur-md border border-indigo-400/30 text-indigo-200 text-xs font-semibold mb-4">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Mati Live Audience Engine
+            <span>Mati Live Audience Engine</span>
+            <span>•</span>
+            <span class="capitalize">{{ isAdmin() ? 'Administrator' : 'Presenter' }}: {{ currentUser()?.displayName || currentUser()?.email }}</span>
           </div>
           <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">
             Mati (មតិ) Studio Dashboard
@@ -77,6 +80,15 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
               <i class="pi pi-sliders-h"></i>
               <span>Open Live Controller</span>
             </a>
+
+            @if (isAdmin()) {
+              <a 
+                routerLink="/dashboard/users" 
+                class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-purple-200 bg-purple-900/40 border border-purple-400/40 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer hover:bg-purple-900/60">
+                <i class="pi pi-users"></i>
+                <span>Manage Users</span>
+              </a>
+            }
           </div>
         </div>
         <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -129,7 +141,7 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
         </div>
       </div>
 
-      <!-- Rooms in System (All Rooms from Database) -->
+      <!-- Rooms in System (Managed by User) -->
       <div class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
           <div class="flex items-center gap-2.5">
@@ -142,7 +154,7 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
                   Rooms in Your System
                 </h2>
                 <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold font-mono">
-                  {{ rooms().length }} Active in Database
+                  {{ filteredRooms().length }} Visible
                 </span>
               </div>
               <p class="text-xs text-gray-500">
@@ -151,20 +163,41 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
             </div>
           </div>
 
-          <button 
-            type="button" 
-            (click)="showNewRoomDialog = true" 
-            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer self-start sm:self-center">
-            <i class="pi pi-plus"></i>
-            <span>Create New Room</span>
-          </button>
+          <div class="flex items-center gap-2 flex-wrap">
+            @if (isAdmin()) {
+              <div class="flex items-center p-0.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700">
+                <button
+                  type="button"
+                  (click)="roomFilter.set('all')"
+                  [ngClass]="roomFilter() === 'all' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
+                  class="px-3 py-1.5 rounded-lg transition-all cursor-pointer">
+                  All Rooms ({{ rooms().length }})
+                </button>
+                <button
+                  type="button"
+                  (click)="roomFilter.set('mine')"
+                  [ngClass]="roomFilter() === 'mine' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
+                  class="px-3 py-1.5 rounded-lg transition-all cursor-pointer">
+                  My Rooms ({{ myRoomsCount() }})
+                </button>
+              </div>
+            }
+
+            <button 
+              type="button" 
+              (click)="showNewRoomDialog = true" 
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer">
+              <i class="pi pi-plus"></i>
+              <span>Create New Room</span>
+            </button>
+          </div>
         </div>
 
         <!-- Rooms Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          @for (r of rooms(); track r.code) {
+          @for (r of filteredRooms(); track r.code) {
             <div 
-              class="p-4 rounded-2xl border transition-all flex flex-col justify-between gap-4"
+              class="p-4 rounded-2xl border transition-all flex flex-col justify-between gap-4 relative group"
               [ngClass]="selectedRoomCode() === r.code 
                 ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/30 ring-2 ring-indigo-400/50 shadow-md' 
                 : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40 hover:border-gray-300 dark:hover:border-gray-700'">
@@ -184,6 +217,16 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
                       [ngClass]="r.status === 'completed' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'">
                       {{ r.status || 'Active' }}
                     </span>
+
+                    @if (canManageRoom(r)) {
+                      <button
+                        type="button"
+                        (click)="deleteRoom(r.code)"
+                        title="Delete Room"
+                        class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all cursor-pointer">
+                        <i class="pi pi-trash text-xs"></i>
+                      </button>
+                    }
                   </div>
                 </div>
 
@@ -191,8 +234,11 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
                   <h3 class="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-2">
                     {{ r.title || ('Room ' + r.code) }}
                   </h3>
-                  <div class="text-[11px] text-gray-500 mt-1 flex items-center gap-2">
+                  <div class="text-[11px] text-gray-500 mt-1 flex items-center justify-between">
                     <span>{{ selectedRoomCode() === r.code ? polls().length + ' polls loaded' : 'Room ready' }}</span>
+                    <span class="text-[10px] font-medium text-slate-400 truncate max-w-[130px]">
+                      {{ r.ownerEmail === currentUser()?.email ? 'Owner: You' : (r.ownerEmail ? 'Owner: ' + r.ownerEmail : 'Public') }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -233,7 +279,7 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
             </div>
           } @empty {
             <div class="col-span-full text-center py-8 text-gray-400 text-xs">
-              No rooms found in database. Click "Create New Room" to get started!
+              No rooms found. Click "Create New Room" to get started!
             </div>
           }
         </div>
@@ -241,7 +287,7 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
 
       <!-- Polls Management List -->
       <div class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">Active Room Polls: {{ selectedRoomCode() }}</h2>
             <p class="text-xs text-gray-500">Select which question to project live onto the presenter stage.</p>
@@ -257,7 +303,7 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
             <div class="p-5 rounded-2xl border transition-all" [ngClass]="currentRoom()?.activePollId === poll.id ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20 shadow-md ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300'">
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="space-y-1">
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 flex-wrap">
                     <span class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-bold flex items-center justify-center text-gray-600 dark:text-gray-300">
                       {{ idx + 1 }}
                     </span>
@@ -273,8 +319,12 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
                   </div>
                   <div class="flex flex-wrap gap-2 pt-2">
                     @for (opt of poll.options; track opt.id) {
-                      <span class="text-xs px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                        {{ opt.id }}. {{ opt.text }}
+                      <span class="text-xs px-2.5 py-1 rounded-lg border flex items-center gap-1.5"
+                        [ngClass]="poll.correctOptionId === opt.id ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-bold' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'">
+                        <span>{{ opt.id }}. {{ opt.text }}</span>
+                        @if (poll.correctOptionId === opt.id) {
+                          <i class="pi pi-check text-[10px]"></i>
+                        }
                       </span>
                     }
                   </div>
@@ -284,8 +334,16 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
                   @if (currentRoom()?.activePollId !== poll.id) {
                     <button pButton label="Make Live" icon="pi pi-play" class="p-button-sm p-button-success rounded-xl" (click)="setAsLive(poll.id)"></button>
                   } @else {
-                    <a routerLink="/dashboard/control" pButton label="Remote Control" icon="pi pi-sliders-h" class="p-button-sm p-button-primary rounded-xl"></a>
+                    <a [routerLink]="['/dashboard/control', selectedRoomCode()]" pButton label="Remote Control" icon="pi pi-sliders-h" class="p-button-sm p-button-primary rounded-xl"></a>
                   }
+
+                  <button
+                    type="button"
+                    (click)="deletePoll(poll.id)"
+                    title="Delete Question"
+                    class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors cursor-pointer">
+                    <i class="pi pi-trash text-sm"></i>
+                  </button>
                 </div>
               </div>
             </div>
@@ -309,6 +367,9 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
             <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Room Code (PIN)</label>
             <input pInputText type="text" [(ngModel)]="newRoomCode" placeholder="Leave blank for auto PIN (e.g. MATI02)" class="w-full uppercase" />
           </div>
+          <div class="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900 text-xs text-indigo-700 dark:text-indigo-300">
+            This room will be assigned to your account: <strong>{{ currentUser()?.email }}</strong>
+          </div>
         </div>
         <ng-template pTemplate="footer">
           <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showNewRoomDialog = false"></button>
@@ -317,7 +378,7 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
       </p-dialog>
 
       <!-- Create Poll Dialog -->
-      <p-dialog header="Create Question for MATI01" [(visible)]="showNewPollDialog" [modal]="true" [style]="{width: '550px'}" class="p-fluid">
+      <p-dialog [header]="'Create Question for ' + selectedRoomCode()" [(visible)]="showNewPollDialog" [modal]="true" [style]="{width: '550px'}" class="p-fluid">
         <div class="space-y-4 pt-2">
           <div>
             <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Question</label>
@@ -326,6 +387,10 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
           <div>
             <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Options (One per line)</label>
             <textarea [(ngModel)]="newPollOptionsRaw" rows="4" placeholder="Angular 19&#10;React 19&#10;Vue 3&#10;Svelte 5" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Correct Option Number (Optional, 1-based)</label>
+            <input pInputText type="number" [(ngModel)]="newPollCorrectIndex" placeholder="e.g. 1" class="w-full" />
           </div>
         </div>
         <ng-template pTemplate="footer">
@@ -374,7 +439,7 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
             <div class="space-y-2">
               <div class="flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
                 <span>✓ Successfully detected {{ parsedQuestions.length }} question(s)</span>
-                <span>Target Room: MATI01</span>
+                <span>Target Room: {{ selectedRoomCode() }}</span>
               </div>
               <div class="max-h-48 overflow-y-auto space-y-2 pr-1">
                 @for (q of parsedQuestions; track q.question; let idx = $index) {
@@ -406,12 +471,40 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private pollService = inject(MatiPollService);
+  private authService = inject(AuthService);
   private messageService = inject(MessageService);
 
+  currentUser = this.authService.currentUser;
+  isAdmin = this.authService.isAdmin;
+
   rooms = signal<Room[]>([]);
+  roomFilter = signal<'all' | 'mine'>('all');
   selectedRoomCode = signal<string>('MATI01');
   polls = signal<Poll[]>([]);
   currentRoom = this.pollService.currentRoom;
+
+  // Filtered rooms depending on user role and filter selection
+  filteredRooms = computed(() => {
+    const all = this.rooms();
+    const user = this.currentUser();
+    if (!user) return all;
+
+    if (this.isAdmin() && this.roomFilter() === 'all') {
+      return all;
+    }
+
+    // Presenter mode or 'mine' filter:
+    const myRooms = all.filter(r => r.ownerEmail === user.email || r.ownerId === user.uid);
+    // If user has no created rooms yet, also show default MATI01 for usability
+    if (myRooms.length > 0) return myRooms;
+    return all;
+  });
+
+  myRoomsCount = computed(() => {
+    const user = this.currentUser();
+    if (!user) return 0;
+    return this.rooms().filter(r => r.ownerEmail === user.email || r.ownerId === user.uid).length;
+  });
 
   private roomsSub?: Subscription;
   private pollsSub?: Subscription;
@@ -424,6 +517,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   newRoomCode = '';
   newPollQuestion = '';
   newPollOptionsRaw = 'Angular 19\nReact 19\nVue 3\nSvelte 5';
+  newPollCorrectIndex: number | null = null;
 
   xmlContent = '';
   parsedQuestions: ParsedQuestion[] = [];
@@ -432,8 +526,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.roomsSub = this.pollService.listenToRooms().subscribe(list => {
       this.rooms.set(list);
-      if (list.length > 0 && !list.some(r => r.code === this.selectedRoomCode())) {
-        this.switchRoom(list[0].code);
+      const visible = this.filteredRooms();
+      if (visible.length > 0 && !visible.some(r => r.code === this.selectedRoomCode())) {
+        this.switchRoom(visible[0].code);
       }
     });
     this.switchRoom(this.selectedRoomCode());
@@ -442,6 +537,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.roomsSub?.unsubscribe();
     this.pollsSub?.unsubscribe();
+  }
+
+  canManageRoom(r: Room): boolean {
+    if (this.isAdmin()) return true;
+    const user = this.currentUser();
+    return !!(user && (r.ownerEmail === user.email || r.ownerId === user.uid));
   }
 
   switchRoom(code: string) {
@@ -468,7 +569,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   async createNewRoom() {
     if (!this.newRoomTitle.trim()) return;
-    const code = await this.pollService.createRoom(this.newRoomTitle, this.newRoomCode || undefined);
+    const user = this.currentUser();
+    const code = await this.pollService.createRoom(
+      this.newRoomTitle,
+      this.newRoomCode || undefined,
+      user?.uid,
+      user?.email || undefined
+    );
     this.showNewRoomDialog = false;
     this.newRoomTitle = '';
     this.newRoomCode = '';
@@ -478,6 +585,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
       summary: 'Room Created! 🎉',
       detail: `Room ${code} is ready and selected!`
     });
+  }
+
+  async deleteRoom(code: string) {
+    if (confirm(`Are you sure you want to delete room "${code}"? This will remove all its polls.`)) {
+      await this.pollService.deleteRoom(code);
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Room Deleted',
+        detail: `Room ${code} has been deleted.`
+      });
+      const remaining = this.filteredRooms().filter(r => r.code !== code);
+      if (remaining.length > 0) {
+        this.switchRoom(remaining[0].code);
+      }
+    }
   }
 
   async createNewPoll() {
@@ -496,14 +618,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    await this.pollService.createPoll(this.selectedRoomCode(), this.newPollQuestion, opts);
+    const correctId = this.newPollCorrectIndex ? Number(this.newPollCorrectIndex) : undefined;
+    await this.pollService.createPoll(this.selectedRoomCode(), this.newPollQuestion, opts, correctId);
     this.showNewPollDialog = false;
     this.newPollQuestion = '';
+    this.newPollCorrectIndex = null;
     this.messageService.add({
       severity: 'success',
       summary: 'Question Created',
       detail: `Question added to ${this.selectedRoomCode()}!`
     });
+  }
+
+  async deletePoll(pollId: string) {
+    if (confirm('Are you sure you want to remove this question?')) {
+      await this.pollService.deletePoll(this.selectedRoomCode(), pollId);
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Question Removed',
+        detail: 'Question removed from room.'
+      });
+    }
   }
 
   onFileSelected(event: Event) {
@@ -602,4 +737,3 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 }
-

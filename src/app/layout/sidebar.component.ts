@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -22,6 +23,13 @@ import { RouterModule } from '@angular/router';
           <i class="pi pi-sliders-h text-base"></i>
           <span>Live Controller</span>
         </a>
+
+        @if (isAdmin()) {
+          <a routerLink="/dashboard/users" routerLinkActive="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <i class="pi pi-users text-base text-purple-500"></i>
+            <span>User Management</span>
+          </a>
+        }
 
         <div class="my-2">
           <a routerLink="/dashboard" class="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer">
@@ -55,8 +63,8 @@ import { RouterModule } from '@angular/router';
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
           Real-time atomic listeners active.
         </p>
-        <div class="text-[11px] font-mono bg-white dark:bg-gray-900 px-2 py-1 rounded text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900">
-          Room: MATI01
+        <div class="text-[11px] font-mono bg-white dark:bg-gray-900 px-2 py-1 rounded text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 truncate">
+          {{ currentUser()?.email || 'Authenticated' }}
         </div>
       </div>
     </aside>
@@ -67,4 +75,8 @@ import { RouterModule } from '@angular/router';
     }
   `]
 })
-export class SidebarComponent {}
+export class SidebarComponent {
+  private authService = inject(AuthService);
+  isAdmin = this.authService.isAdmin;
+  currentUser = this.authService.currentUser;
+}
