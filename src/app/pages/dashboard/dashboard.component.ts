@@ -11,6 +11,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { MatiPollService } from '../../services/mati-poll.service';
 import { Room, Poll } from '../../models/poll.model';
+import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
 
 @Component({
   selector: 'app-dashboard',
@@ -58,7 +59,15 @@ import { Room, Poll } from '../../models/poll.model';
               (click)="showNewPollDialog = true" 
               class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white border border-white/30 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer">
               <i class="pi pi-question-circle"></i>
-              <span>Add Question to MATI01</span>
+              <span>Add Question</span>
+            </button>
+
+            <button 
+              type="button" 
+              (click)="showImportDialog = true" 
+              class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white border border-white/30 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer">
+              <i class="pi pi-file-import"></i>
+              <span>Import Moodle / XML</span>
             </button>
 
             <a 
@@ -123,7 +132,10 @@ import { Room, Poll } from '../../models/poll.model';
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">Active Room Polls: MATI01</h2>
             <p class="text-xs text-gray-500">Select which question to project live onto the presenter stage.</p>
           </div>
-          <button pButton label="New Question" icon="pi pi-plus" class="p-button-outlined p-button-sm rounded-xl" (click)="showNewPollDialog = true"></button>
+          <div class="flex items-center gap-2">
+            <button pButton label="Import Moodle XML" icon="pi pi-file-import" class="p-button-outlined p-button-sm rounded-xl" (click)="showImportDialog = true"></button>
+            <button pButton label="New Question" icon="pi pi-plus" class="p-button-primary p-button-sm rounded-xl" (click)="showNewPollDialog = true"></button>
+          </div>
         </div>
 
         <div class="space-y-4">
@@ -166,7 +178,7 @@ import { Room, Poll } from '../../models/poll.model';
           } @empty {
             <div class="text-center py-12 text-gray-400">
               <i class="pi pi-inbox text-4xl mb-2"></i>
-              <p>No questions yet in this room. Click "New Question" to create one.</p>
+              <p>No questions yet in this room. Click "New Question" or "Import Moodle XML".</p>
             </div>
           }
         </div>
@@ -207,6 +219,74 @@ import { Room, Poll } from '../../models/poll.model';
           <button pButton label="Save Question" icon="pi pi-check" class="p-button-primary" (click)="createNewPoll()"></button>
         </ng-template>
       </p-dialog>
+
+      <!-- Import Moodle / XML Dialog -->
+      <p-dialog header="Import Questions from Moodle / XML" [(visible)]="showImportDialog" [modal]="true" [style]="{width: '700px'}" class="p-fluid">
+        <div class="space-y-4 pt-2">
+          <div class="p-4 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 text-xs text-indigo-900 dark:text-indigo-200">
+            <div class="font-bold mb-1 flex items-center gap-1.5">
+              <i class="pi pi-info-circle text-indigo-600"></i>
+              Supported Formats:
+            </div>
+            <span>Upload or paste a standard <strong>Moodle XML</strong> file (exported from Moodle Question Bank) or standard question XML. Multiple choice and true/false questions will be parsed automatically.</span>
+          </div>
+
+          <!-- File Upload Zone -->
+          <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-6 text-center hover:border-indigo-500 transition-colors">
+            <input type="file" #fileInput (change)="onFileSelected($event)" accept=".xml" class="hidden" />
+            <div class="space-y-2 cursor-pointer" (click)="fileInput.click()">
+              <i class="pi pi-upload text-3xl text-indigo-600"></i>
+              <div class="text-sm font-bold text-gray-800 dark:text-gray-200">
+                Click to browse Moodle XML file (.xml)
+              </div>
+              <div class="text-xs text-gray-500">
+                Or paste your raw XML content in the box below
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold uppercase text-gray-600 dark:text-gray-300">Raw XML Content</label>
+              <button type="button" (click)="loadSampleXml()" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
+                Load Sample Moodle XML
+              </button>
+            </div>
+            <textarea [(ngModel)]="xmlContent" (ngModelChange)="onXmlContentChange()" rows="6" placeholder="<quiz>&#10;  <question type='multichoice'>...&#10;</quiz>" class="w-full p-3 font-mono text-xs rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"></textarea>
+          </div>
+
+          <!-- Parsed Preview -->
+          @if (parsedQuestions.length > 0) {
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                <span>✓ Successfully detected {{ parsedQuestions.length }} question(s)</span>
+                <span>Target Room: MATI01</span>
+              </div>
+              <div class="max-h-48 overflow-y-auto space-y-2 pr-1">
+                @for (q of parsedQuestions; track q.question; let idx = $index) {
+                  <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 text-xs">
+                    <div class="font-bold text-gray-900 dark:text-white">
+                      {{ idx + 1 }}. {{ q.question }}
+                    </div>
+                    <div class="text-gray-500 mt-1 flex flex-wrap gap-1.5">
+                      @for (opt of q.options; track opt) {
+                        <span class="px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                          {{ opt }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <ng-template pTemplate="footer">
+          <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showImportDialog = false"></button>
+          <button pButton [label]="'Import ' + parsedQuestions.length + ' Questions'" icon="pi pi-check" class="p-button-primary" [disabled]="parsedQuestions.length === 0 || isImporting" (click)="importParsedQuestions()"></button>
+        </ng-template>
+      </p-dialog>
     </div>
   `
 })
@@ -219,11 +299,16 @@ export class DashboardComponent implements OnInit {
 
   showNewRoomDialog = false;
   showNewPollDialog = false;
+  showImportDialog = false;
 
   newRoomTitle = '';
   newRoomCode = '';
   newPollQuestion = '';
   newPollOptionsRaw = 'Angular 19\nReact 19\nVue 3\nSvelte 5';
+
+  xmlContent = '';
+  parsedQuestions: ParsedQuestion[] = [];
+  isImporting = false;
 
   ngOnInit() {
     this.pollService.listenToRoomPolls('MATI01').subscribe(list => {
@@ -278,4 +363,100 @@ export class DashboardComponent implements OnInit {
       detail: 'Question added to MATI01!'
     });
   }
+
+  onFileSelected(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.xmlContent = (e.target?.result as string) || '';
+      this.onXmlContentChange();
+    };
+    reader.readAsText(file);
+  }
+
+  onXmlContentChange() {
+    if (!this.xmlContent.trim()) {
+      this.parsedQuestions = [];
+      return;
+    }
+    try {
+      this.parsedQuestions = MoodleXmlParser.parse(this.xmlContent);
+    } catch (err: any) {
+      this.parsedQuestions = [];
+      this.messageService.add({
+        severity: 'error',
+        summary: 'XML Parse Error',
+        detail: err.message || 'Unable to parse XML file.'
+      });
+    }
+  }
+
+  loadSampleXml() {
+    this.xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="multichoice">
+    <name><text>Question 1</text></name>
+    <questiontext format="html">
+      <text><![CDATA[<p>តើបច្ចេកវិទ្យា AI ណាដែលមានឥទ្ធិពលខ្លាំងបំផុតសម្រាប់អនាគតការអប់រំនៅកម្ពុជា?</p>]]></text>
+    </questiontext>
+    <answer fraction="100">
+      <text>Generative AI &amp; Intelligent Tutors</text>
+    </answer>
+    <answer fraction="0">
+      <text>Traditional Rule-based Systems</text>
+    </answer>
+    <answer fraction="0">
+      <text>Static LMS Video Playlists</text>
+    </answer>
+    <answer fraction="0">
+      <text>Paper-based Quizzes</text>
+    </answer>
+  </question>
+
+  <question type="multichoice">
+    <name><text>Question 2</text></name>
+    <questiontext format="html">
+      <text><![CDATA[<p>What is the primary benefit of real-time polling during a live lecture?</p>]]></text>
+    </questiontext>
+    <answer fraction="100">
+      <text>Immediate understanding check &amp; high audience retention</text>
+    </answer>
+    <answer fraction="0">
+      <text>Grading formal midterm exams</text>
+    </answer>
+    <answer fraction="0">
+      <text>Replacing all instructor explanations</text>
+    </answer>
+  </question>
+</quiz>`;
+    this.onXmlContentChange();
+  }
+
+  async importParsedQuestions() {
+    if (this.parsedQuestions.length === 0 || this.isImporting) return;
+    this.isImporting = true;
+    try {
+      const count = await this.pollService.createPollsBatch('MATI01', this.parsedQuestions);
+      this.showImportDialog = false;
+      this.xmlContent = '';
+      this.parsedQuestions = [];
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Questions Imported',
+        detail: `Successfully added ${count} question(s) to room MATI01!`
+      });
+    } catch (err: any) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Import Failed',
+        detail: err.message || 'Could not import questions.'
+      });
+    } finally {
+      this.isImporting = false;
+    }
+  }
 }
+

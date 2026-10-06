@@ -141,6 +141,19 @@ export class MatiPollService {
   }
 
   /**
+   * Batch append multiple parsed questions to a room.
+   */
+  async createPollsBatch(roomCode: string, questions: { question: string; options: string[] }[]): Promise<number> {
+    const code = roomCode.toUpperCase();
+    let count = 0;
+    for (const q of questions) {
+      await this.createPoll(code, q.question, q.options);
+      count++;
+    }
+    return count;
+  }
+
+  /**
    * Step 2: setActivePoll(roomCode: string, pollId: string | null)
    * Sets live question on screen.
    */
