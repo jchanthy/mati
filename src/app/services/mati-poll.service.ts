@@ -376,6 +376,25 @@ export class MatiPollService {
    */
   listenToRoomPolls(roomCode: string): Observable<Poll[]> {
     const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      return new Observable<Poll[]>((subscriber) => {
+        const pollsCol = collection(this.firestore!, `rooms/${code}/polls`);
+        const q = query(pollsCol, orderBy('order', 'asc'));
+        const unsub = onSnapshot(q, (snapshot) => {
+          if (!snapshot.empty) {
+            const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Poll));
+            subscriber.next(list);
+          } else {
+            subscriber.next(this.mockPolls$.getValue().get(code) || []);
+          }
+        }, (err) => {
+          console.warn('[Mati] Firestore room polls listener error:', err);
+          subscriber.next(this.mockPolls$.getValue().get(code) || []);
+        });
+        return () => unsub();
+      });
+    }
+
     return this.mockPolls$.pipe(
       map(mapData => mapData.get(code) || [])
     );
