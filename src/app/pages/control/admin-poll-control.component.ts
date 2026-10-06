@@ -137,23 +137,46 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
           </div>
         </div>
 
-        <div class="flex items-center gap-2 shrink-0 w-full md:w-auto">
+        <div class="flex items-center gap-2 shrink-0 w-full md:w-auto flex-wrap">
+          <!-- Mode switcher buttons -->
           <button 
             type="button" 
             (click)="setRoomMode('live')"
             [ngClass]="room()?.mode !== 'survey' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
-            class="flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            class="flex-1 md:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
             <i class="pi pi-desktop"></i>
-            <span>Live Stage (Sync)</span>
+            <span>Live Sync</span>
           </button>
           <button 
             type="button" 
             (click)="setRoomMode('survey')"
             [ngClass]="room()?.mode === 'survey' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
-            class="flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            class="flex-1 md:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
             <i class="pi pi-list-check"></i>
-            <span>Survey (Self-Paced)</span>
+            <span>Survey</span>
           </button>
+
+          <!-- TV Theme Selector (Dark vs Light) -->
+          <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              (click)="setStageTheme('dark')"
+              [ngClass]="(room()?.theme || 'dark') === 'dark' ? 'bg-slate-900 text-white shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
+              class="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+              title="Project TV in Dark Mode">
+              <i class="pi pi-moon text-xs"></i>
+              <span>TV Dark</span>
+            </button>
+            <button
+              type="button"
+              (click)="setStageTheme('light')"
+              [ngClass]="room()?.theme === 'light' ? 'bg-white text-indigo-600 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
+              class="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+              title="Project TV in Light Mode">
+              <i class="pi pi-sun text-xs"></i>
+              <span>TV Light</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -578,6 +601,15 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       detail: mode === 'survey'
         ? 'Audience can now freely browse and answer all 30 questions at their own pace!'
         : 'Audience phones are now synchronized to your live active question.'
+    });
+  }
+
+  async setStageTheme(theme: 'dark' | 'light') {
+    await this.pollService.setRoomTheme(this.roomCode(), theme);
+    this.messageService.add({
+      severity: 'info',
+      summary: theme === 'light' ? '☀️ TV Light Mode' : '🌙 TV Dark Mode',
+      detail: `Projector / Stage screen switched to ${theme} mode presentation.`
     });
   }
 

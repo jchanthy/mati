@@ -21,6 +21,7 @@ export interface Room {
   activePollId: string | null;
   status: 'draft' | 'active' | 'closed' | 'completed';
   mode?: 'live' | 'survey';
+  theme?: 'dark' | 'light';
   createdAt: any;
   timerDuration?: number;
   timerEndsAt?: number | null;

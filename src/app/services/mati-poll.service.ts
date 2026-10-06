@@ -352,6 +352,30 @@ export class MatiPollService {
   }
 
   /**
+   * Sets room projection stage theme: 'dark' or 'light'.
+   */
+  async setRoomTheme(roomCode: string, theme: 'dark' | 'light'): Promise<void> {
+    const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, { theme });
+      } catch (err) {
+        console.warn('[Mati] Firebase setRoomTheme error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room) {
+      room.theme = theme;
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+  }
+
+  /**
    * Completes the entire live polling session.
    * Sets room status to 'completed' and clears timer.
    */
