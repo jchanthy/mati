@@ -2,7 +2,6 @@ import { Injectable, inject, signal, computed, PLATFORM_ID } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { FirebaseApp } from '@angular/fire/app';
-import { Firestore } from '@angular/fire/firestore';
 import {
   getAuth,
   signInWithPopup,
@@ -13,6 +12,7 @@ import {
   Auth
 } from 'firebase/auth';
 import {
+  Firestore,
   doc,
   getDoc,
   getDocs,
@@ -24,7 +24,7 @@ import {
   where,
   onSnapshot,
   serverTimestamp
-} from 'firebase/firestore';
+} from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { AppUser } from '../models/user.model';
 
