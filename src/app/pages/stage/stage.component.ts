@@ -4,7 +4,8 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService } from '../../services/mati-poll.service';
-import { PollStats } from '../../models/poll.model';
+import { PollStats, Room } from '../../models/poll.model';
+
 import QRCode from 'qrcode';
 
 @Component({
@@ -50,8 +51,46 @@ import QRCode from 'qrcode';
 
       <!-- Main Central Presentation Area: Fit to viewport without scrolling -->
       <main class="flex-1 flex flex-col justify-center my-auto py-2 z-10 max-w-7xl mx-auto w-full overflow-hidden">
-        @if (pollStats(); as stats) {
-          <!-- Question Title Bar -->
+        @if (room()?.status === 'completed') {
+          <!-- Grand Finale Celebration Screen for Big TV / Projector -->
+          <div class="text-center py-6 sm:py-10 space-y-6 max-w-4xl mx-auto animate-fadein">
+            <div class="inline-flex p-5 rounded-3xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-5xl sm:text-6xl shadow-2xl shadow-indigo-500/20 animate-bounce">
+              🎉
+            </div>
+            <div class="space-y-2">
+              <div class="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                Poll Completed • ការស្ទង់មតិបានបញ្ចប់
+              </div>
+              <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight">
+                ការស្ទង់មតិបានបញ្ចប់ដោយជោគជ័យ!
+              </h1>
+              <p class="text-base sm:text-xl font-bold text-indigo-300">
+                Thank you for participating in Mati Live Session!
+              </p>
+              <p class="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+                All questions have concluded. Your collective votes have been gathered in real-time.
+              </p>
+            </div>
+
+            <!-- Grand KPI Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div class="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-2">
+                <div class="text-3xl sm:text-4xl font-black text-emerald-400 font-mono">{{ sessionStats().totalQuestions }}</div>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Questions</div>
+              </div>
+              <div class="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-2">
+                <div class="text-3xl sm:text-4xl font-black text-indigo-400 font-mono">{{ sessionStats().totalVotes }}</div>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Audience Votes</div>
+              </div>
+              <div class="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-2">
+                <div class="text-3xl sm:text-4xl font-black text-amber-400 font-mono">100%</div>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Session Completed</div>
+              </div>
+            </div>
+          </div>
+        } @else {
+          @if (pollStats(); as stats) {
+            <!-- Question Title Bar -->
           <div class="text-center mb-4 sm:mb-6 space-y-2 shrink-0">
             <div class="flex items-center justify-center gap-3">
               <span class="inline-block px-3 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
@@ -79,7 +118,7 @@ import QRCode from 'qrcode';
               }
 
               @if (stats.poll.isLocked || isTimeUp()) {
-                <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-red-500/20 text-red-300 text-xs font-bold border border-red-500/30">
+                <span class="inline-flex items-center gap-1.5 px-3.5 py-0.5 rounded-full bg-red-500/20 text-red-300 text-xs font-bold border border-red-500/30">
                   <i class="pi pi-lock text-[10px]"></i> {{ isTimeUp() ? "Time's Up" : "Voting Locked" }}
                 </span>
               }
@@ -122,26 +161,35 @@ import QRCode from 'qrcode';
             <!-- Live Grid Options: 2 columns if >2 options, 1 column if 2 options -->
             <div class="grid gap-3.5 w-full" [ngClass]="stats.poll.options.length > 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-4xl mx-auto'">
               @for (opt of stats.poll.options; track opt.id) {
-                <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl backdrop-blur-md relative overflow-hidden transition-all shadow-lg flex items-center justify-between gap-4">
+                <div class="bg-slate-900/90 border p-4 rounded-2xl backdrop-blur-md relative overflow-hidden transition-all shadow-lg flex items-center justify-between gap-4"
+                  [ngClass]="isLeadingOption(stats, opt.id) ? 'border-amber-400/70 ring-1 ring-amber-400/40 shadow-amber-500/10' : 'border-slate-800'">
                   <!-- Animated Progress bar background -->
                   <div 
-                    class="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-indigo-600/40 via-indigo-500/30 to-blue-500/20 transition-all duration-700 ease-out" 
-                    [style.width.%]="stats.percentages[opt.id] || 0">
+                    class="absolute top-0 bottom-0 left-0 transition-all duration-700 ease-out" 
+                    [style.width.%]="stats.percentages[opt.id] || 0"
+                    [ngClass]="isLeadingOption(stats, opt.id) ? 'bg-gradient-to-r from-amber-500/40 via-amber-400/30 to-yellow-500/20' : 'bg-gradient-to-r from-indigo-600/40 via-indigo-500/30 to-blue-500/20'">
                   </div>
 
                   <!-- Option Number & Text -->
                   <div class="relative z-10 flex items-center gap-3.5 flex-1 min-w-0">
-                    <div style="width: 2.25rem; height: 2.25rem; min-width: 2.25rem;" class="rounded-xl bg-slate-800 text-indigo-400 border border-slate-700 flex items-center justify-center font-black text-sm shrink-0">
+                    <div style="width: 2.25rem; height: 2.25rem; min-width: 2.25rem;" class="rounded-xl flex items-center justify-center font-black text-sm shrink-0 border"
+                      [ngClass]="isLeadingOption(stats, opt.id) ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' : 'bg-slate-800 text-indigo-400 border-slate-700'">
                       {{ opt.id }}
                     </div>
                     <div class="text-base sm:text-lg font-bold text-slate-100 leading-snug break-words flex-1">
                       {{ opt.text }}
                     </div>
+                    @if (isLeadingOption(stats, opt.id) && stats.totalVotes > 0) {
+                      <span class="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-black uppercase tracking-wider hidden sm:inline-flex items-center gap-1 shrink-0">
+                        🏆 Leading
+                      </span>
+                    }
                   </div>
 
                   <!-- Percentage & Votes count -->
                   <div class="relative z-10 text-right shrink-0 pl-3">
-                    <div class="text-2xl sm:text-3xl font-black text-white font-mono leading-none">
+                    <div class="text-2xl sm:text-3xl font-black font-mono leading-none"
+                      [ngClass]="isLeadingOption(stats, opt.id) ? 'text-amber-300' : 'text-white'">
                       {{ stats.percentages[opt.id] || 0 }}%
                     </div>
                     <div class="text-[11px] text-slate-400 font-medium mt-1">
@@ -164,6 +212,7 @@ import QRCode from 'qrcode';
             </p>
           </div>
         }
+      }
       </main>
 
       <!-- Bottom Bar: Compact Footer with total vote counter -->
@@ -189,6 +238,8 @@ export class StageComponent implements OnInit, OnDestroy {
 
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
+  room = signal<Room | null>(null);
+  sessionStats = signal<{ totalQuestions: number; totalVotes: number; topQuestion?: string }>({ totalQuestions: 0, totalVotes: 0 });
   qrCodeDataUrl = signal<string>('');
   fullJoinUrl = signal<string>('');
   joinUrlShort = signal<string>('');
@@ -207,6 +258,7 @@ export class StageComponent implements OnInit, OnDestroy {
   });
 
   private pollSub?: Subscription;
+  private roomSub?: Subscription;
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
@@ -215,12 +267,26 @@ export class StageComponent implements OnInit, OnDestroy {
       this.setupUrls(code);
       this.generateQr(code);
       this.listenToPoll(code);
+      this.listenToRoom(code);
     });
   }
 
   ngOnDestroy() {
     this.pollSub?.unsubscribe();
+    this.roomSub?.unsubscribe();
     this.stopLocalTimer();
+  }
+
+  private listenToRoom(code: string) {
+    this.roomSub?.unsubscribe();
+    this.roomSub = this.pollService.listenToRoom(code).subscribe(roomData => {
+      this.room.set(roomData);
+      if (roomData?.status === 'completed') {
+        this.pollService.getSessionSummary(code).then(summary => {
+          this.sessionStats.set(summary);
+        });
+      }
+    });
   }
 
   private setupUrls(code: string) {
@@ -287,5 +353,16 @@ export class StageComponent implements OnInit, OnDestroy {
     if (this.remainingSeconds() !== 0) {
       this.remainingSeconds.set(null);
     }
+  }
+
+  isLeadingOption(stats: PollStats, optionId: number): boolean {
+    if (!stats || stats.totalVotes === 0) return false;
+    let maxVotes = 0;
+    for (const opt of stats.poll.options) {
+      const v = stats.votesPerOption[opt.id] || 0;
+      if (v > maxVotes) maxVotes = v;
+    }
+    if (maxVotes === 0) return false;
+    return (stats.votesPerOption[optionId] || 0) === maxVotes;
   }
 }

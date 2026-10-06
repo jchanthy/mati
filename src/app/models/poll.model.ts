@@ -17,11 +17,12 @@ export interface Room {
   code: string;
   title: string;
   activePollId: string | null;
-  status: 'draft' | 'active' | 'closed';
+  status: 'draft' | 'active' | 'closed' | 'completed';
   createdAt: any;
   timerDuration?: number;
   timerEndsAt?: number | null;
 }
+
 
 export interface Vote {
   voterId: string;

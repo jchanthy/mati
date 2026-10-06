@@ -45,16 +45,50 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
           <p class="text-xs text-gray-500">Live orchestrator for questions, lock status, and projection stage visibility.</p>
         </div>
 
-        <div class="flex items-center gap-3">
-          <a routerLink="/stage/MATI01" target="_blank" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-600/20 transition-all">
+        <div class="flex items-center gap-2">
+          @if (room()?.status === 'completed') {
+            <button type="button" (click)="restartSession()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+              <i class="pi pi-replay"></i>
+              <span>Restart (Q1)</span>
+            </button>
+          } @else {
+            <button type="button" (click)="finishSession()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+              <i class="pi pi-check-circle"></i>
+              <span>Finish Session</span>
+            </button>
+          }
+
+          <a routerLink="/stage/MATI01" target="_blank" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all">
             <i class="pi pi-desktop"></i>
-            <span>Open Stage (TV)</span>
+            <span>Stage (TV)</span>
           </a>
-          <a routerLink="/dashboard" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-all">
-            Back to Studio
+          <a routerLink="/dashboard" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-all">
+            Studio
           </a>
         </div>
       </div>
+
+      <!-- Completed Session Alert Banner -->
+      @if (room()?.status === 'completed') {
+        <div class="p-5 rounded-3xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fadein">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center text-xl shadow-md shadow-purple-600/30">
+              🎉
+            </div>
+            <div>
+              <div class="text-sm font-black text-purple-950 dark:text-purple-200">
+                Poll Session Completed! (ការស្ទង់មតិបានបញ្ចប់ដោយជោគជ័យ)
+              </div>
+              <div class="text-xs text-purple-700 dark:text-purple-400">
+                Presenter Stage (TV) and audience phones are displaying the celebration and summary screen.
+              </div>
+            </div>
+          </div>
+          <button type="button" (click)="restartSession()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0">
+            <i class="pi pi-replay"></i> Restart From Q1
+          </button>
+        </div>
+      }
 
       <!-- Quick Remote Controls Row -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -220,6 +254,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   polls = signal<Poll[]>([]);
   currentPoll = this.pollService.currentPoll;
   stats = signal<PollStats | null>(null);
+  room = signal<Room | null>(null);
 
   isLocked = false;
   showResults = true;
@@ -231,10 +266,15 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   private pollSub?: Subscription;
   private pollsListSub?: Subscription;
+  private roomSub?: Subscription;
 
   ngOnInit() {
     this.pollsListSub = this.pollService.listenToRoomPolls('MATI01').subscribe(list => {
       this.polls.set(list);
+    });
+
+    this.roomSub = this.pollService.listenToRoom('MATI01').subscribe(roomData => {
+      this.room.set(roomData);
     });
 
     this.pollSub = this.pollService.listenToActivePoll('MATI01').subscribe(pollStats => {
@@ -250,6 +290,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.stopTimer();
     this.pollSub?.unsubscribe();
     this.pollsListSub?.unsubscribe();
+    this.roomSub?.unsubscribe();
   }
 
   toggleAutoAdvance() {
@@ -330,11 +371,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     if (this.isLastQuestion()) {
       this.autoAdvanceEnabled = false;
       this.stopTimer();
-      this.messageService.add({
-        severity: 'info',
-        summary: 'Session Finished',
-        detail: 'Completed the last question in the room!'
-      });
+      await this.finishSession();
       return;
     }
     await this.nextQuestion();
@@ -342,6 +379,28 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       severity: 'info',
       summary: 'Auto Next Triggered',
       detail: `Advanced to Question ${this.getCurrentQuestionIndex()} of ${this.polls().length}`
+    });
+  }
+
+  async finishSession() {
+    this.autoAdvanceEnabled = false;
+    this.stopTimer();
+    await this.pollService.completeSession('MATI01');
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Session Completed! 🎉',
+      detail: 'Presenter Stage (TV) and voter phones now display the Celebration & Results Finale!'
+    });
+  }
+
+  async restartSession() {
+    this.autoAdvanceEnabled = false;
+    this.stopTimer();
+    await this.pollService.restartSession('MATI01');
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Session Restarted',
+      detail: 'Reset room back to Question #1 for a fresh run.'
     });
   }
 

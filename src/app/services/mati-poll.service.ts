@@ -212,7 +212,10 @@ export class MatiPollService {
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
-        await updateDoc(roomRef, { activePollId: pollId });
+        await updateDoc(roomRef, { 
+          activePollId: pollId,
+          status: 'active'
+        });
       } catch (err) {
         console.warn('[Mati] Firebase setActivePoll error:', err);
       }
@@ -222,6 +225,7 @@ export class MatiPollService {
     const room = rooms.get(code);
     if (room) {
       room.activePollId = pollId;
+      room.status = 'active';
       rooms.set(code, { ...room });
       this.mockRooms$.next(new Map(rooms));
       this.currentRoom.set({ ...room });
@@ -318,7 +322,117 @@ export class MatiPollService {
   }
 
   /**
+   * Completes the entire live polling session.
+   * Sets room status to 'completed' and clears timer.
+   */
+  async completeSession(roomCode: string): Promise<void> {
+    const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, {
+          status: 'completed',
+          timerEndsAt: null,
+          timerDuration: null
+        });
+      } catch (err) {
+        console.warn('[Mati] Firebase completeSession error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room) {
+      room.status = 'completed';
+      room.timerEndsAt = null;
+      room.timerDuration = undefined;
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+  }
+
+  /**
+   * Restarts the session from the first question.
+   */
+  async restartSession(roomCode: string): Promise<void> {
+    const code = roomCode.toUpperCase();
+    const polls = await this.getPollsForRoom(code);
+    const firstPollId = polls.length > 0 ? polls[0].id : null;
+
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, {
+          status: 'active',
+          activePollId: firstPollId,
+          timerEndsAt: null,
+          timerDuration: null
+        });
+      } catch (err) {
+        console.warn('[Mati] Firebase restartSession error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room) {
+      room.status = 'active';
+      room.activePollId = firstPollId;
+      room.timerEndsAt = null;
+      room.timerDuration = undefined;
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+  }
+
+  /**
+   * Aggregates overall session summary (total questions, total votes, top question)
+   */
+  async getSessionSummary(roomCode: string): Promise<{ totalQuestions: number; totalVotes: number; topQuestion?: string }> {
+    const code = roomCode.toUpperCase();
+    const polls = await this.getPollsForRoom(code);
+    let totalVotes = 0;
+    let maxVotes = -1;
+    let topQuestion = '';
+
+    if (this.firestore) {
+      try {
+        for (const p of polls) {
+          const votesSnap = await getDocs(collection(this.firestore, `rooms/${code}/polls/${p.id}/votes`));
+          const count = votesSnap.size;
+          totalVotes += count;
+          if (count > maxVotes) {
+            maxVotes = count;
+            topQuestion = p.question;
+          }
+        }
+      } catch (e) {
+        console.warn('[Mati] Firestore getSessionSummary error:', e);
+      }
+    } else {
+      const votesMap = this.mockVotes$.getValue();
+      for (const p of polls) {
+        const votes = votesMap.get(`${code}_${p.id}`) || [];
+        totalVotes += votes.length;
+        if (votes.length > maxVotes) {
+          maxVotes = votes.length;
+          topQuestion = p.question;
+        }
+      }
+    }
+
+    return {
+      totalQuestions: polls.length,
+      totalVotes,
+      topQuestion: maxVotes > 0 ? topQuestion : (polls[0]?.question || '')
+    };
+  }
+
+  /**
    * Step 2: submitVote(roomCode: string, pollId: string, voterId: string, optionId: number)
+
 
    * Records vote in sub-collection atomically.
    */

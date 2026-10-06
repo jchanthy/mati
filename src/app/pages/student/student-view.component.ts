@@ -4,7 +4,8 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService } from '../../services/mati-poll.service';
-import { PollStats } from '../../models/poll.model';
+import { PollStats, Room } from '../../models/poll.model';
+
 
 @Component({
   selector: 'app-student-view',
@@ -33,8 +34,30 @@ import { PollStats } from '../../models/poll.model';
 
       <!-- Content Area -->
       <main class="p-5 flex-1 flex flex-col justify-center">
-        @if (pollStats(); as stats) {
-          <!-- Synchronized Countdown Timer Bar -->
+        @if (room()?.status === 'completed') {
+          <!-- Grand Session Completion Card on Phone -->
+          <div class="p-8 bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900 rounded-3xl text-center space-y-5 shadow-xl animate-fadein my-auto">
+            <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center mx-auto text-3xl shadow-xl shadow-indigo-500/30 animate-bounce">
+              🎉
+            </div>
+            <div class="space-y-1.5">
+              <span class="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                Session Completed
+              </span>
+              <h2 class="text-2xl font-black text-slate-900 dark:text-white pt-1">
+                សូមអរគុណសម្រាប់ការចូលរួម!
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                All questions in room <span class="font-mono font-bold text-slate-900 dark:text-white">{{ roomCode() }}</span> have concluded. Your voice was recorded live in Mati!
+              </p>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+              ✨ Look up at the presenter's screen to see the final overall session tally.
+            </div>
+          </div>
+        } @else {
+          @if (pollStats(); as stats) {
+            <!-- Synchronized Countdown Timer Bar -->
           @if (remainingSeconds() !== null) {
             <div class="mb-4 overflow-hidden rounded-2xl border transition-all duration-300"
               [ngClass]="{
@@ -146,10 +169,34 @@ import { PollStats } from '../../models/poll.model';
                   Change my answer
                 </button>
               }
+
+              <!-- Live Audience Results Breakdown on Voter Phone -->
+              <div class="mt-4 pt-3 border-t border-emerald-200/60 dark:border-emerald-800/60 space-y-2 text-left">
+                <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <span>Live Audience Tally</span>
+                  <span>{{ stats.totalVotes }} votes</span>
+                </div>
+                @for (opt of stats.poll.options; track opt.id) {
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-xs font-semibold">
+                      <span [ngClass]="selectedOptionId() === opt.id ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-700 dark:text-slate-300'">
+                        {{ opt.text }} {{ selectedOptionId() === opt.id ? '✓ (Your Vote)' : '' }}
+                      </span>
+                      <span class="font-mono text-slate-500">{{ stats.percentages[opt.id] || 0 }}%</span>
+                    </div>
+                    <div class="h-2 w-full bg-slate-200/80 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div class="h-full rounded-full transition-all duration-500"
+                        [style.width.%]="stats.percentages[opt.id] || 0"
+                        [ngClass]="selectedOptionId() === opt.id ? 'bg-indigo-600' : 'bg-slate-400 dark:bg-slate-600'">
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
             </div>
           } @else if (isTimeUp()) {
-            <!-- Time's Up Screen -->
-            <div class="p-8 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-3xl text-center space-y-3">
+            <!-- Time's Up Screen with Live Results Breakdown -->
+            <div class="p-6 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-3xl text-center space-y-3">
               <div class="w-12 h-12 rounded-full bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto text-xl">
                 <i class="pi pi-clock"></i>
               </div>
@@ -157,6 +204,27 @@ import { PollStats } from '../../models/poll.model';
               <p class="text-xs text-red-700 dark:text-red-400">
                 Voting has concluded for this question. Look up at the presenter's screen!
               </p>
+
+              <!-- Live Breakdown for Voter -->
+              <div class="mt-4 pt-3 border-t border-red-200/60 dark:border-red-800/60 space-y-2 text-left">
+                <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <span>Audience Results</span>
+                  <span>{{ stats.totalVotes }} votes</span>
+                </div>
+                @for (opt of stats.poll.options; track opt.id) {
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      <span>{{ opt.text }}</span>
+                      <span class="font-mono text-slate-500">{{ stats.percentages[opt.id] || 0 }}%</span>
+                    </div>
+                    <div class="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div class="h-full rounded-full transition-all duration-500 bg-red-500"
+                        [style.width.%]="stats.percentages[opt.id] || 0">
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
             </div>
           } @else if (stats.poll.isLocked) {
             <!-- Poll Locked Screen -->
@@ -202,6 +270,7 @@ import { PollStats } from '../../models/poll.model';
             </p>
           </div>
         }
+      }
       </main>
 
       <!-- Voter ID Footer -->
@@ -223,6 +292,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
 
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
+  room = signal<Room | null>(null);
   voterId = signal<string>('');
   voterIdShort = signal<string>('');
   hasVoted = signal<boolean>(false);
@@ -243,6 +313,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   });
 
   private pollSub?: Subscription;
+  private roomSub?: Subscription;
 
   ngOnInit() {
     const vid = this.pollService.getOrCreateVoterId();
@@ -253,12 +324,21 @@ export class StudentViewComponent implements OnInit, OnDestroy {
       const code = (params.get('roomCode') || 'MATI01').toUpperCase();
       this.roomCode.set(code);
       this.listenToPoll(code);
+      this.listenToRoom(code);
     });
   }
 
   ngOnDestroy() {
     this.pollSub?.unsubscribe();
+    this.roomSub?.unsubscribe();
     this.stopLocalTimer();
+  }
+
+  private listenToRoom(code: string) {
+    this.roomSub?.unsubscribe();
+    this.roomSub = this.pollService.listenToRoom(code).subscribe(roomData => {
+      this.room.set(roomData);
+    });
   }
 
   private listenToPoll(code: string) {
