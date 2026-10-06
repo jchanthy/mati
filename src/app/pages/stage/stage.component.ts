@@ -4,8 +4,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService } from '../../services/mati-poll.service';
-import { PollStats, Room } from '../../models/poll.model';
-
+import { Poll, PollStats, Room } from '../../models/poll.model';
 import QRCode from 'qrcode';
 
 @Component({
@@ -50,41 +49,58 @@ import QRCode from 'qrcode';
       </header>
 
       <!-- Main Central Presentation Area: Fit to viewport without scrolling -->
-      <main class="flex-1 flex flex-col justify-center my-auto py-2 z-10 max-w-7xl mx-auto w-full overflow-hidden">
+      <main class="flex-1 flex flex-col justify-center py-2 z-10 max-w-6xl mx-auto w-full overflow-hidden">
         @if (room()?.status === 'completed') {
           <!-- Grand Finale Celebration Screen for Big TV / Projector -->
-          <div class="text-center py-6 sm:py-10 space-y-6 max-w-4xl mx-auto animate-fadein">
-            <div class="inline-flex p-5 rounded-3xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-5xl sm:text-6xl shadow-2xl shadow-indigo-500/20 animate-bounce">
-              🎉
+          <div class="text-center space-y-4 max-w-4xl mx-auto animate-fadein w-full px-4">
+            <!-- Festive Badge -->
+            <div class="flex items-center justify-center">
+              <span class="inline-flex items-center gap-2 px-4 py-1 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-md">
+                <span>🎉</span>
+                <span>Poll Completed • ការស្ទង់មតិបានបញ្ចប់</span>
+              </span>
             </div>
-            <div class="space-y-2">
-              <div class="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                Poll Completed • ការស្ទង់មតិបានបញ្ចប់
-              </div>
-              <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight">
+
+            <!-- Title & Subtitle -->
+            <div class="space-y-1">
+              <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
                 ការស្ទង់មតិបានបញ្ចប់ដោយជោគជ័យ!
               </h1>
-              <p class="text-base sm:text-xl font-bold text-indigo-300">
+              <p class="text-sm sm:text-lg font-bold text-indigo-300">
                 Thank you for participating in Mati Live Session!
               </p>
-              <p class="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+              <p class="text-xs text-slate-400 max-w-lg mx-auto">
                 All questions have concluded. Your collective votes have been gathered in real-time.
               </p>
             </div>
 
-            <!-- Grand KPI Summary Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div class="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-2">
-                <div class="text-3xl sm:text-4xl font-black text-emerald-400 font-mono">{{ sessionStats().totalQuestions }}</div>
-                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Questions</div>
+            <!-- Grand KPI Summary Cards (Compact, Perfectly Visible) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1 max-w-3xl mx-auto">
+              <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-1">
+                <div class="text-3xl sm:text-4xl font-black text-emerald-400 font-mono leading-tight">
+                  {{ totalQuestionsCount() }}
+                </div>
+                <div class="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Total Questions
+                </div>
               </div>
-              <div class="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-2">
-                <div class="text-3xl sm:text-4xl font-black text-indigo-400 font-mono">{{ sessionStats().totalVotes }}</div>
-                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Audience Votes</div>
+
+              <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-1">
+                <div class="text-3xl sm:text-4xl font-black text-indigo-400 font-mono leading-tight">
+                  {{ totalVotesCount() }}
+                </div>
+                <div class="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Audience Votes Cast
+                </div>
               </div>
-              <div class="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-2">
-                <div class="text-3xl sm:text-4xl font-black text-amber-400 font-mono">100%</div>
-                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Session Completed</div>
+
+              <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-xl text-center space-y-1">
+                <div class="text-3xl sm:text-4xl font-black text-amber-400 font-mono leading-tight">
+                  100%
+                </div>
+                <div class="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Session Completed
+                </div>
               </div>
             </div>
           </div>
@@ -217,14 +233,17 @@ import QRCode from 'qrcode';
 
       <!-- Bottom Bar: Compact Footer with total vote counter -->
       <footer class="flex items-center justify-between gap-4 z-10 border-t border-slate-800/80 pt-3 shrink-0">
-        <div class="text-xs text-slate-400 font-medium">
-          Mati (មតិ) Live Audience System
+        <div class="flex items-center gap-2 text-xs text-slate-400 font-medium">
+          <span class="w-2.5 h-2.5 rounded-full" [ngClass]="room()?.status === 'completed' ? 'bg-amber-400' : 'bg-emerald-500 animate-pulse'"></span>
+          <span>{{ room()?.status === 'completed' ? 'Session Concluded' : 'Mati (មតិ) Live Audience System' }}</span>
+          <span class="text-slate-600">•</span>
+          <span class="font-mono text-indigo-400">Room {{ roomCode() }}</span>
         </div>
 
         <div class="flex items-center gap-2 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-xl">
           <i class="pi pi-users text-emerald-400 text-sm"></i>
           <span class="text-xs font-semibold text-slate-400">Total Votes:</span>
-          <span class="text-lg font-black text-white font-mono">{{ pollStats()?.totalVotes || 0 }}</span>
+          <span class="text-lg font-black text-white font-mono">{{ room()?.status === 'completed' ? totalVotesCount() : (pollStats()?.totalVotes || 0) }}</span>
         </div>
       </footer>
     </div>
@@ -239,10 +258,15 @@ export class StageComponent implements OnInit, OnDestroy {
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
   room = signal<Room | null>(null);
+  polls = signal<Poll[]>([]);
   sessionStats = signal<{ totalQuestions: number; totalVotes: number; topQuestion?: string }>({ totalQuestions: 0, totalVotes: 0 });
   qrCodeDataUrl = signal<string>('');
   fullJoinUrl = signal<string>('');
   joinUrlShort = signal<string>('');
+
+  // Total question and vote counts for completed stage
+  totalQuestionsCount = computed(() => Math.max(this.polls().length, this.sessionStats().totalQuestions));
+  totalVotesCount = computed(() => this.sessionStats().totalVotes);
 
   // Synchronized countdown timer
   remainingSeconds = signal<number | null>(null);
@@ -259,6 +283,7 @@ export class StageComponent implements OnInit, OnDestroy {
 
   private pollSub?: Subscription;
   private roomSub?: Subscription;
+  private pollsListSub?: Subscription;
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
@@ -268,13 +293,22 @@ export class StageComponent implements OnInit, OnDestroy {
       this.generateQr(code);
       this.listenToPoll(code);
       this.listenToRoom(code);
+      this.listenToRoomPolls(code);
     });
   }
 
   ngOnDestroy() {
     this.pollSub?.unsubscribe();
     this.roomSub?.unsubscribe();
+    this.pollsListSub?.unsubscribe();
     this.stopLocalTimer();
+  }
+
+  private listenToRoomPolls(code: string) {
+    this.pollsListSub?.unsubscribe();
+    this.pollsListSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
+      this.polls.set(list);
+    });
   }
 
   private listenToRoom(code: string) {

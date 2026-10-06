@@ -397,17 +397,19 @@ export class MatiPollService {
     let maxVotes = -1;
     let topQuestion = '';
 
-    if (this.firestore) {
+    if (this.firestore && polls.length > 0) {
       try {
-        for (const p of polls) {
-          const votesSnap = await getDocs(collection(this.firestore, `rooms/${code}/polls/${p.id}/votes`));
-          const count = votesSnap.size;
+        const voteSnaps = await Promise.all(
+          polls.map(p => getDocs(collection(this.firestore!, `rooms/${code}/polls/${p.id}/votes`)).catch(() => null))
+        );
+        voteSnaps.forEach((vSnap, idx) => {
+          const count = vSnap ? vSnap.size : 0;
           totalVotes += count;
           if (count > maxVotes) {
             maxVotes = count;
-            topQuestion = p.question;
+            topQuestion = polls[idx]?.question || '';
           }
-        }
+        });
       } catch (e) {
         console.warn('[Mati] Firestore getSessionSummary error:', e);
       }
@@ -420,6 +422,15 @@ export class MatiPollService {
           maxVotes = votes.length;
           topQuestion = p.question;
         }
+      }
+    }
+
+    // Fallback to in-memory vote tallies if Firestore had 0 votes
+    if (totalVotes === 0) {
+      const votesMap = this.mockVotes$.getValue();
+      for (const p of polls) {
+        const votes = votesMap.get(`${code}_${p.id}`) || [];
+        totalVotes += votes.length;
       }
     }
 
@@ -752,17 +763,22 @@ export class MatiPollService {
 
   async getPollsForRoom(roomCode: string): Promise<Poll[]> {
     const code = roomCode.toUpperCase();
+    const local = this.mockPolls$.getValue().get(code) || [];
     if (this.firestore) {
       try {
         const snap = await getDocs(collection(this.firestore, `rooms/${code}/polls`));
         if (!snap.empty) {
-          return snap.docs.map(d => ({ id: d.id, ...d.data() } as Poll));
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Poll));
+          const map = new Map<string, Poll>();
+          for (const p of local) map.set(p.id, p);
+          for (const p of list) map.set(p.id, p);
+          return Array.from(map.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
         }
       } catch (e) {
         console.warn('[Mati] Could not fetch Firestore polls:', e);
       }
     }
-    return this.mockPolls$.getValue().get(code) || [];
+    return local;
   }
 
   async listRooms(): Promise<Room[]> {
