@@ -76,6 +76,33 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
             <p-toggleswitch [(ngModel)]="showResults" (onChange)="onShowResultsChange()"></p-toggleswitch>
           </div>
 
+          <!-- Auto Next Question Timer (Slido-enhanced feature) -->
+          <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+            <div>
+              <div class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span>Auto Next Question</span>
+                @if (autoAdvanceEnabled) {
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-black animate-pulse">
+                    ⏱ {{ countdownSeconds }}s
+                  </span>
+                }
+              </div>
+              <div class="text-xs text-gray-500">Automatically advance to the next question when timer expires</div>
+            </div>
+            <div class="flex items-center gap-2">
+              @if (autoAdvanceEnabled) {
+                <select [(ngModel)]="timerDuration" (ngModelChange)="resetTimer()" class="text-xs font-bold rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1">
+                  <option [value]="15">15s</option>
+                  <option [value]="20">20s</option>
+                  <option [value]="30">30s</option>
+                  <option [value]="45">45s</option>
+                  <option [value]="60">60s</option>
+                </select>
+              }
+              <p-toggleswitch [(ngModel)]="autoAdvanceEnabled" (onChange)="toggleAutoAdvance()"></p-toggleswitch>
+            </div>
+          </div>
+
           <div class="flex flex-col gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <div class="flex items-center justify-between">
               <div class="text-xs font-bold text-gray-700 dark:text-gray-300">
@@ -183,6 +210,11 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   isLocked = false;
   showResults = true;
 
+  autoAdvanceEnabled = false;
+  timerDuration = 20;
+  countdownSeconds = 20;
+  private timerInterval: any = null;
+
   private pollSub?: Subscription;
   private pollsListSub?: Subscription;
 
@@ -201,8 +233,76 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.stopTimer();
     this.pollSub?.unsubscribe();
     this.pollsListSub?.unsubscribe();
+  }
+
+  toggleAutoAdvance() {
+    if (this.autoAdvanceEnabled) {
+      this.startTimer();
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Auto Next Enabled',
+        detail: `Next question will auto-launch every ${this.timerDuration} seconds.`
+      });
+    } else {
+      this.stopTimer();
+      this.messageService.add({
+        severity: 'secondary',
+        summary: 'Auto Next Disabled',
+        detail: 'Manual host control active.'
+      });
+    }
+  }
+
+  resetTimer() {
+    this.countdownSeconds = this.timerDuration;
+    if (this.autoAdvanceEnabled) {
+      this.stopTimer();
+      this.startTimer();
+    }
+  }
+
+  private startTimer() {
+    this.stopTimer();
+    this.countdownSeconds = this.timerDuration;
+    this.timerInterval = setInterval(() => {
+      if (this.countdownSeconds > 1) {
+        this.countdownSeconds--;
+      } else {
+        // Time expired: automatically trigger next question
+        this.countdownSeconds = this.timerDuration;
+        this.autoAdvanceNext();
+      }
+    }, 1000);
+  }
+
+  private stopTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+  }
+
+  private async autoAdvanceNext() {
+    if (!this.autoAdvanceEnabled) return;
+    if (this.isLastQuestion()) {
+      this.autoAdvanceEnabled = false;
+      this.stopTimer();
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Session Finished',
+        detail: 'Completed the last question in the room!'
+      });
+      return;
+    }
+    await this.nextQuestion();
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Auto Next Triggered',
+      detail: `Advanced to Question ${this.getCurrentQuestionIndex()} of ${this.polls().length}`
+    });
   }
 
   async onLockChange() {
@@ -252,6 +352,9 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   async onSelectQuestion(pollId: string) {
     if (!pollId) return;
     await this.pollService.setActivePoll('MATI01', pollId);
+    if (this.autoAdvanceEnabled) {
+      this.resetTimer();
+    }
     this.messageService.add({
       severity: 'success',
       summary: 'Question Switched',
@@ -266,6 +369,9 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     const idx = list.findIndex(p => p.id === poll.id);
     if (idx > 0) {
       await this.pollService.setActivePoll('MATI01', list[idx - 1].id);
+      if (this.autoAdvanceEnabled) {
+        this.resetTimer();
+      }
     }
   }
 
@@ -276,6 +382,9 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     const idx = list.findIndex(p => p.id === poll.id);
     if (idx >= 0 && idx < list.length - 1) {
       await this.pollService.setActivePoll('MATI01', list[idx + 1].id);
+      if (this.autoAdvanceEnabled) {
+        this.resetTimer();
+      }
     }
   }
 }
