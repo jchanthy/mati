@@ -95,8 +95,13 @@ import { MessageService } from 'primeng/api';
                   <!-- User Avatar & Display Name -->
                   <td class="py-3.5 px-5">
                     <div class="flex items-center gap-3 min-w-0">
-                      @if (u.photoURL) {
-                        <img [src]="u.photoURL" class="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0" alt="Avatar">
+                      @if (u.photoURL && !failedAvatars()[u.email]) {
+                        <img 
+                          [src]="u.photoURL" 
+                          referrerpolicy="no-referrer"
+                          (error)="markAvatarFailed(u.email)"
+                          class="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0" 
+                          alt="">
                       } @else {
                         <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
                           {{ (u.displayName || u.email).charAt(0).toUpperCase() }}
@@ -303,6 +308,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   get currentUserEmail(): string {
     return this.authService.currentUser()?.email || '';
+  }
+
+  failedAvatars = signal<{ [email: string]: boolean }>({});
+
+  markAvatarFailed(email: string) {
+    this.failedAvatars.update(map => ({ ...map, [email]: true }));
   }
 
   ngOnInit() {

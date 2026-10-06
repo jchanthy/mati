@@ -45,11 +45,16 @@ import { AuthService } from '../services/auth.service';
           <div class="flex items-center gap-2">
             <!-- User Avatar & Info -->
             <div class="flex items-center gap-2 pl-1">
-              @if (user.photoURL) {
-                <img [src]="user.photoURL" class="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" alt="Avatar">
+              @if (user.photoURL && !avatarError()) {
+                <img 
+                  [src]="user.photoURL" 
+                  referrerpolicy="no-referrer"
+                  (error)="avatarError.set(true)"
+                  class="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" 
+                  alt="">
               } @else {
-                <div class="w-8 h-8 rounded-full bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
-                  {{ (user.displayName || user.email).charAt(0).toUpperCase() }}
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                  {{ (user.displayName || user.email || 'U').charAt(0).toUpperCase() }}
                 </div>
               }
               <div class="hidden lg:flex flex-col text-left">
@@ -92,6 +97,7 @@ export class TopbarComponent {
   sidebarVisible = signal(true);
 
   currentUser = this.authService.currentUser;
+  avatarError = signal(false);
 
   toggleSidebar() {
     this.sidebarVisible.update(v => !v);
