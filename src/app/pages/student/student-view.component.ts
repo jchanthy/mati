@@ -26,9 +26,17 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
         </div>
 
         <div class="flex items-center gap-2">
-          @if (room()?.mode === 'survey') {
+          @if (room()?.status === 'completed') {
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+              <i class="pi pi-check-circle text-[9px]"></i> Session Ended
+            </span>
+          } @else if (room()?.mode === 'survey') {
             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
               <i class="pi pi-list-check text-[9px]"></i> Survey Mode
+            </span>
+          } @else if (room()?.status === 'draft' || room()?.status === 'closed' || !room()?.activePollId) {
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Standby
             </span>
           } @else {
             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
@@ -57,7 +65,11 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
                 សូមអរគុណសម្រាប់ការចូលរួម!
               </h2>
               <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                All questions in room <span class="font-mono font-bold text-slate-900 dark:text-white">{{ roomCode() }}</span> have concluded.
+                @if (answeredCount() > 0) {
+                  All questions in room <span class="font-mono font-bold text-slate-900 dark:text-white">{{ roomCode() }}</span> have concluded.
+                } @else {
+                  This polling session in room <span class="font-mono font-bold text-slate-900 dark:text-white">{{ roomCode() }}</span> has concluded.
+                }
               </p>
             </div>
 
@@ -73,7 +85,7 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
               </div>
 
               <div class="space-y-0.5 text-right">
-                @if (studentScoredQuestionsCount() > 0) {
+                @if (answeredCount() > 0 && studentScoredQuestionsCount() > 0) {
                   <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                     Your Score
                   </div>
@@ -81,12 +93,19 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
                     {{ studentAccuracyPercent() }}%
                     <span class="text-[10px] font-normal text-slate-500 block">({{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() }} correct)</span>
                   </div>
-                } @else {
+                } @else if (answeredCount() > 0) {
                   <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                     Participation
                   </div>
                   <div class="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
                     {{ progressPercent() }}%
+                  </div>
+                } @else {
+                  <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Status
+                  </div>
+                  <div class="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 pt-1">
+                    Concluded
                   </div>
                 }
               </div>
@@ -426,15 +445,30 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
             </div>
           }
         } @else {
-          <!-- Waiting Screen -->
-          <div class="text-center py-12 space-y-4">
-            <div class="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-2xl animate-pulse">
+          <!-- Waiting Screen (No active question launched yet or host hasn't started) -->
+          <div class="text-center py-12 space-y-4 my-auto">
+            <div class="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-2xl animate-pulse shadow-lg shadow-indigo-500/10 border border-indigo-100 dark:border-indigo-900">
               <i class="pi pi-hourglass"></i>
             </div>
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Waiting for next question...</h2>
-            <p class="text-xs text-slate-500 max-w-xs mx-auto">
-              You are connected to room <span class="font-bold text-indigo-600 font-mono">{{ roomCode() }}</span>. When the presenter launches a question, it will appear here instantly!
-            </p>
+            <div class="space-y-1">
+              @if (!room() || room()?.status === 'draft' || !room()?.activePollId) {
+                <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                  Ready & Connected
+                </span>
+                <h2 class="text-lg font-black text-slate-900 dark:text-white pt-1">Waiting for session to start...</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                  You are connected to room <span class="font-bold text-indigo-600 dark:text-indigo-400 font-mono">{{ roomCode() }}</span>. Please wait for the presenter to launch the first question!
+                </p>
+              } @else {
+                <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                  Live Sync
+                </span>
+                <h2 class="text-lg font-black text-slate-900 dark:text-white pt-1">Waiting for next question...</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                  You are connected to room <span class="font-bold text-indigo-600 dark:text-indigo-400 font-mono">{{ roomCode() }}</span>. When the presenter launches a question, it will appear here instantly!
+                </p>
+              }
+            </div>
           </div>
         }
       }

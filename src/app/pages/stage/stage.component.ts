@@ -39,8 +39,16 @@ import QRCode from 'qrcode';
         <!-- Header Right: Live Stage Status Widget -->
         <div class="flex items-center gap-2">
           <div class="flex items-center gap-2 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-xl backdrop-blur-md shadow-sm">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span class="text-xs font-semibold text-slate-300 hidden sm:inline">Live Stage</span>
+            @if (room()?.status === 'completed') {
+              <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+              <span class="text-xs font-semibold text-purple-300 hidden sm:inline">Session Ended</span>
+            } @else if (room()?.status === 'draft' || room()?.status === 'closed' || !room()?.activePollId) {
+              <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              <span class="text-xs font-semibold text-slate-300 hidden sm:inline">Waiting to Start</span>
+            } @else {
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-xs font-semibold text-slate-300 hidden sm:inline">Live Stage</span>
+            }
             <span class="text-slate-700 hidden sm:inline">|</span>
             <span class="text-xs font-mono font-bold text-amber-400">PIN: {{ roomCode() }}</span>
           </div>

@@ -40,8 +40,16 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xs">
         <div>
           <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Live Stage Remote Control</span>
+            @if (room()?.status === 'completed') {
+              <span class="w-3 h-3 rounded-full bg-purple-500"></span>
+              <span class="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Session Completed (Concluded)</span>
+            } @else if (room()?.status === 'draft' || room()?.status === 'closed' || !room()?.activePollId) {
+              <span class="w-3 h-3 rounded-full bg-amber-400 animate-pulse"></span>
+              <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Session Inactive / Ready to Start</span>
+            } @else {
+              <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Live Stage Broadcasting</span>
+            }
           </div>
           <div class="flex items-center gap-3 mt-1 flex-wrap">
             <h1 class="text-2xl font-black text-gray-900 dark:text-white">
@@ -67,9 +75,14 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
 
         <div class="flex items-center gap-2 flex-wrap">
           @if (room()?.status === 'completed') {
-            <button type="button" (click)="restartSession()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
-              <i class="pi pi-replay"></i>
-              <span>Restart (Q1)</span>
+            <button type="button" (click)="restartSession()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer">
+              <i class="pi pi-play"></i>
+              <span>Start Live Session</span>
+            </button>
+          } @else if (!room()?.activePollId) {
+            <button type="button" (click)="startSessionFirstQuestion()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer">
+              <i class="pi pi-play"></i>
+              <span>Start Session (Q1)</span>
             </button>
           } @else {
             <button type="button" (click)="finishSession()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
@@ -688,9 +701,13 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     await this.pollService.restartSession(this.roomCode());
     this.messageService.add({
       severity: 'info',
-      summary: 'Session Restarted',
-      detail: 'Reset room back to Question #1 for a fresh run.'
+      summary: 'Session Started / Restarted',
+      detail: 'Activated room and launched Question #1 for audience.'
     });
+  }
+
+  async startSessionFirstQuestion() {
+    await this.restartSession();
   }
 
   async onLockChange() {
