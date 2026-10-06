@@ -45,9 +45,28 @@ import { Room, Poll } from '../../models/poll.model';
             Create real-time audience polls, display live projection charts, and control interactive classroom sessions effortlessly.
           </p>
           <div class="mt-6 flex flex-wrap gap-3">
-            <button pButton label="Create New Room" icon="pi pi-plus" class="p-button-primary bg-indigo-600 hover:bg-indigo-500 border-none font-semibold px-4 py-2.5 rounded-xl shadow-lg" (click)="showNewRoomDialog = true"></button>
-            <button pButton label="Add Question to MATI01" icon="pi pi-question-circle" class="p-button-outlined text-white border-white/30 hover:bg-white/10 font-semibold px-4 py-2.5 rounded-xl" (click)="showNewPollDialog = true"></button>
-            <a routerLink="/dashboard/control" pButton label="Open Live Controller" icon="pi pi-sliders-h" class="p-button-secondary bg-white/10 hover:bg-white/20 border-white/20 text-white font-semibold px-4 py-2.5 rounded-xl"></a>
+            <button 
+              type="button" 
+              (click)="showNewRoomDialog = true" 
+              class="banner-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all border border-indigo-500 active:scale-95 cursor-pointer">
+              <i class="pi pi-plus"></i>
+              <span>Create New Room</span>
+            </button>
+
+            <button 
+              type="button" 
+              (click)="showNewPollDialog = true" 
+              class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white border border-white/30 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer">
+              <i class="pi pi-question-circle"></i>
+              <span>Add Question to MATI01</span>
+            </button>
+
+            <a 
+              routerLink="/dashboard/control" 
+              class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white border border-white/30 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer">
+              <i class="pi pi-sliders-h"></i>
+              <span>Open Live Controller</span>
+            </a>
           </div>
         </div>
         <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
