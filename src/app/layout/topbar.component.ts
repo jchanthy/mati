@@ -2,6 +2,7 @@ import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { MatiPollService } from '../services/mati-poll.service';
 
 @Component({
   selector: 'app-topbar',
@@ -29,11 +30,12 @@ import { AuthService } from '../services/auth.service';
           <i class="pi pi-plus text-xs"></i>
           <span class="hidden sm:inline">Create Room</span>
         </a>
-        <a routerLink="/stage/MATI01" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 transition-all border border-indigo-200 dark:border-indigo-800">
+        <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 transition-all border border-indigo-200 dark:border-indigo-800">
           <i class="pi pi-desktop text-sm"></i>
           <span>Launch Stage</span>
+          <span class="text-[10px] font-mono font-bold px-1 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">{{ activeRoomCode() }}</span>
         </a>
-        <a routerLink="/join/MATI01" target="_blank" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 transition-all border border-emerald-200 dark:border-emerald-800">
+        <a [routerLink]="['/join', activeRoomCode()]" target="_blank" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 transition-all border border-emerald-200 dark:border-emerald-800">
           <i class="pi pi-mobile text-sm"></i>
           <span>Join Preview</span>
         </a>
@@ -94,10 +96,18 @@ import { AuthService } from '../services/auth.service';
 })
 export class TopbarComponent {
   private authService = inject(AuthService);
-  sidebarVisible = signal(true);
+  private pollService = inject(MatiPollService);
 
+  sidebarVisible = signal(true);
   currentUser = this.authService.currentUser;
   avatarError = signal(false);
+  activeRoomCode = signal<string>('MATI01');
+
+  constructor() {
+    this.pollService.listenToActiveBroadcastRoom().subscribe(code => {
+      this.activeRoomCode.set(code);
+    });
+  }
 
   toggleSidebar() {
     this.sidebarVisible.update(v => !v);

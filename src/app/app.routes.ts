@@ -43,12 +43,22 @@ export const routes: Routes = [
 
   // Presenter Stage (Blank shell for Projector/TV) - Public
   {
+    path: 'stage',
+    loadComponent: () =>
+      import('./pages/stage/stage.component').then(m => m.StageComponent)
+  },
+  {
     path: 'stage/:roomCode',
     loadComponent: () =>
       import('./pages/stage/stage.component').then(m => m.StageComponent)
   },
 
   // Participant Mobile Experience (Minimal distraction-free mobile shell) - Public
+  {
+    path: 'join',
+    loadComponent: () =>
+      import('./pages/student/student-view.component').then(m => m.StudentViewComponent)
+  },
   {
     path: 'join/:roomCode',
     loadComponent: () =>

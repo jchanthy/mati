@@ -17,6 +17,11 @@ service cloud.firestore {
       }
     }
 
+    // System and broadcast settings
+    match /system/{document=**} {
+      allow read, write: if true;
+    }
+
     // Block any other collections
     match /{document=**} {
       allow read, write: if false;

@@ -693,12 +693,29 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     }
 
     this.route.paramMap.subscribe(params => {
-      const code = (params.get('roomCode') || 'MATI01').toUpperCase();
-      this.roomCode.set(code);
-      this.listenToPoll(code);
-      this.listenToRoom(code);
-      this.listenToRoomPolls(code);
+      const codeFromRoute = params.get('roomCode');
+      const targetCode = (codeFromRoute || this.pollService.getActiveBroadcastRoom() || 'MATI01').toUpperCase();
+      this.switchStudentRoom(targetCode);
     });
+  }
+
+  private switchStudentRoom(code: string) {
+    if (code === this.roomCode() && this.roomSub) return;
+    this.pollSub?.unsubscribe();
+    this.roomSub?.unsubscribe();
+    this.pollsListSub?.unsubscribe();
+    this.stopLocalTimer();
+
+    this.pollStats.set(null);
+    this.room.set(null);
+    this.hasVoted.set(false);
+    this.selectedOptionId.set(null);
+    this.remainingSeconds.set(null);
+
+    this.roomCode.set(code);
+    this.listenToPoll(code);
+    this.listenToRoom(code);
+    this.listenToRoomPolls(code);
   }
 
   ngOnDestroy() {

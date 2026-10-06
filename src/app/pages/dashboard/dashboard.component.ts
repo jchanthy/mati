@@ -547,6 +547,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   switchRoom(code: string) {
     this.selectedRoomCode.set(code);
+    this.pollService.broadcastActiveRoom(code, this.currentUser()?.email);
     this.pollsSub?.unsubscribe();
     this.pollsSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
       this.polls.set(list);
@@ -559,6 +560,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async setAsLive(pollId: string) {
+    this.pollService.broadcastActiveRoom(this.selectedRoomCode(), this.currentUser()?.email);
     await this.pollService.setActivePoll(this.selectedRoomCode(), pollId);
     this.messageService.add({
       severity: 'success',

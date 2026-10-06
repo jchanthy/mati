@@ -32,6 +32,7 @@ export class MatiPollService {
   private mockRooms$ = new BehaviorSubject<Map<string, Room>>(new Map());
   private mockPolls$ = new BehaviorSubject<Map<string, Poll[]>>(new Map());
   private mockVotes$ = new BehaviorSubject<Map<string, Vote[]>>(new Map());
+  private activeBroadcastRoom$ = new BehaviorSubject<string>('MATI01');
 
   // Active state signals
   readonly currentRoom = signal<Room | null>(null);
@@ -41,10 +42,76 @@ export class MatiPollService {
 
   constructor() {
     this.initDefaultMockData();
+    if (this.isBrowser) {
+      const saved = localStorage.getItem('mati_active_room');
+      if (saved) {
+        this.activeBroadcastRoom$.next(saved.toUpperCase());
+      }
+    }
     if (this.firestore) {
       this.isConnectedToFirebase.set(true);
       this.ensureDefaultRoomInFirestore('MATI01');
+      this.initBroadcastListener();
     }
+  }
+
+  private initBroadcastListener(): void {
+    if (!this.firestore) return;
+    try {
+      const bRef = doc(this.firestore, 'rooms/_active_broadcast');
+      onSnapshot(bRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && data['activeRoomCode']) {
+            const code = (data['activeRoomCode'] as string).toUpperCase();
+            this.activeBroadcastRoom$.next(code);
+            if (this.isBrowser) {
+              localStorage.setItem('mati_active_room', code);
+            }
+          }
+        }
+      }, (err) => {
+        console.warn('[Mati] Broadcast listener error:', err);
+      });
+    } catch (e) {
+      console.warn('[Mati] Could not init broadcast listener:', e);
+    }
+  }
+
+  /**
+   * Broadcasts the currently active presenter room to all TV stage screens & clients
+   */
+  async broadcastActiveRoom(roomCode: string, updatedBy?: string): Promise<void> {
+    const code = (roomCode || 'MATI01').toUpperCase().trim();
+    if (!code) return;
+    this.activeBroadcastRoom$.next(code);
+    if (this.isBrowser) {
+      localStorage.setItem('mati_active_room', code);
+    }
+    if (this.firestore) {
+      try {
+        const payload = {
+          activeRoomCode: code,
+          updatedAt: serverTimestamp(),
+          ...(updatedBy ? { updatedBy } : {})
+        };
+        await setDoc(doc(this.firestore, 'rooms/_active_broadcast'), payload, { merge: true });
+        await setDoc(doc(this.firestore, 'system/broadcast'), payload, { merge: true });
+      } catch (err) {
+        console.warn('[Mati] broadcastActiveRoom save error:', err);
+      }
+    }
+  }
+
+  /**
+   * Real-time observable of current active broadcast room code
+   */
+  listenToActiveBroadcastRoom(): Observable<string> {
+    return this.activeBroadcastRoom$.asObservable();
+  }
+
+  getActiveBroadcastRoom(): string {
+    return this.activeBroadcastRoom$.getValue();
   }
 
   /**
@@ -718,6 +785,7 @@ export class MatiPollService {
 
             if (!activeId) {
               latestPollData = null;
+              latestVotes = [];
               subscriber.next(null);
               if (unsubPoll) unsubPoll();
               if (unsubVotes) unsubVotes();
@@ -726,6 +794,8 @@ export class MatiPollService {
 
             if (activeId !== currentActivePollId) {
               currentActivePollId = activeId;
+              latestPollData = null;
+              latestVotes = [];
               if (unsubPoll) unsubPoll();
               if (unsubVotes) unsubVotes();
 

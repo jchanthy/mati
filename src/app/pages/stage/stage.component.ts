@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 
+import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -10,7 +11,7 @@ import QRCode from 'qrcode';
 @Component({
   selector: 'app-stage',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   template: `
     <div class="stage-container min-h-screen h-screen max-h-screen flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none overflow-hidden relative transition-colors duration-300"
       [ngClass]="isLight() ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-white'">
@@ -49,8 +50,50 @@ import QRCode from 'qrcode';
           </div>
         </div>
 
-        <!-- Header Right: Live Stage Status Widget -->
-        <div class="flex items-center gap-2">
+        <!-- Header Right: Live Stage Status Widget & Room Switcher -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- Transient Switch Notification -->
+          @if (recentlySwitchedNotice()) {
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-md animate-pulse">
+              <i class="pi pi-sync"></i>
+              <span>{{ recentlySwitchedNotice() }}</span>
+            </span>
+          }
+
+          <!-- Room Switcher Dropdown (Allows TV operator to switch group directly) -->
+          @if (availableRooms().length > 1) {
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border backdrop-blur-md shadow-2xs transition-colors duration-300"
+              [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
+              <i class="pi pi-compass text-indigo-500 text-xs"></i>
+              <select 
+                [ngModel]="roomCode()" 
+                (ngModelChange)="onManualRoomChange($event)" 
+                class="bg-transparent text-xs font-black focus:outline-hidden cursor-pointer"
+                [ngClass]="isLight() ? 'text-slate-800' : 'text-slate-200'"
+                title="Switch presentation group / room">
+                @for (r of availableRooms(); track r.code) {
+                  <option [value]="r.code" class="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                    {{ r.code }} - {{ r.title }}
+                  </option>
+                }
+              </select>
+            </div>
+          }
+
+          <!-- Auto-Sync With Controller Toggle Pill -->
+          <button
+            type="button"
+            (click)="toggleAutoSync()"
+            [title]="autoSyncWithPresenter() ? 'Live Auto-Sync Active: TV automatically updates when presenter switches room/group.' : 'Auto-Sync Paused: TV locked to this room.'"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-2xs"
+            [ngClass]="autoSyncWithPresenter() 
+              ? (isLight() ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-emerald-950/60 text-emerald-300 border-emerald-800') 
+              : (isLight() ? 'bg-slate-100 text-slate-600 border-slate-300' : 'bg-slate-900 text-slate-400 border-slate-800')">
+            <span class="w-2 h-2 rounded-full" [ngClass]="autoSyncWithPresenter() ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'"></span>
+            <span class="hidden md:inline">{{ autoSyncWithPresenter() ? 'Auto-Sync ON' : 'Lock Room' }}</span>
+          </button>
+
+          <!-- Status & PIN -->
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border backdrop-blur-md shadow-xs transition-colors duration-300"
             [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
             @if (room()?.status === 'completed') {
@@ -435,27 +478,121 @@ export class StageComponent implements OnInit, OnDestroy {
     return Math.min(100, Math.max(0, Math.round((rem / dur) * 100)));
   });
 
+  availableRooms = signal<Room[]>([]);
+  autoSyncWithPresenter = signal<boolean>(true);
+  recentlySwitchedNotice = signal<string | null>(null);
+
+  private allRoomsSub?: Subscription;
+  private broadcastSub?: Subscription;
+  private routeParamSub?: Subscription;
+  private switchTimeout: any = null;
+
   private pollSub?: Subscription;
   private roomSub?: Subscription;
   private pollsListSub?: Subscription;
 
   ngOnInit() {
-    this.route.paramMap.subscribe(params => {
-      const code = (params.get('roomCode') || 'MATI01').toUpperCase();
-      this.roomCode.set(code);
-      this.setupUrls(code);
-      this.generateQr(code);
-      this.listenToPoll(code);
-      this.listenToRoom(code);
-      this.listenToRoomPolls(code);
+    this.allRoomsSub = this.pollService.listenToRooms().subscribe(rooms => {
+      this.availableRooms.set(rooms);
+    });
+
+    this.routeParamSub = this.route.paramMap.subscribe(params => {
+      const codeFromRoute = params.get('roomCode');
+      if (codeFromRoute) {
+        this.switchActiveRoom(codeFromRoute.toUpperCase(), false);
+      } else {
+        const currentBroadcast = this.pollService.getActiveBroadcastRoom();
+        this.switchActiveRoom(currentBroadcast, false);
+      }
+    });
+
+    // Auto-sync whenever the presenter switches active group/room in Controller
+    this.broadcastSub = this.pollService.listenToActiveBroadcastRoom().subscribe(broadcastCode => {
+      if (!broadcastCode) return;
+      const target = broadcastCode.toUpperCase();
+      if (this.autoSyncWithPresenter() && target !== this.roomCode()) {
+        console.info(`[Stage TV] Presenter switched group/room to ${target}. Updating projection stage...`);
+        this.switchActiveRoom(target, true);
+      }
     });
   }
 
   ngOnDestroy() {
+    this.allRoomsSub?.unsubscribe();
+    this.broadcastSub?.unsubscribe();
+    this.routeParamSub?.unsubscribe();
     this.pollSub?.unsubscribe();
     this.roomSub?.unsubscribe();
     this.pollsListSub?.unsubscribe();
     this.stopLocalTimer();
+    if (this.switchTimeout) clearTimeout(this.switchTimeout);
+  }
+
+  onManualRoomChange(newCode: string) {
+    if (!newCode) return;
+    this.switchActiveRoom(newCode, false);
+    this.pollService.broadcastActiveRoom(newCode);
+    this.showSwitchedNotice(`Projection switched to ${newCode}`);
+  }
+
+  toggleAutoSync() {
+    this.autoSyncWithPresenter.update(v => !v);
+    if (this.autoSyncWithPresenter()) {
+      const currentBroadcast = this.pollService.getActiveBroadcastRoom();
+      if (currentBroadcast && currentBroadcast !== this.roomCode()) {
+        this.switchActiveRoom(currentBroadcast, true);
+      } else {
+        this.showSwitchedNotice('Auto-Sync Enabled: TV will follow presenter');
+      }
+    } else {
+      this.showSwitchedNotice(`Room Locked to ${this.roomCode()}`);
+    }
+  }
+
+  showSwitchedNotice(msg: string) {
+    this.recentlySwitchedNotice.set(msg);
+    if (this.switchTimeout) clearTimeout(this.switchTimeout);
+    this.switchTimeout = setTimeout(() => {
+      this.recentlySwitchedNotice.set(null);
+    }, 4000);
+  }
+
+  switchActiveRoom(code: string, isFromBroadcast: boolean) {
+    const target = (code || 'MATI01').toUpperCase();
+    if (target === this.roomCode() && this.roomSub) {
+      return;
+    }
+
+    // Cleanly cancel previous room listeners and reset previous room state
+    this.pollSub?.unsubscribe();
+    this.roomSub?.unsubscribe();
+    this.pollsListSub?.unsubscribe();
+    this.stopLocalTimer();
+
+    this.pollStats.set(null);
+    this.room.set(null);
+    this.polls.set([]);
+    this.sessionStats.set({
+      totalQuestions: 0,
+      totalVotes: 0,
+      totalScoredQuestions: 0,
+      overallAccuracy: 0,
+      hasScoredQuestions: false,
+      topConsensusPercentage: 0,
+      questionResults: []
+    });
+    this.remainingSeconds.set(null);
+
+    this.roomCode.set(target);
+    this.setupUrls(target);
+    this.generateQr(target);
+    this.listenToPoll(target);
+    this.listenToRoom(target);
+    this.listenToRoomPolls(target);
+
+    if (isFromBroadcast) {
+      this.showSwitchedNotice(`Live Room Switched to ${target}`);
+    }
   }
 
   private listenToRoomPolls(code: string) {

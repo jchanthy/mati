@@ -1,7 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { MatiPollService } from '../services/mati-poll.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -42,15 +43,17 @@ import { AuthService } from '../services/auth.service';
           Audience Stages
         </div>
 
-        <a routerLink="/stage/MATI01" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
           <i class="pi pi-window-maximize text-base text-indigo-500"></i>
           <span>Projector Stage</span>
+          <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 ml-1">{{ activeRoomCode() }}</span>
           <i class="pi pi-external-link text-xs ml-auto text-gray-400"></i>
         </a>
 
-        <a routerLink="/join/MATI01" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <a [routerLink]="['/join', activeRoomCode()]" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
           <i class="pi pi-mobile text-base text-emerald-500"></i>
           <span>Participant Mobile</span>
+          <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 ml-1">{{ activeRoomCode() }}</span>
           <i class="pi pi-external-link text-xs ml-auto text-gray-400"></i>
         </a>
       </nav>
@@ -61,7 +64,7 @@ import { AuthService } from '../services/auth.service';
           <span class="text-xs font-bold text-gray-900 dark:text-white">Firestore Live</span>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          Real-time atomic listeners active.
+          Active Room: <strong class="text-indigo-600 dark:text-indigo-400 font-mono">{{ activeRoomCode() }}</strong>
         </p>
         <div class="text-[11px] font-mono bg-white dark:bg-gray-900 px-2 py-1 rounded text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 truncate">
           {{ currentUser()?.email || 'Authenticated' }}
@@ -77,6 +80,15 @@ import { AuthService } from '../services/auth.service';
 })
 export class SidebarComponent {
   private authService = inject(AuthService);
+  private pollService = inject(MatiPollService);
+
   isAdmin = this.authService.isAdmin;
   currentUser = this.authService.currentUser;
+  activeRoomCode = signal<string>('MATI01');
+
+  constructor() {
+    this.pollService.listenToActiveBroadcastRoom().subscribe(code => {
+      this.activeRoomCode.set(code);
+    });
+  }
 }

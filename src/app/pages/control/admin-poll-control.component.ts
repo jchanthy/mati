@@ -585,6 +585,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   private subscribeToRoom(code: string) {
     this.stopTimer();
     this.autoAdvanceEnabled = false;
+    this.pollService.broadcastActiveRoom(code, this.currentUser()?.email);
 
     this.pollSub?.unsubscribe();
     this.pollsListSub?.unsubscribe();
