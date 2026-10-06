@@ -456,20 +456,24 @@ export class MatiPollService {
     const questionResults: QuestionResultSummary[] = [];
     const votesMap = this.mockVotes$.getValue();
 
+    // Fetch all poll votes concurrently for high speed
+    const voteListPerPoll = await Promise.all(
+      polls.map(async (p) => {
+        if (this.firestore) {
+          try {
+            const vSnap = await getDocs(collection(this.firestore, `rooms/${code}/polls/${p.id}/votes`));
+            return vSnap.docs.map(d => d.data() as Vote);
+          } catch (e) {
+            return votesMap.get(`${code}_${p.id}`) || [];
+          }
+        }
+        return votesMap.get(`${code}_${p.id}`) || [];
+      })
+    );
+
     for (let idx = 0; idx < polls.length; idx++) {
       const p = polls[idx];
-      let voteList: Vote[] = [];
-
-      if (this.firestore) {
-        try {
-          const vSnap = await getDocs(collection(this.firestore, `rooms/${code}/polls/${p.id}/votes`));
-          voteList = vSnap.docs.map(d => d.data() as Vote);
-        } catch (e) {
-          voteList = votesMap.get(`${code}_${p.id}`) || [];
-        }
-      } else {
-        voteList = votesMap.get(`${code}_${p.id}`) || [];
-      }
+      let voteList = voteListPerPoll[idx] || [];
 
       if (voteList.length === 0 && votesMap.has(`${code}_${p.id}`)) {
         voteList = votesMap.get(`${code}_${p.id}`) || [];

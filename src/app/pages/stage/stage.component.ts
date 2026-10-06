@@ -98,44 +98,44 @@ import QRCode from 'qrcode';
             </div>
 
             <!-- Grand KPI Summary Cards (4 Cards) -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 shrink-0 max-w-4xl mx-auto w-full pt-4">
               <!-- Total Questions -->
-              <div class="p-4 rounded-2xl border shadow-sm text-center space-y-0.5 transition-colors"
+              <div class="p-5 sm:p-6 rounded-3xl border shadow-sm text-center space-y-1 transition-colors"
                 [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-2xl sm:text-3xl font-black font-mono leading-tight"
+                <div class="text-3xl sm:text-4xl font-black font-mono leading-tight"
                   [ngClass]="isLight() ? 'text-slate-900' : 'text-slate-100'">
                   {{ totalQuestionsCount() }}
                 </div>
-                <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
+                <div class="text-xs font-bold uppercase tracking-wider"
                   [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                   Total Questions
                 </div>
               </div>
 
               <!-- Audience Votes Cast -->
-              <div class="p-4 rounded-2xl border shadow-sm text-center space-y-0.5 transition-colors"
+              <div class="p-5 sm:p-6 rounded-3xl border shadow-sm text-center space-y-1 transition-colors"
                 [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-2xl sm:text-3xl font-black font-mono leading-tight text-indigo-600 dark:text-indigo-400">
+                <div class="text-3xl sm:text-4xl font-black font-mono leading-tight text-indigo-600 dark:text-indigo-400">
                   {{ totalVotesCount() }}
                 </div>
-                <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
+                <div class="text-xs font-bold uppercase tracking-wider"
                   [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                   Total Votes Cast
                 </div>
               </div>
 
               <!-- Overall Accuracy or Top Consensus -->
-              <div class="p-4 rounded-2xl border shadow-sm text-center space-y-0.5 transition-colors"
+              <div class="p-5 sm:p-6 rounded-3xl border shadow-sm text-center space-y-1 transition-colors"
                 [ngClass]="sessionStats().hasScoredQuestions 
                   ? (isLight() ? 'bg-emerald-50/70 border-emerald-300' : 'border-emerald-500/40 bg-emerald-950/20') 
                   : (isLight() ? 'bg-amber-50/70 border-amber-300' : 'border-amber-500/40 bg-amber-950/20')">
-                <div class="text-2xl sm:text-3xl font-black font-mono leading-tight"
+                <div class="text-3xl sm:text-4xl font-black font-mono leading-tight"
                   [ngClass]="sessionStats().hasScoredQuestions 
                     ? (isLight() ? 'text-emerald-700' : 'text-emerald-400') 
                     : (isLight() ? 'text-amber-700' : 'text-amber-400')">
                   {{ sessionStats().hasScoredQuestions ? sessionStats().overallAccuracy + '%' : sessionStats().topConsensusPercentage + '%' }}
                 </div>
-                <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
+                <div class="text-xs font-bold uppercase tracking-wider"
                   [ngClass]="sessionStats().hasScoredQuestions 
                     ? (isLight() ? 'text-emerald-800' : 'text-emerald-300') 
                     : (isLight() ? 'text-amber-800' : 'text-amber-300')">
@@ -144,121 +144,29 @@ import QRCode from 'qrcode';
               </div>
 
               <!-- Status -->
-              <div class="p-4 rounded-2xl border shadow-sm text-center space-y-0.5 transition-colors"
+              <div class="p-5 sm:p-6 rounded-3xl border shadow-sm text-center space-y-1 transition-colors"
                 [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono leading-tight">
+                <div class="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 font-mono leading-tight">
                   100%
                 </div>
-                <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
+                <div class="text-xs font-bold uppercase tracking-wider"
                   [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                   Completed
                 </div>
               </div>
             </div>
 
-            <!-- Detailed Question-by-Question Results Review -->
-            @if (effectiveQuestionResults().length > 0) {
-              <div class="space-y-3 pt-1">
-                <div class="flex items-center justify-between px-1">
-                  <h3 class="text-xs sm:text-sm font-black uppercase tracking-wider flex items-center gap-2"
-                    [ngClass]="isLight() ? 'text-slate-700' : 'text-slate-300'">
-                    <i class="pi pi-list-check text-indigo-600 dark:text-indigo-400"></i>
-                    <span>Question Breakdown & Answer Results</span>
-                  </h3>
-                  <span class="text-xs font-bold px-2 py-0.5 rounded-full border"
-                    [ngClass]="isLight() ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-800 text-slate-400 border-slate-700'">
-                    {{ effectiveQuestionResults().length }} questions
-                  </span>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pb-6">
-                  @for (q of effectiveQuestionResults(); track q.pollId) {
-                    <div class="rounded-2xl p-4 border shadow-sm space-y-3 transition-all"
-                      [ngClass]="isLight() ? 'bg-white border-slate-200 hover:border-slate-300' : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'">
-                      <!-- Question header & Accuracy / Top Badge -->
-                      <div class="flex items-start justify-between gap-3">
-                        <div class="flex items-start gap-2.5 flex-1 min-w-0">
-                          <span class="px-2 py-0.5 rounded-lg font-black text-xs shrink-0 border"
-                            [ngClass]="isLight() ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'">
-                            #{{ q.order }}
-                          </span>
-                          <h4 class="text-xs sm:text-sm font-bold leading-snug line-clamp-2"
-                            [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
-                            {{ q.question }}
-                          </h4>
-                        </div>
-                        
-                        @if (q.correctOptionId !== undefined) {
-                          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 border"
-                            [ngClass]="q.correctPercentage >= 50 
-                              ? (isLight() ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40') 
-                              : (isLight() ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-amber-500/20 text-amber-300 border-amber-500/40')">
-                            {{ q.correctPercentage }}% Correct
-                          </span>
-                        } @else {
-                          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 border"
-                            [ngClass]="isLight() ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-slate-800 text-slate-300 border-slate-700'">
-                            {{ q.totalVotes }} Votes
-                          </span>
-                        }
-                      </div>
-
-                      <!-- Options Mini Progress Bars -->
-                      <div class="space-y-2">
-                        @for (opt of q.options; track opt.id) {
-                          <div class="relative overflow-hidden rounded-xl border p-2 text-xs flex items-center justify-between gap-2.5"
-                            [ngClass]="opt.isCorrect 
-                              ? (isLight() ? 'border-emerald-300 bg-emerald-50/50' : 'border-emerald-500/50 bg-emerald-950/20') 
-                              : (opt.id === q.winningOptionId && q.correctOptionId === undefined && q.totalVotes > 0 
-                                ? (isLight() ? 'border-indigo-300 bg-indigo-50/30' : 'border-indigo-500/40 bg-slate-900/60') 
-                                : (isLight() ? 'border-slate-200 bg-slate-50/80' : 'border-slate-800/80 bg-slate-950/60'))">
-                            
-                            <!-- Bar fill -->
-                            <div class="absolute top-0 bottom-0 left-0 transition-all duration-500"
-                              [style.width.%]="opt.percentage"
-                              [ngClass]="opt.isCorrect 
-                                ? (isLight() ? 'bg-emerald-200/60' : 'bg-emerald-500/30') 
-                                : (isLight() ? 'bg-indigo-200/50' : 'bg-indigo-500/25')">
-                            </div>
-
-                            <div class="relative z-10 flex items-center gap-2 min-w-0 flex-1">
-                              <span class="w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center shrink-0 border"
-                                [ngClass]="opt.isCorrect 
-                                  ? 'bg-emerald-600 text-white border-emerald-500' 
-                                  : (isLight() ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-slate-800 text-slate-300 border-slate-700')">
-                                {{ opt.id }}
-                              </span>
-                              <span class="font-semibold truncate text-[11px] sm:text-xs"
-                                [ngClass]="opt.isCorrect 
-                                  ? (isLight() ? 'text-emerald-900 font-bold' : 'text-emerald-200 font-bold') 
-                                  : (isLight() ? 'text-slate-800' : 'text-slate-200')">
-                                {{ opt.text }}
-                              </span>
-                              @if (opt.isCorrect) {
-                                <i class="pi pi-check text-emerald-600 dark:text-emerald-400 text-xs shrink-0 font-bold"></i>
-                              }
-                            </div>
-
-                            <div class="relative z-10 font-mono text-[11px] font-bold shrink-0"
-                              [ngClass]="isLight() ? 'text-slate-700' : 'text-slate-300'">
-                              <span>{{ opt.percentage }}%</span>
-                              <span class="text-[9px] ml-1" [ngClass]="isLight() ? 'text-slate-400' : 'text-slate-500'">({{ opt.votes }})</span>
-                            </div>
-                          </div>
-                        }
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
-            } @else {
-              <!-- Fallback message if questions are still loading -->
-              <div class="text-center py-8 rounded-2xl border p-6"
-                [ngClass]="isLight() ? 'bg-white border-slate-200 text-slate-500' : 'bg-slate-900 border-slate-800 text-slate-400'">
-                <i class="pi pi-spin pi-spinner text-2xl text-indigo-500 mb-2"></i>
-                <p class="text-sm font-medium">Compiling final question statistics...</p>
-              </div>
-            }
+            <!-- Congratulatory audience banner -->
+            <div class="p-6 sm:p-8 rounded-3xl border text-center max-w-4xl mx-auto w-full transition-colors space-y-2"
+              [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/70 border-slate-800'">
+              <div class="text-2xl sm:text-3xl">👏</div>
+              <h2 class="text-lg sm:text-xl font-black" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                សូមអរគុណសម្រាប់ការចូលរួមយ៉ាងសកម្ម!
+              </h2>
+              <p class="text-xs sm:text-sm max-w-lg mx-auto" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
+                Thank you for participating! All audience votes and feedback have been collected and securely recorded for Room <span class="font-mono font-bold" [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">{{ roomCode() }}</span>.
+              </p>
+            </div>
           </div>
         } @else {
           <!-- Split Stage Layout: Flexible QR Station on Left + Question & Results on Right -->
@@ -513,36 +421,6 @@ export class StageComponent implements OnInit, OnDestroy {
   // Total question and vote counts for completed stage
   totalQuestionsCount = computed(() => Math.max(this.polls().length, this.sessionStats().totalQuestions));
   totalVotesCount = computed(() => this.sessionStats().totalVotes);
-
-  // Effective question breakdown (guaranteed to never be empty when polls exist)
-  effectiveQuestionResults = computed(() => {
-    const fromStats = this.sessionStats().questionResults;
-    if (fromStats && fromStats.length > 0) {
-      return fromStats;
-    }
-    // Fallback: derive question breakdown directly from polls signal
-    const pollList = this.polls();
-    return pollList.map((p, idx) => ({
-      pollId: p.id,
-      order: p.order || (idx + 1),
-      question: p.question,
-      totalVotes: 0,
-      correctOptionId: p.correctOptionId,
-      correctOptionText: p.correctOptionId ? p.options.find(o => o.id === p.correctOptionId)?.text : undefined,
-      correctVotes: 0,
-      correctPercentage: 0,
-      winningOptionId: p.options[0]?.id || 1,
-      winningOptionText: p.options[0]?.text || '',
-      winningPercentage: 0,
-      options: p.options.map(opt => ({
-        id: opt.id,
-        text: opt.text,
-        votes: 0,
-        percentage: 0,
-        isCorrect: p.correctOptionId !== undefined ? (opt.id === p.correctOptionId) : false
-      }))
-    }));
-  });
 
   // Synchronized countdown timer
   remainingSeconds = signal<number | null>(null);
