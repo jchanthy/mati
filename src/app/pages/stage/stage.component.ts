@@ -27,6 +27,11 @@ import QRCode from 'qrcode';
             <div class="flex items-center gap-2">
               <span class="text-2xl font-black tracking-tight text-white">Mati</span>
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-950 text-indigo-400 border border-indigo-800 uppercase tracking-widest">Presenter Stage</span>
+              @if (room()?.mode === 'survey') {
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-950/80 text-amber-300 border border-amber-800 uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                  <i class="pi pi-list-check text-[10px]"></i> Survey Mode
+                </span>
+              }
             </div>
           </div>
         </div>

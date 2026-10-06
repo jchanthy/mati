@@ -322,6 +322,30 @@ export class MatiPollService {
   }
 
   /**
+   * Sets room interaction mode: 'live' (presenter-led sync) or 'survey' (self-paced audience voting).
+   */
+  async setRoomMode(roomCode: string, mode: 'live' | 'survey'): Promise<void> {
+    const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, { mode });
+      } catch (err) {
+        console.warn('[Mati] Firebase setRoomMode error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room) {
+      room.mode = mode;
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+  }
+
+  /**
    * Completes the entire live polling session.
    * Sets room status to 'completed' and clears timer.
    */
@@ -711,6 +735,61 @@ export class MatiPollService {
 
     return this.mockRooms$.pipe(
       map(mapData => mapData.get(code) || null)
+    );
+  }
+
+  /**
+   * Listen to real-time stats for any poll by ID (useful for self-paced survey mode)
+   */
+  listenToPollStats(roomCode: string, pollId: string): Observable<PollStats | null> {
+    const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      return new Observable<PollStats | null>((subscriber) => {
+        const pollRef = doc(this.firestore!, `rooms/${code}/polls/${pollId}`);
+        const votesCol = collection(this.firestore!, `rooms/${code}/polls/${pollId}/votes`);
+        
+        let pollData: Poll | null = null;
+        let votesList: Vote[] = [];
+
+        const emit = () => {
+          if (!pollData) {
+            const localPolls = this.mockPolls$.getValue().get(code) || [];
+            pollData = localPolls.find(p => p.id === pollId) || null;
+          }
+          if (!pollData) {
+            subscriber.next(null);
+            return;
+          }
+          subscriber.next(this.computeStats(pollData, votesList));
+        };
+
+        const unsubPoll = onSnapshot(pollRef, (snap) => {
+          if (snap.exists()) {
+            pollData = { id: snap.id, ...snap.data() } as Poll;
+          }
+          emit();
+        });
+
+        const unsubVotes = onSnapshot(votesCol, (snap) => {
+          votesList = snap.docs.map(d => d.data() as Vote);
+          emit();
+        });
+
+        return () => {
+          unsubPoll();
+          unsubVotes();
+        };
+      });
+    }
+
+    return combineLatest([this.mockPolls$, this.mockVotes$]).pipe(
+      map(([pollsMap, votesMap]) => {
+        const list = pollsMap.get(code) || [];
+        const poll = list.find(p => p.id === pollId);
+        if (!poll) return null;
+        const votes = votesMap.get(`${code}_${pollId}`) || [];
+        return this.computeStats(poll, votes);
+      })
     );
   }
 

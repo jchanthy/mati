@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -65,6 +65,51 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
           <a routerLink="/dashboard" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-all">
             Studio
           </a>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Banner: Live Stage vs Self-Paced Survey -->
+      <div class="p-4 sm:p-5 bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
+            [ngClass]="room()?.mode === 'survey' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'">
+            <i [class]="room()?.mode === 'survey' ? 'pi pi-list-check' : 'pi pi-desktop'"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-black text-gray-900 dark:text-white">
+                {{ room()?.mode === 'survey' ? 'Self-Paced Survey Mode' : 'Presenter-Led Live Stage Mode' }}
+              </span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider"
+                [ngClass]="room()?.mode === 'survey' ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800' : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'">
+                {{ room()?.mode === 'survey' ? 'Survey Active' : 'Live Sync' }}
+              </span>
+            </div>
+            <p class="text-xs text-gray-500 mt-0.5">
+              {{ room()?.mode === 'survey' 
+                ? 'Audience can freely browse, choose, and vote on all 30 questions at their own speed on their phones.'
+                : 'Audience phones and TV screen are synchronized to the active question you launch.' }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0 w-full md:w-auto">
+          <button 
+            type="button" 
+            (click)="setRoomMode('live')"
+            [ngClass]="room()?.mode !== 'survey' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
+            class="flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="pi pi-desktop"></i>
+            <span>Live Stage (Sync)</span>
+          </button>
+          <button 
+            type="button" 
+            (click)="setRoomMode('survey')"
+            [ngClass]="room()?.mode === 'survey' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
+            class="flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="pi pi-list-check"></i>
+            <span>Survey (Self-Paced)</span>
+          </button>
         </div>
       </div>
 
@@ -244,6 +289,116 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
           }
         </div>
       </div>
+
+      <!-- Slido-Style Question Navigator (Browse, Search, and 1-Click Launch) -->
+      <div class="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base">
+              <i class="pi pi-th-large"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-base font-black text-gray-900 dark:text-white">
+                  Question Navigator
+                </h2>
+                <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold font-mono">
+                  {{ polls().length }} Questions
+                </span>
+              </div>
+              <p class="text-[11px] text-gray-500">
+                Click any question to instantly broadcast it live to the Stage TV and audience phones.
+              </p>
+            </div>
+          </div>
+
+          <!-- Quick Search Filter -->
+          <div class="relative w-full sm:w-72">
+            <i class="pi pi-search absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+            <input 
+              type="text" 
+              [(ngModel)]="searchQuery" 
+              placeholder="Search by question text or #..." 
+              class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+
+        <!-- Rapid Number Jump Pills [1] [2] [3] ... [30] -->
+        <div class="flex items-center gap-1.5 flex-wrap pb-2 border-b border-gray-100 dark:border-gray-800">
+          <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Quick Jump:</span>
+          @for (p of polls(); track p.id; let idx = $index) {
+            <button 
+              type="button" 
+              (click)="onSelectQuestion(p.id)"
+              [ngClass]="currentPoll()?.id === p.id 
+                ? 'bg-indigo-600 text-white font-black shadow-md ring-2 ring-indigo-400' 
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600'"
+              class="w-8 h-8 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer">
+              {{ idx + 1 }}
+            </button>
+          }
+        </div>
+
+        <!-- Filtered Question Cards List -->
+        <div class="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+          @for (p of filteredPolls(); track p.id; let idx = $index) {
+            <div 
+              class="p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              [ngClass]="currentPoll()?.id === p.id 
+                ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs' 
+                : 'bg-gray-50/50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'">
+              
+              <div class="flex items-start gap-3 flex-1 min-w-0">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 border"
+                  [ngClass]="currentPoll()?.id === p.id 
+                    ? 'bg-indigo-600 text-white border-indigo-500' 
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'">
+                  #{{ p.order || (idx + 1) }}
+                </div>
+
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                      {{ p.question }}
+                    </span>
+                    @if (currentPoll()?.id === p.id) {
+                      <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-bold text-[10px] tracking-wider uppercase border border-emerald-300 dark:border-emerald-800 shrink-0 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live on Stage
+                      </span>
+                    }
+                  </div>
+                  <div class="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
+                    <span>{{ p.options.length }} choices</span>
+                    <span>•</span>
+                    <span>{{ p.isLocked ? 'Voting Locked' : 'Voting Open' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                @if (currentPoll()?.id === p.id) {
+                  <span class="px-3.5 py-1.5 rounded-xl bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold flex items-center gap-1">
+                    <i class="pi pi-check"></i> Currently Live
+                  </span>
+                } @else {
+                  <button 
+                    type="button" 
+                    (click)="onSelectQuestion(p.id)"
+                    class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+                    <i class="pi pi-play text-[10px]"></i> Launch (▶)
+                  </button>
+                }
+              </div>
+            </div>
+          } @empty {
+            <div class="p-8 text-center text-xs text-gray-400 space-y-1">
+              <i class="pi pi-search text-lg text-gray-300 dark:text-gray-600"></i>
+              <div>No questions found matching "{{ searchQuery }}".</div>
+            </div>
+          }
+        </div>
+      </div>
     </div>
   `
 })
@@ -255,6 +410,18 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   currentPoll = this.pollService.currentPoll;
   stats = signal<PollStats | null>(null);
   room = signal<Room | null>(null);
+
+  searchQuery = '';
+  filteredPolls = computed(() => {
+    const q = this.searchQuery.trim().toLowerCase();
+    const list = this.polls();
+    if (!q) return list;
+    return list.filter((p, idx) => 
+      (idx + 1).toString().includes(q) ||
+      (p.order && p.order.toString().includes(q)) ||
+      p.question.toLowerCase().includes(q)
+    );
+  });
 
   isLocked = false;
   showResults = true;
@@ -291,6 +458,17 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.pollSub?.unsubscribe();
     this.pollsListSub?.unsubscribe();
     this.roomSub?.unsubscribe();
+  }
+
+  async setRoomMode(mode: 'live' | 'survey') {
+    await this.pollService.setRoomMode('MATI01', mode);
+    this.messageService.add({
+      severity: 'success',
+      summary: mode === 'survey' ? '📋 Survey Mode Activated' : '🎯 Live Sync Mode Activated',
+      detail: mode === 'survey'
+        ? 'Audience can now freely browse and answer all 30 questions at their own pace!'
+        : 'Audience phones are now synchronized to your live active question.'
+    });
   }
 
   toggleAutoAdvance() {

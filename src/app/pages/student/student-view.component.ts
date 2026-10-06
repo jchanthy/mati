@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService } from '../../services/mati-poll.service';
-import { PollStats, Room } from '../../models/poll.model';
+import { Poll, PollStats, Room } from '../../models/poll.model';
 
 
 @Component({
@@ -32,8 +32,36 @@ import { PollStats, Room } from '../../models/poll.model';
         </div>
       </header>
 
+      <!-- Navigation Tabs: Live Sync vs Survey All Questions -->
+      <div class="px-4 py-2 bg-slate-100 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 z-10 shrink-0">
+        <div class="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-800 rounded-xl w-full">
+          <button 
+            type="button" 
+            (click)="setTab('live')"
+            [ngClass]="activeTab() === 'live' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 font-medium'"
+            class="flex-1 py-1.5 text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <span class="w-2 h-2 rounded-full" [ngClass]="room()?.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'"></span>
+            <span>Live Stage</span>
+          </button>
+          <button 
+            type="button" 
+            (click)="setTab('survey')"
+            [ngClass]="activeTab() === 'survey' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 font-medium'"
+            class="flex-1 py-1.5 text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="pi pi-list-check text-xs"></i>
+            <span>All Questions</span>
+            @if (polls().length > 0) {
+              <span class="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold"
+                [ngClass]="answeredCount() === polls().length ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'">
+                {{ answeredCount() }}/{{ polls().length }}
+              </span>
+            }
+          </button>
+        </div>
+      </div>
+
       <!-- Content Area -->
-      <main class="p-5 flex-1 flex flex-col justify-center">
+      <main class="p-4 sm:p-5 flex-1 flex flex-col justify-start overflow-y-auto">
         @if (room()?.status === 'completed') {
           <!-- Grand Session Completion Card on Phone -->
           <div class="p-8 bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900 rounded-3xl text-center space-y-5 shadow-xl animate-fadein my-auto">
@@ -55,7 +83,133 @@ import { PollStats, Room } from '../../models/poll.model';
               ✨ Look up at the presenter's screen to see the final overall session tally.
             </div>
           </div>
+        } @else if (activeTab() === 'survey') {
+          <!-- SELF-PACED SURVEY MODE VIEW (Choose & vote any question) -->
+          <div class="space-y-4 my-auto w-full">
+            <!-- Survey Progress Bar -->
+            <div class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2 shadow-xs">
+              <div class="flex items-center justify-between text-xs font-bold">
+                <span class="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <i class="pi pi-check-circle text-emerald-500"></i>
+                  <span>Survey Progress: {{ answeredCount() }} of {{ polls().length }}</span>
+                </span>
+                <span class="font-mono text-indigo-600 dark:text-indigo-400">{{ progressPercent() }}%</span>
+              </div>
+              <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-300"
+                  [style.width.%]="progressPercent()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Number Selector Pills [1] [2] ... [30] -->
+            <div class="space-y-1.5">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                Jump to Question:
+              </div>
+              <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                @for (p of polls(); track p.id; let idx = $index) {
+                  <button
+                    type="button"
+                    (click)="selectSurveyPoll(p.id)"
+                    [ngClass]="[
+                      selectedSurveyPollId() === p.id ? 'ring-2 ring-indigo-500 font-black' : '',
+                      hasVotedFor(p.id) 
+                        ? 'bg-emerald-500 text-white shadow-xs' 
+                        : (selectedSurveyPollId() === p.id ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300')
+                    ]"
+                    class="shrink-0 w-9 h-9 rounded-xl text-xs font-bold flex items-center justify-center transition-all cursor-pointer">
+                    @if (hasVotedFor(p.id)) {
+                      <i class="pi pi-check text-[10px] mr-0.5"></i>
+                    }
+                    <span>{{ idx + 1 }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Active Selected Question Card -->
+            @if (activeSurveyPoll(); as sPoll) {
+              <div class="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 shadow-sm animate-fadein">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                    Question #{{ getSurveyIndex(sPoll.id) + 1 }} of {{ polls().length }}
+                  </span>
+                  @if (hasVotedFor(sPoll.id)) {
+                    <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                      <i class="pi pi-check text-[10px]"></i> Answered
+                    </span>
+                  } @else {
+                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                      Unanswered
+                    </span>
+                  }
+                </div>
+
+                <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug">
+                  {{ sPoll.question }}
+                </h2>
+
+                <!-- Options -->
+                <div class="space-y-2.5">
+                  @for (opt of sPoll.options; track opt.id) {
+                    <button
+                      type="button"
+                      (click)="voteSurvey(sPoll.id, opt.id)"
+                      [disabled]="isSubmitting()"
+                      [ngClass]="getVotedOptionFor(sPoll.id) === opt.id 
+                        ? 'border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/50 shadow-sm ring-1 ring-indigo-500' 
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300'"
+                      class="w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 active:scale-98 cursor-pointer">
+                      <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <span class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0"
+                          [ngClass]="getVotedOptionFor(sPoll.id) === opt.id 
+                            ? 'bg-indigo-600 text-white' 
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'">
+                          {{ opt.id }}
+                        </span>
+                        <span class="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
+                          {{ opt.text }}
+                        </span>
+                      </div>
+
+                      @if (getVotedOptionFor(sPoll.id) === opt.id) {
+                        <i class="pi pi-check-circle text-indigo-600 dark:text-indigo-400 text-base shrink-0"></i>
+                      }
+                    </button>
+                  }
+                </div>
+
+                @if (hasVotedFor(sPoll.id)) {
+                  <div class="text-center pt-1">
+                    <button type="button" (click)="changeSurveyVote(sPoll.id)" class="text-xs text-slate-400 hover:text-indigo-600 underline font-medium cursor-pointer">
+                      Change my answer for this question
+                    </button>
+                  </div>
+                }
+
+                <!-- Question Navigation Prev / Next -->
+                <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    (click)="prevSurveyQuestion()"
+                    [disabled]="isFirstSurveyQuestion()"
+                    class="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+                    ← Prev
+                  </button>
+                  <button
+                    type="button"
+                    (click)="nextSurveyQuestion()"
+                    [disabled]="isLastSurveyQuestion()"
+                    class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-700 cursor-pointer">
+                    Next →
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
         } @else {
+          <!-- PRESENTER-LED SYNCHRONIZED LIVE MODE VIEW -->
           @if (pollStats(); as stats) {
             <!-- Synchronized Countdown Timer Bar -->
           @if (remainingSeconds() !== null) {
@@ -293,11 +447,30 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
   room = signal<Room | null>(null);
+  polls = signal<Poll[]>([]);
+  activeTab = signal<'live' | 'survey'>('live');
+  selectedSurveyPollId = signal<string | null>(null);
+  votedOptionsMap = signal<{ [pollId: string]: number }>({});
+
   voterId = signal<string>('');
   voterIdShort = signal<string>('');
   hasVoted = signal<boolean>(false);
   selectedOptionId = signal<number | null>(null);
   isSubmitting = signal<boolean>(false);
+
+  // Survey computed values
+  answeredCount = computed(() => Object.keys(this.votedOptionsMap()).length);
+  progressPercent = computed(() => {
+    const total = this.polls().length;
+    if (total === 0) return 0;
+    return Math.round((this.answeredCount() / total) * 100);
+  });
+  activeSurveyPoll = computed(() => {
+    const list = this.polls();
+    if (list.length === 0) return null;
+    const id = this.selectedSurveyPollId();
+    return (id ? list.find(p => p.id === id) : null) || list[0];
+  });
 
   // Synchronized countdown timer
   remainingSeconds = signal<number | null>(null);
@@ -314,6 +487,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
 
   private pollSub?: Subscription;
   private roomSub?: Subscription;
+  private pollsListSub?: Subscription;
 
   ngOnInit() {
     const vid = this.pollService.getOrCreateVoterId();
@@ -325,19 +499,126 @@ export class StudentViewComponent implements OnInit, OnDestroy {
       this.roomCode.set(code);
       this.listenToPoll(code);
       this.listenToRoom(code);
+      this.listenToRoomPolls(code);
     });
   }
 
   ngOnDestroy() {
     this.pollSub?.unsubscribe();
     this.roomSub?.unsubscribe();
+    this.pollsListSub?.unsubscribe();
     this.stopLocalTimer();
+  }
+
+  setTab(tab: 'live' | 'survey') {
+    this.activeTab.set(tab);
+  }
+
+  selectSurveyPoll(pollId: string) {
+    this.selectedSurveyPollId.set(pollId);
+  }
+
+  hasVotedFor(pollId: string): boolean {
+    return this.votedOptionsMap()[pollId] !== undefined;
+  }
+
+  getVotedOptionFor(pollId: string): number | null {
+    return this.votedOptionsMap()[pollId] ?? null;
+  }
+
+  getSurveyIndex(pollId: string): number {
+    return this.polls().findIndex(p => p.id === pollId);
+  }
+
+  isFirstSurveyQuestion(): boolean {
+    const current = this.activeSurveyPoll();
+    if (!current || this.polls().length === 0) return true;
+    return this.polls()[0].id === current.id;
+  }
+
+  isLastSurveyQuestion(): boolean {
+    const current = this.activeSurveyPoll();
+    const list = this.polls();
+    if (!current || list.length === 0) return true;
+    return list[list.length - 1].id === current.id;
+  }
+
+  prevSurveyQuestion() {
+    const current = this.activeSurveyPoll();
+    if (!current) return;
+    const idx = this.getSurveyIndex(current.id);
+    if (idx > 0) {
+      this.selectedSurveyPollId.set(this.polls()[idx - 1].id);
+    }
+  }
+
+  nextSurveyQuestion() {
+    const current = this.activeSurveyPoll();
+    const list = this.polls();
+    if (!current) return;
+    const idx = this.getSurveyIndex(current.id);
+    if (idx < list.length - 1) {
+      this.selectedSurveyPollId.set(list[idx + 1].id);
+    }
+  }
+
+  async voteSurvey(pollId: string, optionId: number) {
+    if (this.isSubmitting()) return;
+    this.isSubmitting.set(true);
+    try {
+      await this.pollService.submitVote(this.roomCode(), pollId, this.voterId(), optionId);
+      const currentMap = { ...this.votedOptionsMap() };
+      currentMap[pollId] = optionId;
+      this.votedOptionsMap.set(currentMap);
+      
+      // Auto-advance to next question if available
+      const list = this.polls();
+      const idx = this.getSurveyIndex(pollId);
+      if (idx < list.length - 1) {
+        setTimeout(() => {
+          this.selectedSurveyPollId.set(list[idx + 1].id);
+        }, 300);
+      }
+    } finally {
+      this.isSubmitting.set(false);
+    }
+  }
+
+  changeSurveyVote(pollId: string) {
+    const currentMap = { ...this.votedOptionsMap() };
+    delete currentMap[pollId];
+    this.votedOptionsMap.set(currentMap);
+  }
+
+  private listenToRoomPolls(code: string) {
+    this.pollsListSub?.unsubscribe();
+    this.pollsListSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
+      this.polls.set(list);
+      if (!this.selectedSurveyPollId() && list.length > 0) {
+        this.selectedSurveyPollId.set(list[0].id);
+      }
+      this.refreshVotedOptions(code, list);
+    });
+  }
+
+  private refreshVotedOptions(code: string, polls: Poll[]) {
+    const map: { [pollId: string]: number } = {};
+    for (const p of polls) {
+      const opt = this.pollService.getVotedOption(code, p.id);
+      if (opt !== null) {
+        map[p.id] = opt;
+      }
+    }
+    this.votedOptionsMap.set(map);
   }
 
   private listenToRoom(code: string) {
     this.roomSub?.unsubscribe();
     this.roomSub = this.pollService.listenToRoom(code).subscribe(roomData => {
       this.room.set(roomData);
+      if (roomData?.mode === 'survey') {
+        this.activeTab.set('survey');
+      }
     });
   }
 
