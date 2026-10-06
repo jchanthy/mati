@@ -1,11 +1,20 @@
 import { Routes } from '@angular/router';
 import { AppLayoutComponent } from './layout/app.layout.component';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  // Teacher Dashboard (Sakai Shell)
+  // Admin Login with Google
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./pages/auth/login.component').then(m => m.LoginComponent)
+  },
+
+  // Teacher Dashboard (Protected by Google Auth Guard)
   {
     path: 'dashboard',
     component: AppLayoutComponent,
+    canActivate: [authGuard],
     children: [
       {
         path: '',
