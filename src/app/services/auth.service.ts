@@ -166,8 +166,13 @@ export class AuthService {
 
       // Not registered in Firebase users collection
       return null;
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Mati Auth] verifyAndGetAuthorizedUser error:', err);
+      if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
+        throw new Error(
+          'Firestore Permission Denied: Your Firebase Security Rules are blocking access to the "users" collection. Please allow read/write on "/users/{userId}" in Firebase Console > Firestore > Rules.'
+        );
+      }
       throw err;
     }
   }
