@@ -34,478 +34,415 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
   ],
   providers: [MessageService],
   template: `
-    <div class="space-y-6 max-w-5xl mx-auto">
+    <div class="space-y-4 max-w-7xl mx-auto px-2 sm:px-4">
       <p-toast></p-toast>
 
-      <!-- Controller Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xs">
-        <div>
-          <div class="flex items-center gap-2">
-            @if (room()?.status === 'completed') {
-              <span class="w-3 h-3 rounded-full bg-purple-500"></span>
-              <span class="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Session Completed (Concluded)</span>
-            } @else if (room()?.status === 'draft' || room()?.status === 'closed' || !room()?.activePollId) {
-              <span class="w-3 h-3 rounded-full bg-amber-400 animate-pulse"></span>
-              <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Session Inactive / Ready to Start</span>
-            } @else {
-              <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Live Stage Broadcasting</span>
-            }
+      <!-- 1. Sleek Compact Header Bar -->
+      <div class="bg-white dark:bg-gray-900 px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center font-black shadow-sm shadow-indigo-600/30 shrink-0">
+            <i class="pi pi-sliders-h text-base"></i>
           </div>
-          <div class="flex items-center gap-3 mt-1 flex-wrap">
-            <h1 class="text-2xl font-black text-gray-900 dark:text-white">
-              Mati Controller: <span class="text-indigo-600 dark:text-indigo-400">{{ roomCode() }}</span>
-            </h1>
-            <!-- Room Switcher Dropdown -->
-            <div class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700">
-              <i class="pi pi-compass text-indigo-600 dark:text-indigo-400 text-xs"></i>
-              <select 
-                [ngModel]="roomCode()" 
-                (ngModelChange)="switchRoom($event)" 
-                class="bg-transparent text-xs font-black text-gray-800 dark:text-gray-200 focus:outline-hidden cursor-pointer">
-                @for (r of availableRooms(); track r.code) {
-                  <option [value]="r.code" class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
-                    {{ r.code }} - {{ r.title }}
-                  </option>
-                }
-              </select>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-base font-black text-gray-900 dark:text-white">
+                Mati Controller
+              </h1>
+              <!-- Room Switcher Dropdown Badge -->
+              <div class="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span class="text-xs font-mono font-black text-indigo-600 dark:text-indigo-400">{{ roomCode() }}</span>
+                <select 
+                  [ngModel]="roomCode()" 
+                  (ngModelChange)="switchRoom($event)" 
+                  class="bg-transparent text-xs font-bold text-gray-700 dark:text-gray-300 focus:outline-hidden cursor-pointer">
+                  @for (r of availableRooms(); track r.code) {
+                    <option [value]="r.code" class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+                      {{ r.code }} - {{ r.title }}
+                    </option>
+                  }
+                </select>
+              </div>
+              <!-- Status Indicator -->
+              @if (room()?.status === 'completed') {
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">Concluded</span>
+              } @else if (room()?.activePollId) {
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live Sync
+                </span>
+              } @else {
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">Ready</span>
+              }
+            </div>
+            <div class="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
+              <span>{{ polls().length }} of {{ allRawPolls().length }} questions active</span>
+              <span>•</span>
+              <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ stats()?.totalVotes || 0 }} total votes</span>
             </div>
           </div>
-          <p class="text-xs text-gray-500 mt-1">Live orchestrator for questions, lock status, and projection stage visibility.</p>
         </div>
 
+        <!-- Header Actions -->
         <div class="flex items-center gap-2 flex-wrap">
+          <!-- Session Lifecycle Action -->
           @if (room()?.status === 'completed') {
-            <button type="button" (click)="restartSession()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer">
-              <i class="pi pi-play"></i>
-              <span>Start Live Session</span>
+            <button type="button" (click)="restartSession()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+              <i class="pi pi-replay text-xs"></i>
+              <span>Restart (Q1)</span>
             </button>
           } @else if (!room()?.activePollId) {
-            <button type="button" (click)="startSessionFirstQuestion()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer">
-              <i class="pi pi-play"></i>
-              <span>Start Session (Q1)</span>
+            <button type="button" (click)="startSessionFirstQuestion()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+              <i class="pi pi-play text-xs"></i>
+              <span>Start Session</span>
             </button>
           } @else {
-            <button type="button" (click)="finishSession()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
-              <i class="pi pi-check-circle"></i>
-              <span>Finish Session</span>
+            <button type="button" (click)="finishSession()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+              <i class="pi pi-check-circle text-xs"></i>
+              <span>Finish</span>
             </button>
           }
 
+          <!-- Pick Questions Button -->
           <button 
             type="button" 
             (click)="openPickQuestionsDialog()" 
-            class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-600/20 transition-all cursor-pointer">
-            <i class="pi pi-check-square"></i>
+            class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Pick which questions are included in voting">
+            <i class="pi pi-check-square text-xs"></i>
             <span>Pick Questions ({{ selectedQuestionCount() || allRawPolls().length }}/{{ allRawPolls().length }})</span>
           </button>
+
+          <!-- External Stage & Voter links -->
+          <a [routerLink]="['/stage', roomCode()]" target="_blank" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1 transition-all" title="Open Stage on TV">
+            <i class="pi pi-desktop text-xs"></i>
+            <span class="hidden sm:inline">Stage</span>
+          </a>
+          <a [routerLink]="['/vote', roomCode()]" target="_blank" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1 transition-all" title="Open Voter Mobile view">
+            <i class="pi pi-mobile text-xs"></i>
+            <span class="hidden sm:inline">Voter</span>
+          </a>
+
+          <!-- Quick Settings Toggle -->
           <button 
             type="button" 
-            (click)="showNewPollDialog = true" 
-            class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer">
-            <i class="pi pi-plus"></i>
-            <span>Add Question</span>
+            (click)="toggleSettingsPanel()" 
+            [ngClass]="showSettingsPanel() ? 'bg-indigo-600 text-white' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'"
+            class="p-2 rounded-xl text-xs font-bold transition-all cursor-pointer" 
+            title="Session Settings (Mode, TV theme, Auto timer)">
+            <i class="pi pi-cog text-xs"></i>
           </button>
-          <button 
-            type="button" 
-            (click)="showNewRoomDialog = true" 
-            class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer">
-            <i class="pi pi-building"></i>
-            <span>New Room</span>
-          </button>
-          <a [routerLink]="['/stage', roomCode()]" target="_blank" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
-            <i class="pi pi-desktop"></i>
-            <span>Stage (TV)</span>
-          </a>
-          <a [routerLink]="['/vote', roomCode()]" target="_blank" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
-            <i class="pi pi-mobile"></i>
-            <span>Voter</span>
-          </a>
-          <a routerLink="/dashboard" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-all">
-            Studio
-          </a>
         </div>
       </div>
 
-      <!-- Mode Switcher Banner: Live Stage vs Self-Paced Survey -->
-      <div class="p-4 sm:p-5 bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
-            [ngClass]="room()?.mode === 'survey' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'">
-            <i [class]="room()?.mode === 'survey' ? 'pi pi-list-check' : 'pi pi-desktop'"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-black text-gray-900 dark:text-white">
-                {{ room()?.mode === 'survey' ? 'Self-Paced Survey Mode' : 'Presenter-Led Live Stage Mode' }}
-              </span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider"
-                [ngClass]="room()?.mode === 'survey' ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800' : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'">
-                {{ room()?.mode === 'survey' ? 'Survey Active' : 'Live Sync' }}
-              </span>
+      <!-- Collapsible Settings Panel -->
+      @if (showSettingsPanel()) {
+        <div class="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex flex-wrap items-center justify-between gap-4 animate-fadein">
+          <!-- Room Mode -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Mode:</span>
+            <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-xl border border-gray-200 dark:border-gray-700">
+              <button 
+                type="button" 
+                (click)="setRoomMode('live')"
+                [ngClass]="room()?.mode !== 'survey' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'"
+                class="px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer">
+                Live Sync
+              </button>
+              <button 
+                type="button" 
+                (click)="setRoomMode('survey')"
+                [ngClass]="room()?.mode === 'survey' ? 'bg-amber-600 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'"
+                class="px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer">
+                Self-Paced Survey
+              </button>
             </div>
-            <p class="text-xs text-gray-500 mt-0.5">
-              {{ room()?.mode === 'survey' 
-                ? 'Audience can freely browse, choose, and vote on all 30 questions at their own speed on their phones.'
-                : 'Audience phones and TV screen are synchronized to the active question you launch.' }}
-            </p>
+          </div>
+
+          <!-- TV Theme -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">TV Theme:</span>
+            <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-xl border border-gray-200 dark:border-gray-700">
+              <button 
+                type="button" 
+                (click)="setStageTheme('dark')"
+                [ngClass]="(room()?.theme || 'dark') === 'dark' ? 'bg-slate-900 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400'"
+                class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer">
+                🌙 Dark
+              </button>
+              <button 
+                type="button" 
+                (click)="setStageTheme('light')"
+                [ngClass]="room()?.theme === 'light' ? 'bg-white text-indigo-600 shadow-xs' : 'text-gray-600 dark:text-gray-400'"
+                class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer">
+                ☀️ Light
+              </button>
+            </div>
+          </div>
+
+          <!-- Auto Next Advance -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Auto Advance:</span>
+            <p-toggleswitch [(ngModel)]="autoAdvanceEnabled" (onChange)="toggleAutoAdvance()"></p-toggleswitch>
+            @if (autoAdvanceEnabled) {
+              <select [(ngModel)]="timerDuration" (ngModelChange)="resetTimer()" class="text-xs font-bold rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1">
+                <option [value]="15">15s</option>
+                <option [value]="20">20s</option>
+                <option [value]="30">30s</option>
+                <option [value]="45">45s</option>
+                <option [value]="60">60s</option>
+              </select>
+            }
+          </div>
+
+          <!-- Quick Dialog Triggers -->
+          <div class="flex items-center gap-1.5 ml-auto">
+            <button type="button" (click)="showNewPollDialog = true" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold border border-emerald-200 dark:border-emerald-800 cursor-pointer">
+              + New Question
+            </button>
+            <button type="button" (click)="showNewRoomDialog = true" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 cursor-pointer">
+              + New Room
+            </button>
           </div>
         </div>
+      }
 
-        <div class="flex items-center gap-2 shrink-0 w-full md:w-auto flex-wrap">
-          <!-- Mode switcher buttons -->
-          <button 
-            type="button" 
-            (click)="setRoomMode('live')"
-            [ngClass]="room()?.mode !== 'survey' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
-            class="flex-1 md:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-            <i class="pi pi-desktop"></i>
-            <span>Live Sync</span>
-          </button>
-          <button 
-            type="button" 
-            (click)="setRoomMode('survey')"
-            [ngClass]="room()?.mode === 'survey' ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
-            class="flex-1 md:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-            <i class="pi pi-list-check"></i>
-            <span>Survey</span>
-          </button>
-
-          <!-- TV Theme Selector (Dark vs Light) -->
-          <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              (click)="setStageTheme('dark')"
-              [ngClass]="(room()?.theme || 'dark') === 'dark' ? 'bg-slate-900 text-white shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
-              class="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
-              title="Project TV in Dark Mode">
-              <i class="pi pi-moon text-xs"></i>
-              <span>TV Dark</span>
-            </button>
-            <button
-              type="button"
-              (click)="setStageTheme('light')"
-              [ngClass]="room()?.theme === 'light' ? 'bg-white text-indigo-600 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
-              class="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
-              title="Project TV in Light Mode">
-              <i class="pi pi-sun text-xs"></i>
-              <span>TV Light</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Completed Session Alert Banner -->
+      <!-- Completed Banner if finished -->
       @if (room()?.status === 'completed') {
-        <div class="p-5 rounded-3xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fadein">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center text-xl shadow-md shadow-purple-600/30">
-              🎉
-            </div>
+        <div class="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 flex items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">🎉</span>
             <div>
-              <div class="text-sm font-black text-purple-950 dark:text-purple-200">
-                Poll Session Completed! (ការស្ទង់មតិបានបញ្ចប់ដោយជោគជ័យ)
-              </div>
-              <div class="text-xs text-purple-700 dark:text-purple-400">
-                Presenter Stage (TV) and audience phones are displaying the celebration and summary screen.
-              </div>
+              <strong class="text-purple-950 dark:text-purple-200">Session Completed!</strong>
+              <span class="text-purple-700 dark:text-purple-300 ml-1">Stage and participant phones are displaying the celebration screen.</span>
             </div>
           </div>
-          <button type="button" (click)="restartSession()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0">
-            <i class="pi pi-replay"></i> Restart From Q1
+          <button type="button" (click)="restartSession()" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold cursor-pointer shrink-0">
+            Restart From Q1
           </button>
         </div>
       }
 
-      <!-- Quick Remote Controls Row -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Toggle Tally & Lock Controls -->
-        <div class="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-5">
-          <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-            <div>
-              <div class="text-sm font-bold text-gray-900 dark:text-white">Lock Voting</div>
-              <div class="text-xs text-gray-500">Block new answers from participant phones</div>
-            </div>
-            <p-toggleswitch [(ngModel)]="isLocked" (onChange)="onLockChange()"></p-toggleswitch>
-          </div>
-
-          <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-            <div>
-              <div class="text-sm font-bold text-gray-900 dark:text-white">Show Live Results</div>
-              <div class="text-xs text-gray-500">Reveal bar charts to audience on the stage</div>
-            </div>
-            <p-toggleswitch [(ngModel)]="showResults" (onChange)="onShowResultsChange()"></p-toggleswitch>
-          </div>
-
-          <!-- Auto Next Question Timer (Slido-enhanced feature) -->
-          <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-            <div>
-              <div class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Auto Next Question</span>
-                @if (autoAdvanceEnabled) {
-                  <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-black animate-pulse">
-                    ⏱ {{ countdownSeconds }}s
-                  </span>
-                }
-              </div>
-              <div class="text-xs text-gray-500">Automatically advance & synchronize countdown on voter phones and TV stage</div>
-            </div>
-            <div class="flex items-center gap-2">
-              @if (autoAdvanceEnabled) {
-                <select [(ngModel)]="timerDuration" (ngModelChange)="resetTimer()" class="text-xs font-bold rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1">
-                  <option [value]="15">15s</option>
-                  <option [value]="20">20s</option>
-                  <option [value]="30">30s</option>
-                  <option [value]="45">45s</option>
-                  <option [value]="60">60s</option>
-                </select>
-              }
-              <p-toggleswitch [(ngModel)]="autoAdvanceEnabled" (onChange)="toggleAutoAdvance()"></p-toggleswitch>
-            </div>
-          </div>
-
-          <!-- Quick One-Shot Timer Bar -->
-          <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800 text-xs">
-            <div>
-              <div class="font-bold text-gray-900 dark:text-white">Live Broadcast Timer</div>
-              <div class="text-gray-500 text-[11px]">Sync countdown to participant phones & TV</div>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <button type="button" (click)="triggerQuestionTimer(15)" class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-indigo-950/60 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold border border-gray-200 dark:border-gray-700 transition-all cursor-pointer">15s</button>
-              <button type="button" (click)="triggerQuestionTimer(30)" class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-indigo-950/60 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold border border-gray-200 dark:border-gray-700 transition-all cursor-pointer">30s</button>
-              <button type="button" (click)="triggerQuestionTimer(60)" class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-indigo-50 dark:bg-gray-800 dark:hover:bg-indigo-950/60 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold border border-gray-200 dark:border-gray-700 transition-all cursor-pointer">60s</button>
-              <button type="button" (click)="clearQuestionTimer()" class="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 font-bold border border-red-200 dark:border-red-900 transition-all cursor-pointer">Stop</button>
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-            <div class="flex items-center justify-between">
-              <div class="text-xs font-bold text-gray-700 dark:text-gray-300">
-                Question {{ getCurrentQuestionIndex() }} of {{ polls().length }}
-              </div>
+      <!-- 2. Responsive 2-Column Command Center -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <!-- LEFT COLUMN (Col 7 / 12): Active Question Remote & Live Tally -->
+        <div class="lg:col-span-7 space-y-4">
+          <!-- Active Question Hero Card -->
+          <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-4">
+            <!-- Question Top Nav Bar -->
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800 gap-2">
               <div class="flex items-center gap-2">
-                <button pButton label="Prev" icon="pi pi-arrow-left" class="p-button-outlined p-button-sm rounded-xl" [disabled]="isFirstQuestion()" (click)="prevQuestion()"></button>
-                <button pButton label="Next" icon="pi pi-arrow-right" class="p-button-primary p-button-sm rounded-xl" [disabled]="isLastQuestion()" (click)="nextQuestion()"></button>
-              </div>
-            </div>
-
-            <!-- Direct Jump Selector for 30+ questions -->
-            <div class="pt-1">
-              <select 
-                [ngModel]="currentPoll()?.id" 
-                (ngModelChange)="onSelectQuestion($event)" 
-                class="w-full p-2 text-xs font-semibold rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500">
-                @for (p of polls(); track p.id; let idx = $index) {
-                  <option [value]="p.id">
-                    #{{ idx + 1 }}: {{ p.question.length > 50 ? (p.question.substring(0, 50) + '...') : p.question }}
-                  </option>
-                }
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Audience Participation Stat Card -->
-        <div class="bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900 text-white p-6 rounded-3xl shadow-lg flex flex-col justify-between">
-          <div>
-            <div class="text-xs font-bold uppercase tracking-wider text-indigo-300">Audience Engagement</div>
-            <div class="mt-4 flex items-baseline gap-3">
-              <span class="text-5xl font-black">{{ stats()?.totalVotes || 0 }}</span>
-              <span class="text-lg font-medium text-indigo-200">total votes recorded</span>
-            </div>
-            <p class="text-xs text-indigo-200 mt-2">
-              Updates in real-time instantly without page refreshes.
-            </p>
-          </div>
-
-          <div class="mt-6 pt-4 border-t border-indigo-700/60 flex items-center justify-between text-xs text-indigo-200">
-            <span class="flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-              State: {{ isLocked ? 'LOCKED' : 'OPEN FOR VOTING' }}
-            </span>
-            <span>Display: {{ showResults ? 'RESULTS VISIBLE' : 'RESULTS HIDDEN' }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Current Active Question Details & Live Tally Preview -->
-      <div class="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
-          <div>
-            <div class="text-xs font-bold uppercase tracking-wider text-gray-400">Active Live Question</div>
-            <h2 class="text-xl font-black text-gray-900 dark:text-white mt-0.5">
-              {{ currentPoll()?.question || 'No question active' }}
-            </h2>
-          </div>
-          <div class="flex items-center gap-2">
-            @if (isLocked) {
-              <p-tag severity="danger" value="Voting Closed" icon="pi pi-lock"></p-tag>
-            } @else {
-              <p-tag severity="success" value="Accepting Votes" icon="pi pi-check-circle"></p-tag>
-            }
-          </div>
-        </div>
-
-        <!-- Live Tally Preview for Teacher -->
-        <div class="space-y-4">
-          <div class="text-xs font-bold uppercase tracking-wider text-gray-500">Live Breakdown</div>
-          @if (currentPoll()) {
-            @for (opt of currentPoll()!.options; track opt.id) {
-              <div class="space-y-1.5 p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
-                <div class="flex justify-between items-center text-sm font-semibold">
-                  <span class="text-gray-800 dark:text-gray-200">
-                    <span class="inline-flex w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs items-center justify-center mr-1.5 font-bold">
-                      {{ opt.id }}
-                    </span>
-                    {{ opt.text }}
-                  </span>
-                  <span class="text-indigo-600 dark:text-indigo-400 font-bold">
-                    {{ stats()?.votesPerOption?.[opt.id] || 0 }} votes ({{ stats()?.percentages?.[opt.id] || 0 }}%)
-                  </span>
-                </div>
-                <div class="w-full bg-gray-200 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
-                  <div class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" [style.width.%]="stats()?.percentages?.[opt.id] || 0"></div>
-                </div>
-              </div>
-            }
-          }
-        </div>
-      </div>
-
-      <!-- Slido-Style Question Navigator (Browse, Search, and 1-Click Launch) -->
-      <div class="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
-          <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base">
-              <i class="pi pi-th-large"></i>
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h2 class="text-base font-black text-gray-900 dark:text-white">
-                  Question Navigator
-                </h2>
-                <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold font-mono">
-                  {{ polls().length }} Questions
+                <span class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-mono font-black text-xs">
+                  Q {{ getCurrentQuestionIndex() }} / {{ polls().length }}
                 </span>
-                @if (selectedQuestionCount() > 0 && selectedQuestionCount() < allRawPolls().length) {
-                  <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-black">
-                    Active Subset: {{ selectedQuestionCount() }} of {{ allRawPolls().length }}
+                @if (isLocked) {
+                  <span class="px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 font-bold text-[10px] uppercase tracking-wider border border-red-200 dark:border-red-900">
+                    <i class="pi pi-lock text-[9px] mr-0.5"></i> Locked
+                  </span>
+                } @else {
+                  <span class="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] uppercase tracking-wider border border-emerald-200 dark:border-emerald-900">
+                    <i class="pi pi-check text-[9px] mr-0.5"></i> Voting Open
                   </span>
                 }
+              </div>
+
+              <!-- Prev / Next Big Buttons -->
+              <div class="flex items-center gap-2">
+                <button 
+                  type="button"
+                  (click)="prevQuestion()" 
+                  [disabled]="isFirstQuestion()"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer">
+                  <i class="pi pi-arrow-left text-[10px]"></i> Prev
+                </button>
+                <button 
+                  type="button"
+                  (click)="nextQuestion()" 
+                  [disabled]="isLastQuestion()"
+                  class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 shadow-xs cursor-pointer">
+                  Next <i class="pi pi-arrow-right text-[10px]"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Active Question Text -->
+            <div>
+              <h2 class="text-lg font-black text-gray-900 dark:text-white leading-snug">
+                {{ currentPoll()?.question || 'No question active' }}
+              </h2>
+            </div>
+
+            <!-- Live Options Breakdown -->
+            <div class="space-y-2.5 pt-1">
+              @if (currentPoll()) {
+                @for (opt of currentPoll()!.options; track opt.id) {
+                  <div class="p-3 rounded-xl bg-gray-50/80 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-1.5">
+                    <div class="flex justify-between items-center text-xs font-semibold">
+                      <span class="text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                        <span class="w-5 h-5 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[11px] font-black flex items-center justify-center border border-gray-200 dark:border-gray-600">
+                          {{ opt.id }}
+                        </span>
+                        <span>{{ opt.text }}</span>
+                      </span>
+                      <span class="text-indigo-600 dark:text-indigo-400 font-bold font-mono">
+                        {{ stats()?.votesPerOption?.[opt.id] || 0 }} ({{ stats()?.percentages?.[opt.id] || 0 }}%)
+                      </span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+                      <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" [style.width.%]="stats()?.percentages?.[opt.id] || 0"></div>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+
+            <!-- Sleek Control Strip (Toggles & Countdown Timer) -->
+            <div class="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <!-- Lock Toggle -->
+                <div class="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <div class="text-xs">
+                    <div class="font-bold text-gray-900 dark:text-white">Lock Voting</div>
+                    <div class="text-[10px] text-gray-500">Block phone input</div>
+                  </div>
+                  <p-toggleswitch [(ngModel)]="isLocked" (onChange)="onLockChange()"></p-toggleswitch>
+                </div>
+
+                <!-- Show Results Toggle -->
+                <div class="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <div class="text-xs">
+                    <div class="font-bold text-gray-900 dark:text-white">Stage Charts</div>
+                    <div class="text-[10px] text-gray-500">Show bar chart on TV</div>
+                  </div>
+                  <p-toggleswitch [(ngModel)]="showResults" (onChange)="onShowResultsChange()"></p-toggleswitch>
+                </div>
+              </div>
+
+              <!-- Live Countdown Timer Row -->
+              <div class="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+                <div class="text-xs">
+                  <span class="font-bold text-gray-900 dark:text-white">Broadcast Timer</span>
+                  <span class="text-[10px] text-gray-500 ml-1.5">Sync TV & Phones</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button type="button" (click)="triggerQuestionTimer(15)" class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-all cursor-pointer">15s</button>
+                  <button type="button" (click)="triggerQuestionTimer(30)" class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-all cursor-pointer">30s</button>
+                  <button type="button" (click)="triggerQuestionTimer(60)" class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-all cursor-pointer">60s</button>
+                  <button type="button" (click)="clearQuestionTimer()" class="px-2 py-0.5 rounded-md bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs border border-red-200 dark:border-red-900 transition-all cursor-pointer">Stop</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN (Col 5 / 12): Question Playlist Deck -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-3">
+            <!-- Playlist Header -->
+            <div class="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+              <div class="flex items-center gap-1.5">
+                <i class="pi pi-list text-indigo-600 dark:text-indigo-400 text-xs"></i>
+                <h3 class="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-white">Question Deck</h3>
+                <span class="px-1.5 py-0.2 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-[10px]">
+                  {{ polls().length }}
+                </span>
+              </div>
+              <div class="flex items-center gap-1.5">
                 <button 
                   type="button" 
                   (click)="openPickQuestionsDialog()" 
-                  class="ml-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer">
-                  <i class="pi pi-check-square text-xs"></i>
-                  <span>Pick Questions to Vote ({{ selectedQuestionCount() || allRawPolls().length }})</span>
+                  class="px-2 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 cursor-pointer">
+                  Pick ({{ selectedQuestionCount() || allRawPolls().length }})
                 </button>
                 <button 
                   type="button" 
                   (click)="showNewPollDialog = true" 
-                  class="ml-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-all cursor-pointer">
-                  <i class="pi pi-plus text-[10px]"></i>
-                  <span>+ Add Question</span>
+                  class="px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-2xs">
+                  + Add
                 </button>
               </div>
-              <p class="text-[11px] text-gray-500">
-                Click any question to instantly broadcast it live to the Stage TV and audience phones.
-              </p>
             </div>
-          </div>
 
-          <!-- Quick Search Filter -->
-          <div class="relative w-full sm:w-72">
-            <i class="pi pi-search absolute left-3 top-2.5 text-gray-400 text-xs"></i>
-            <input 
-              type="text" 
-              [(ngModel)]="searchQuery" 
-              placeholder="Search by question text or #..." 
-              class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500" />
-          </div>
-        </div>
+            <!-- Search Filter -->
+            <div class="relative">
+              <i class="pi pi-search absolute left-2.5 top-2.5 text-gray-400 text-xs"></i>
+              <input 
+                type="text" 
+                [(ngModel)]="searchQuery" 
+                placeholder="Search questions..." 
+                class="w-full pl-7 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500" />
+            </div>
 
-        <!-- Rapid Number Jump Pills [1] [2] [3] ... [30] -->
-        <div class="flex items-center gap-1.5 flex-wrap pb-2 border-b border-gray-100 dark:border-gray-800">
-          <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Quick Jump:</span>
-          @for (p of polls(); track p.id; let idx = $index) {
-            <button 
-              type="button" 
-              (click)="onSelectQuestion(p.id)"
-              [ngClass]="currentPoll()?.id === p.id 
-                ? 'bg-indigo-600 text-white font-black shadow-md ring-2 ring-indigo-400' 
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600'"
-              class="w-8 h-8 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer">
-              {{ idx + 1 }}
-            </button>
-          }
-        </div>
-
-        <!-- Filtered Question Cards List -->
-        <div class="space-y-2.5 max-h-96 overflow-y-auto pr-1">
-          @for (p of filteredPolls(); track p.id; let idx = $index) {
-            <div 
-              class="p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              [ngClass]="currentPoll()?.id === p.id 
-                ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs' 
-                : 'bg-gray-50/50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'">
-              
-              <div class="flex items-start gap-3 flex-1 min-w-0">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 border"
+            <!-- Quick Number Strip [1] [2] [3]... -->
+            <div class="flex items-center gap-1 flex-wrap max-h-16 overflow-y-auto pb-1">
+              @for (p of polls(); track p.id; let idx = $index) {
+                <button 
+                  type="button" 
+                  (click)="onSelectQuestion(p.id)"
                   [ngClass]="currentPoll()?.id === p.id 
-                    ? 'bg-indigo-600 text-white border-indigo-500' 
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'">
-                  #{{ p.order || (idx + 1) }}
-                </div>
+                    ? 'bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400' 
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600'"
+                  class="w-6 h-6 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center cursor-pointer">
+                  {{ idx + 1 }}
+                </button>
+              }
+            </div>
 
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
-                      {{ p.question }}
+            <!-- Scrollable Questions List -->
+            <div class="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+              @for (p of filteredPolls(); track p.id; let idx = $index) {
+                <div 
+                  class="p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2.5 cursor-pointer"
+                  (click)="onSelectQuestion(p.id)"
+                  [ngClass]="currentPoll()?.id === p.id 
+                    ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-2xs' 
+                    : 'bg-gray-50/50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 hover:border-gray-300'">
+                  
+                  <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <span 
+                      class="w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 border"
+                      [ngClass]="currentPoll()?.id === p.id 
+                        ? 'bg-indigo-600 text-white border-indigo-500' 
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600'">
+                      #{{ p.order || (idx + 1) }}
                     </span>
+                    <div class="min-w-0 flex-1">
+                      <div class="text-xs font-bold text-gray-900 dark:text-white truncate">
+                        {{ p.question }}
+                      </div>
+                      <div class="text-[10px] text-gray-500">
+                        {{ p.options.length }} options {{ p.correctOptionId ? '• Scored' : '' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-1 shrink-0" (click)="$event.stopPropagation()">
                     @if (currentPoll()?.id === p.id) {
-                      <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-bold text-[10px] tracking-wider uppercase border border-emerald-300 dark:border-emerald-800 shrink-0 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Live on Stage
+                      <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
                       </span>
+                    } @else {
+                      <button 
+                        type="button" 
+                        (click)="onSelectQuestion(p.id)"
+                        class="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[10px] font-bold cursor-pointer">
+                        Launch
+                      </button>
                     }
-                  </div>
-                  <div class="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
-                    <span>{{ p.options.length }} choices</span>
-                    <span>•</span>
-                    <span>{{ p.isLocked ? 'Voting Locked' : 'Voting Open' }}</span>
-                  </div>
-                </div>
-              </div>
-
-                <div class="flex items-center gap-1.5">
-                  @if (currentPoll()?.id === p.id) {
-                    <span class="px-3.5 py-1.5 rounded-xl bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold flex items-center gap-1">
-                      <i class="pi pi-check"></i> Currently Live
-                    </span>
-                  } @else {
-                    <button 
-                      type="button" 
-                      (click)="onSelectQuestion(p.id)"
-                      class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
-                      <i class="pi pi-play text-[10px]"></i> Launch (▶)
+                    <button
+                      type="button"
+                      (click)="deletePoll(p.id)"
+                      title="Delete Question"
+                      class="p-1 text-slate-400 hover:text-red-600 rounded transition-colors cursor-pointer">
+                      <i class="pi pi-trash text-[11px]"></i>
                     </button>
-                  }
-
-                  <button
-                    type="button"
-                    (click)="deletePoll(p.id)"
-                    title="Delete Question"
-                    class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer">
-                    <i class="pi pi-trash text-xs"></i>
-                  </button>
+                  </div>
                 </div>
+              } @empty {
+                <div class="p-6 text-center text-xs text-gray-400 space-y-1">
+                  <div>No questions matching "{{ searchQuery }}".</div>
+                </div>
+              }
             </div>
-          } @empty {
-            <div class="p-8 text-center text-xs text-gray-400 space-y-1">
-              <i class="pi pi-search text-lg text-gray-300 dark:text-gray-600"></i>
-              <div>No questions found matching "{{ searchQuery }}".</div>
-            </div>
-          }
+          </div>
         </div>
       </div>
 
@@ -672,6 +609,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   currentUser = this.authService.currentUser;
   isAdmin = this.authService.isAdmin;
 
+  showSettingsPanel = signal<boolean>(false);
   showNewRoomDialog = false;
   newRoomTitle = '';
   newRoomCode = '';
@@ -812,6 +750,10 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.roomSub?.unsubscribe();
     this.allRoomsSub?.unsubscribe();
     this.routeParamSub?.unsubscribe();
+  }
+
+  toggleSettingsPanel() {
+    this.showSettingsPanel.update(v => !v);
   }
 
   // Pick Questions Subset Methods
