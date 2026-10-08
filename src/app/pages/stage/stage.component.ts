@@ -38,80 +38,34 @@ import QRCode from 'qrcode';
             <div class="flex items-center gap-2">
               <span class="text-xl sm:text-2xl font-black tracking-tight leading-none"
                 [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">Mati</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest border"
-                [ngClass]="isLight() ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-indigo-950 text-indigo-400 border-indigo-800'">
-                Presenter Stage
-              </span>
               @if (room()?.mode === 'survey') {
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1 shadow-sm border"
                   [ngClass]="isLight() ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-amber-950/80 text-amber-300 border-amber-800'">
-                  <i class="pi pi-list-check text-[10px]"></i> Survey Mode
+                  <i class="pi pi-list-check text-[10px]"></i> Survey
                 </span>
               }
             </div>
           </div>
         </div>
 
-        <!-- Header Right: Live Stage Status Widget & Room Switcher -->
-        <div class="flex items-center gap-2 flex-wrap">
-          <!-- Transient Switch Notification -->
-          @if (recentlySwitchedNotice()) {
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-md animate-pulse">
-              <i class="pi pi-sync"></i>
-              <span>{{ recentlySwitchedNotice() }}</span>
-            </span>
-          }
-
-          <!-- Room Switcher Dropdown (Allows TV operator to switch group directly) -->
-          @if (availableRooms().length > 1) {
-            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border backdrop-blur-md shadow-2xs transition-colors duration-300"
-              [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
-              <i class="pi pi-compass text-indigo-500 text-xs"></i>
-              <select 
-                [ngModel]="roomCode()" 
-                (ngModelChange)="onManualRoomChange($event)" 
-                class="bg-transparent text-xs font-black focus:outline-hidden cursor-pointer"
-                [ngClass]="isLight() ? 'text-slate-800' : 'text-slate-200'"
-                title="Switch presentation group / room">
-                @for (r of availableRooms(); track r.code) {
-                  <option [value]="r.code" class="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                    {{ r.code }} - {{ r.title }}
-                  </option>
-                }
-              </select>
-            </div>
-          }
-
-          <!-- Auto-Sync With Controller Toggle Pill -->
-          <button
-            type="button"
-            (click)="toggleAutoSync()"
-            [title]="autoSyncWithPresenter() ? 'Live Auto-Sync Active: TV automatically updates when presenter switches room/group.' : 'Auto-Sync Paused: TV locked to this room.'"
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-2xs"
-            [ngClass]="autoSyncWithPresenter() 
-              ? (isLight() ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-emerald-950/60 text-emerald-300 border-emerald-800') 
-              : (isLight() ? 'bg-slate-100 text-slate-600 border-slate-300' : 'bg-slate-900 text-slate-400 border-slate-800')">
-            <span class="w-2 h-2 rounded-full" [ngClass]="autoSyncWithPresenter() ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'"></span>
-            <span class="hidden md:inline">{{ autoSyncWithPresenter() ? 'Auto-Sync ON' : 'Lock Room' }}</span>
-          </button>
-
-          <!-- Status & PIN -->
+        <!-- Header Right: Clean Live Status & Room PIN -->
+        <div class="flex items-center gap-2">
           <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border backdrop-blur-md shadow-xs transition-colors duration-300"
             [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
             @if (room()?.status === 'completed') {
               <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-              <span class="text-xs font-bold hidden sm:inline"
-                [ngClass]="isLight() ? 'text-purple-700' : 'text-purple-300'">Session Ended</span>
+              <span class="text-xs font-bold"
+                [ngClass]="isLight() ? 'text-purple-700' : 'text-purple-300'">Concluded</span>
             } @else if (room()?.status === 'draft' || room()?.status === 'closed' || !room()?.activePollId) {
               <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-              <span class="text-xs font-semibold hidden sm:inline"
+              <span class="text-xs font-semibold"
                 [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">Waiting to Start</span>
             } @else {
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span class="text-xs font-semibold hidden sm:inline"
-                [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">Live Stage</span>
+              <span class="text-xs font-semibold"
+                [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">Live</span>
             }
-            <span class="hidden sm:inline" [ngClass]="isLight() ? 'text-slate-300' : 'text-slate-700'">|</span>
+            <span [ngClass]="isLight() ? 'text-slate-300' : 'text-slate-700'">|</span>
             <span class="text-xs font-mono font-black"
               [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">PIN: {{ roomCode() }}</span>
           </div>
