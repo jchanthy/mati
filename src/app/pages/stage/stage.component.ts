@@ -13,82 +13,82 @@ import QRCode from 'qrcode';
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
-    <div class="stage-container min-h-screen h-screen max-h-screen flex flex-col justify-center p-3 sm:p-5 lg:p-6 select-none overflow-hidden relative"
+    <div class="stage-container w-screen h-screen min-h-screen max-h-screen flex flex-col justify-center p-3 sm:p-5 md:p-6 lg:p-8 xl:p-10 2xl:p-14 select-none overflow-hidden relative"
       [class.transition-colors]="hasMounted()" [class.duration-300]="hasMounted()"
       [ngClass]="isLight() ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-white'">
       
       <!-- Background Ambient Glow -->
       @if (isLight()) {
-        <div class="absolute -top-32 -left-32 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -top-32 -left-32 w-[32rem] h-[32rem] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-32 -right-32 w-[32rem] h-[32rem] bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
       } @else {
-        <div class="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -top-32 -left-32 w-[32rem] h-[32rem] bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-32 -right-32 w-[32rem] h-[32rem] bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
       }
 
-      <!-- Main Central Presentation Area: Fit to viewport without scrolling -->
-      <main class="flex-1 min-h-0 flex flex-col justify-center py-2 z-10 max-w-7xl mx-auto w-full overflow-hidden">
+      <!-- Main Central Presentation Area: Scaled dynamically to TV viewport -->
+      <main class="flex-1 min-h-0 flex flex-col justify-center z-10 w-full max-w-[1850px] 2xl:max-w-[2400px] mx-auto overflow-hidden">
         @if (room()?.status === 'completed') {
           <!-- Grand Finale Celebration Screen for Big TV / Projector with Results Breakdown -->
-          <div class="h-full max-h-[calc(100vh-48px)] flex flex-col justify-start space-y-4 max-w-5xl mx-auto animate-fadein w-full px-2 sm:px-4 overflow-y-auto pr-1 sm:pr-2">
+          <div class="h-full max-h-[88vh] flex flex-col justify-center space-y-4 sm:space-y-6 max-w-6xl 2xl:max-w-7xl mx-auto animate-fadein w-full px-3 sm:px-6 overflow-y-auto pr-1 my-auto">
             <!-- Festive Badge & Title -->
-            <div class="text-center space-y-1.5 shrink-0 pt-1">
+            <div class="text-center space-y-2 shrink-0">
               <div class="flex items-center justify-center">
-                <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider shadow-sm border"
+                <span class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs sm:text-sm lg:text-base font-black uppercase tracking-wider shadow-sm border"
                   [ngClass]="isLight() ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'">
                   <span>🎉</span>
                   <span>Poll Completed • ការស្ទង់មតិបានបញ្ចប់</span>
                 </span>
               </div>
-              <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight leading-tight"
+              <h1 class="text-3xl sm:text-4xl lg:text-5xl 2xl:text-6xl font-black tracking-tight leading-tight"
                 [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
                 ការស្ទង់មតិបានបញ្ចប់ដោយជោគជ័យ!
               </h1>
-              <p class="text-xs sm:text-sm font-medium"
+              <p class="text-sm sm:text-base lg:text-lg font-medium"
                 [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">
                 Final Audience Results & Performance Summary for Room <span class="font-mono font-bold" [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">{{ roomCode() }}</span>
               </p>
             </div>
 
             <!-- Grand KPI Summary Cards (4 Cards) -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 shrink-0 max-w-4xl mx-auto w-full pt-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 shrink-0 max-w-5xl 2xl:max-w-6xl mx-auto w-full pt-2">
               <!-- Total Questions -->
-              <div class="p-5 sm:p-6 rounded-3xl border shadow-sm text-center space-y-1 transition-colors"
-                [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-3xl sm:text-4xl font-black font-mono leading-tight"
+              <div class="p-6 sm:p-8 rounded-3xl sm:rounded-4xl border shadow-md text-center space-y-2 transition-colors"
+                [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-200/50' : 'bg-slate-900/90 border-slate-800'">
+                <div class="text-4xl sm:text-5xl 2xl:text-6xl font-black font-mono leading-tight"
                   [ngClass]="isLight() ? 'text-slate-900' : 'text-slate-100'">
                   {{ totalQuestionsCount() }}
                 </div>
-                <div class="text-xs font-bold uppercase tracking-wider"
+                <div class="text-xs sm:text-sm font-bold uppercase tracking-wider"
                   [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                   Total Questions
                 </div>
               </div>
 
               <!-- Audience Votes Cast -->
-              <div class="p-5 sm:p-6 rounded-3xl border shadow-sm text-center space-y-1 transition-colors"
-                [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-3xl sm:text-4xl font-black font-mono leading-tight text-indigo-600 dark:text-indigo-400">
+              <div class="p-6 sm:p-8 rounded-3xl sm:rounded-4xl border shadow-md text-center space-y-2 transition-colors"
+                [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-200/50' : 'bg-slate-900/90 border-slate-800'">
+                <div class="text-4xl sm:text-5xl 2xl:text-6xl font-black font-mono leading-tight text-indigo-600 dark:text-indigo-400">
                   {{ totalVotesCount() }}
                 </div>
-                <div class="text-xs font-bold uppercase tracking-wider"
+                <div class="text-xs sm:text-sm font-bold uppercase tracking-wider"
                   [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                   Total Votes Cast
                 </div>
               </div>
 
               <!-- Overall Accuracy or Top Consensus -->
-              <div class="p-5 sm:p-6 rounded-3xl border shadow-sm text-center space-y-1 transition-colors"
+              <div class="p-6 sm:p-8 rounded-3xl sm:rounded-4xl border shadow-md text-center space-y-2 transition-colors"
                 [ngClass]="sessionStats().hasScoredQuestions 
                   ? (isLight() ? 'bg-emerald-50/70 border-emerald-300' : 'border-emerald-500/40 bg-emerald-950/20') 
                   : (isLight() ? 'bg-amber-50/70 border-amber-300' : 'border-amber-500/40 bg-amber-950/20')">
-                <div class="text-3xl sm:text-4xl font-black font-mono leading-tight"
+                <div class="text-4xl sm:text-5xl 2xl:text-6xl font-black font-mono leading-tight"
                   [ngClass]="sessionStats().hasScoredQuestions 
                     ? (isLight() ? 'text-emerald-700' : 'text-emerald-400') 
                     : (isLight() ? 'text-amber-700' : 'text-amber-400')">
                   {{ sessionStats().hasScoredQuestions ? sessionStats().overallAccuracy + '%' : sessionStats().topConsensusPercentage + '%' }}
                 </div>
-                <div class="text-xs font-bold uppercase tracking-wider"
+                <div class="text-xs sm:text-sm font-bold uppercase tracking-wider"
                   [ngClass]="sessionStats().hasScoredQuestions 
                     ? (isLight() ? 'text-emerald-800' : 'text-emerald-300') 
                     : (isLight() ? 'text-amber-800' : 'text-amber-300')">
@@ -97,12 +97,12 @@ import QRCode from 'qrcode';
               </div>
 
               <!-- Status -->
-              <div class="p-5 sm:p-6 rounded-3xl border shadow-sm text-center space-y-1 transition-colors"
-                [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 font-mono leading-tight">
+              <div class="p-6 sm:p-8 rounded-3xl sm:rounded-4xl border shadow-md text-center space-y-2 transition-colors"
+                [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-200/50' : 'bg-slate-900/90 border-slate-800'">
+                <div class="text-4xl sm:text-5xl 2xl:text-6xl font-black text-emerald-600 dark:text-emerald-400 font-mono leading-tight">
                   100%
                 </div>
-                <div class="text-xs font-bold uppercase tracking-wider"
+                <div class="text-xs sm:text-sm font-bold uppercase tracking-wider"
                   [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                   Completed
                 </div>
@@ -110,56 +110,56 @@ import QRCode from 'qrcode';
             </div>
 
             <!-- Congratulatory audience banner -->
-            <div class="p-6 sm:p-8 rounded-3xl border text-center max-w-4xl mx-auto w-full transition-colors space-y-2"
+            <div class="p-6 sm:p-8 rounded-3xl sm:rounded-4xl border text-center max-w-4xl mx-auto w-full transition-colors space-y-2"
               [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/70 border-slate-800'">
-              <div class="text-2xl sm:text-3xl">👏</div>
-              <h2 class="text-lg sm:text-xl font-black" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+              <div class="text-3xl sm:text-4xl">👏</div>
+              <h2 class="text-xl sm:text-2xl font-black" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
                 សូមអរគុណសម្រាប់ការចូលរួមយ៉ាងសកម្ម!
               </h2>
-              <p class="text-xs sm:text-sm max-w-lg mx-auto" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
+              <p class="text-sm sm:text-base max-w-xl mx-auto" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                 Thank you for participating! All audience votes and feedback have been collected and securely recorded for Room <span class="font-mono font-bold" [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">{{ roomCode() }}</span>.
               </p>
             </div>
           </div>
         } @else {
           <!-- Split Stage Layout: Flexible QR Station on Left + Question & Results on Right -->
-          <div class="flex flex-col lg:flex-row items-center lg:items-center gap-4 lg:gap-6 xl:gap-8 w-full h-full min-h-0">
+          <div class="flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-10 xl:gap-14 2xl:gap-20 w-full h-full max-h-[92vh] min-h-0 py-2 sm:py-4">
 
             <!-- LEFT SIDE: Adaptive Big Scannable QR Station -->
-            <div class="w-full lg:w-64 xl:w-72 shrink-0 flex flex-col items-center max-h-full">
-              <div class="border rounded-2xl sm:rounded-3xl p-3 sm:p-4 backdrop-blur-xl shadow-xl flex flex-col items-center text-center space-y-2 sm:space-y-3 w-full max-w-xs overflow-hidden transition-colors"
+            <div class="w-full lg:w-80 xl:w-96 2xl:w-[28rem] shrink-0 flex flex-col items-center justify-center max-h-full">
+              <div class="border rounded-3xl sm:rounded-4xl p-5 sm:p-6 2xl:p-8 backdrop-blur-xl shadow-2xl flex flex-col items-center text-center space-y-3 sm:space-y-4 w-full max-w-sm xl:max-w-md 2xl:max-w-lg overflow-hidden transition-colors"
                 [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-200/50' : 'bg-slate-900/95 border-slate-800'">
 
                 <!-- Responsive QR Code (Adapts smoothly to viewport height) -->
-                <div class="p-2 sm:p-2.5 bg-white rounded-xl sm:rounded-2xl shadow-md ring-2 sm:ring-4 ring-indigo-500/20 shrink-0 border border-slate-100">
+                <div class="p-3 sm:p-4 2xl:p-5 bg-white rounded-2xl sm:rounded-3xl shadow-lg ring-4 ring-indigo-500/15 shrink-0 border border-slate-100">
                   @if (qrCodeDataUrl()) {
-                    <img [src]="qrCodeDataUrl()" alt="Scan to join Mati" class="h-[min(26vh,11.5rem)] w-[min(26vh,11.5rem)] max-h-48 max-w-48 object-contain" />
+                    <img [src]="qrCodeDataUrl()" alt="Scan to join Mati" class="h-[min(34vh,16rem)] w-[min(34vh,16rem)] sm:h-[min(38vh,19rem)] sm:w-[min(38vh,19rem)] 2xl:h-[min(42vh,24rem)] 2xl:w-[min(42vh,24rem)] object-contain" />
                   } @else {
-                    <div class="h-[min(26vh,11.5rem)] w-[min(26vh,11.5rem)] max-h-48 max-w-48 flex items-center justify-center bg-gray-100 text-gray-400 rounded-xl">
-                      <i class="pi pi-qrcode text-3xl animate-pulse"></i>
+                    <div class="h-[min(34vh,16rem)] w-[min(34vh,16rem)] sm:h-[min(38vh,19rem)] sm:w-[min(38vh,19rem)] 2xl:h-[min(42vh,24rem)] 2xl:w-[min(42vh,24rem)] flex items-center justify-center bg-gray-100 text-gray-400 rounded-2xl">
+                      <i class="pi pi-qrcode text-4xl sm:text-5xl animate-pulse"></i>
                     </div>
                   }
                 </div>
 
                 <!-- URL & Instructions -->
-                <div class="space-y-1 w-full shrink-0">
-                  <div class="text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5"
+                <div class="space-y-1.5 w-full shrink-0">
+                  <div class="text-xs sm:text-sm 2xl:text-base font-black uppercase tracking-wider flex items-center justify-center gap-1.5"
                     [ngClass]="isLight() ? 'text-indigo-600' : 'text-indigo-400'">
-                    <i class="pi pi-camera text-[10px] sm:text-xs"></i>
+                    <i class="pi pi-camera text-xs sm:text-sm"></i>
                     <span>Scan with phone to join</span>
                   </div>
-                  <div class="text-[10px] sm:text-[11px] font-bold font-mono truncate px-2 py-1 rounded-lg border"
-                    [ngClass]="isLight() ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-slate-950/70 text-slate-300 border-slate-800/80'">
+                  <div class="text-xs sm:text-sm 2xl:text-base font-bold font-mono truncate px-3 py-1.5 rounded-xl border shadow-2xs"
+                    [ngClass]="isLight() ? 'bg-slate-50 text-slate-800 border-slate-200' : 'bg-slate-950/70 text-slate-200 border-slate-800/80'">
                     {{ joinUrlShort() }}
                   </div>
                 </div>
 
                 <!-- Room PIN -->
-                <div class="w-full pt-2 border-t shrink-0"
+                <div class="w-full pt-3 border-t shrink-0"
                   [ngClass]="isLight() ? 'border-slate-100' : 'border-slate-800/80'">
-                  <div class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest"
+                  <div class="text-[10px] sm:text-xs 2xl:text-sm font-black uppercase tracking-widest"
                     [ngClass]="isLight() ? 'text-slate-400' : 'text-slate-400'">Room PIN</div>
-                  <div class="text-2xl sm:text-3xl xl:text-4xl font-black font-mono tracking-widest leading-tight"
+                  <div class="text-3xl sm:text-4xl lg:text-5xl 2xl:text-6xl font-black font-mono tracking-widest leading-none mt-1"
                     [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">
                     {{ roomCode() }}
                   </div>
@@ -167,9 +167,9 @@ import QRCode from 'qrcode';
 
                 <!-- Live Total Vote Counter in QR Station -->
                 @if (pollStats()?.totalVotes) {
-                  <div class="w-full pt-1.5 border-t flex items-center justify-center gap-1.5 text-xs font-bold"
+                  <div class="w-full pt-2.5 border-t flex items-center justify-center gap-2 text-xs sm:text-sm 2xl:text-base font-bold"
                     [ngClass]="isLight() ? 'border-slate-100 text-slate-600' : 'border-slate-800/80 text-slate-300'">
-                    <i class="pi pi-users text-emerald-500 text-xs"></i>
+                    <i class="pi pi-users text-emerald-500 text-sm"></i>
                     <span>{{ pollStats()?.totalVotes }} votes</span>
                   </div>
                 }
@@ -178,56 +178,56 @@ import QRCode from 'qrcode';
             </div>
 
             <!-- RIGHT SIDE: Active Question & Live Vote Option Bars -->
-            <div class="flex-1 min-h-0 flex flex-col justify-center min-w-0 w-full overflow-hidden">
+            <div class="flex-1 min-h-0 flex flex-col justify-center min-w-0 w-full overflow-hidden my-auto space-y-4 sm:space-y-6">
               @if (pollStats(); as stats) {
                 <!-- Question Title Bar -->
-                <div class="text-center mb-2 sm:mb-3 space-y-1 sm:space-y-1.5 shrink-0">
-                  <div class="flex items-center justify-center gap-2 flex-wrap">
-                    <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase border"
+                <div class="text-center space-y-2 sm:space-y-3 shrink-0">
+                  <div class="flex items-center justify-center gap-2.5 flex-wrap">
+                    <span class="inline-block px-3.5 py-1 rounded-full text-xs sm:text-sm 2xl:text-base font-bold tracking-wider uppercase border shadow-2xs"
                       [ngClass]="isLight() ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'">
                       Question #{{ stats.poll.order }}
                     </span>
 
                     @if (remainingSeconds() !== null) {
                       @if (remainingSeconds()! > 10) {
-                        <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-black border font-mono shadow-xs"
+                        <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs sm:text-sm 2xl:text-base font-black border font-mono shadow-xs"
                           [ngClass]="isLight() ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'">
-                          <i class="pi pi-clock text-xs"></i> {{ remainingSeconds() }}s
+                          <i class="pi pi-clock text-xs sm:text-sm"></i> {{ remainingSeconds() }}s
                         </span>
                       } @else if (remainingSeconds()! <= 10 && remainingSeconds()! > 5) {
-                        <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-black border font-mono shadow-xs"
+                        <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs sm:text-sm 2xl:text-base font-black border font-mono shadow-xs"
                           [ngClass]="isLight() ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'">
-                          <i class="pi pi-clock text-xs"></i> {{ remainingSeconds() }}s
+                          <i class="pi pi-clock text-xs sm:text-sm"></i> {{ remainingSeconds() }}s
                         </span>
                       } @else if (remainingSeconds()! <= 5 && remainingSeconds()! > 0) {
-                        <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-black border font-mono shadow-md animate-pulse"
+                        <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs sm:text-sm 2xl:text-base font-black border font-mono shadow-md animate-pulse"
                           [ngClass]="isLight() ? 'bg-red-50 text-red-700 border-red-300' : 'bg-red-500/30 text-red-300 border-red-500/50'">
-                          <i class="pi pi-clock text-xs"></i> {{ remainingSeconds() }}s left!
+                          <i class="pi pi-clock text-xs sm:text-sm"></i> {{ remainingSeconds() }}s left!
                         </span>
                       } @else if (remainingSeconds() === 0) {
-                        <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-black border font-mono"
+                        <span class="inline-flex items-center gap-1.5 px-4 py-1 rounded-full text-xs sm:text-sm 2xl:text-base font-black border font-mono"
                           [ngClass]="isLight() ? 'bg-red-100 text-red-800 border-red-300' : 'bg-red-600/30 text-red-200 border-red-500/60'">
-                          <i class="pi pi-times-circle text-xs"></i> Time's Up!
+                          <i class="pi pi-times-circle text-xs sm:text-sm"></i> Time's Up!
                         </span>
                       }
                     }
 
                     @if (stats.poll.isLocked && !isTimeUp()) {
-                      <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-bold border"
+                      <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs sm:text-sm font-bold border"
                         [ngClass]="isLight() ? 'bg-red-50 text-red-700 border-red-200' : 'bg-red-500/20 text-red-300 border-red-500/30'">
-                        <i class="pi pi-lock text-[10px]"></i> Voting Locked
+                        <i class="pi pi-lock text-xs"></i> Voting Locked
                       </span>
                     }
                   </div>
 
-                  <h1 class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight leading-snug max-w-4xl mx-auto px-2 break-words"
+                  <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl 2xl:text-6xl font-black tracking-tight leading-snug sm:leading-tight max-w-5xl 2xl:max-w-6xl mx-auto px-2 break-words"
                     [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
                     {{ stats.poll.question }}
                   </h1>
 
                   <!-- Slim Glowing TV Stage Progress Bar -->
                   @if (remainingSeconds() !== null && remainingSeconds()! > 0) {
-                    <div class="max-w-md mx-auto h-1.5 w-full rounded-full overflow-hidden mt-2"
+                    <div class="max-w-xl 2xl:max-w-2xl mx-auto h-2 sm:h-2.5 w-full rounded-full overflow-hidden mt-3"
                       [ngClass]="isLight() ? 'bg-slate-200' : 'bg-slate-800/80'">
                       <div class="h-full transition-all duration-300 ease-linear rounded-full"
                         [style.width.%]="timerPercent()"
@@ -243,25 +243,31 @@ import QRCode from 'qrcode';
 
                 <!-- Hidden Results Overlay Mode -->
                 @if (!stats.poll.showResults) {
-                  <div class="max-w-md mx-auto p-6 rounded-3xl text-center space-y-2 border shadow-xl w-full transition-colors"
-                    [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/80 border-slate-800'">
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto text-lg animate-soft-pulse"
+                  <div class="max-w-2xl xl:max-w-3xl 2xl:max-w-4xl mx-auto p-8 sm:p-10 xl:p-14 2xl:p-16 rounded-3xl sm:rounded-4xl text-center space-y-4 sm:space-y-6 border shadow-2xl w-full transition-colors my-2"
+                    [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-200/40' : 'bg-slate-900/90 border-slate-800 shadow-slate-950/60'">
+                    <div class="w-16 h-16 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 rounded-full flex items-center justify-center mx-auto text-2xl sm:text-3xl 2xl:text-4xl animate-soft-pulse shadow-md"
                       [ngClass]="isLight() ? 'bg-indigo-50 text-indigo-600' : 'bg-indigo-600/20 text-indigo-400'">
                       <i class="pi pi-eye-slash"></i>
                     </div>
-                    <h3 class="text-lg font-bold" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">Voting in progress...</h3>
-                    <p class="text-xs" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                      Audience answers are being recorded. Results will appear on this screen once revealed.
-                    </p>
-                    <div class="pt-1 font-bold text-sm text-indigo-600 dark:text-indigo-400">
-                      {{ stats.totalVotes }} participant{{ stats.totalVotes === 1 ? '' : 's' }} answered
+                    <div class="space-y-2">
+                      <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black tracking-tight" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                        Voting in progress...
+                      </h3>
+                      <p class="text-xs sm:text-sm 2xl:text-base max-w-lg mx-auto" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
+                        Audience answers are being recorded live. Results will appear on this screen once revealed by host.
+                      </p>
+                    </div>
+                    <div class="pt-2 flex items-center justify-center gap-2 font-black text-base sm:text-lg 2xl:text-xl text-indigo-600 dark:text-indigo-400">
+                      <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>{{ stats.totalVotes }} participant{{ stats.totalVotes === 1 ? '' : 's' }} answered</span>
                     </div>
                   </div>
                 } @else {
                   <!-- Live Grid Options -->
-                  <div class="grid gap-2 sm:gap-2.5 w-full overflow-y-auto max-h-[calc(100vh-140px)] pr-1" [ngClass]="stats.poll.options.length > 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-3xl mx-auto'">
+                  <div class="grid gap-3 sm:gap-4 xl:gap-5 w-full overflow-y-auto max-h-[calc(100vh-200px)] pr-1 my-auto" 
+                    [ngClass]="stats.poll.options.length > 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-4xl mx-auto'">
                     @for (opt of stats.poll.options; track opt.id) {
-                      <div class="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border relative overflow-hidden transition-all shadow-sm flex items-center justify-between gap-3"
+                      <div class="p-3.5 sm:p-5 2xl:p-6 rounded-2xl sm:rounded-3xl border relative overflow-hidden transition-all shadow-md flex items-center justify-between gap-4 min-h-[4.5rem] sm:min-h-[5.5rem] 2xl:min-h-[6.5rem]"
                         [ngClass]="isLeadingOption(stats, opt.id) 
                           ? (isLight() ? 'border-amber-400 ring-2 ring-amber-400/30 bg-amber-50/40' : 'border-amber-400/70 ring-1 ring-amber-400/40 shadow-amber-500/10 bg-slate-900/90') 
                           : (isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800')">
@@ -275,19 +281,19 @@ import QRCode from 'qrcode';
                         </div>
 
                         <!-- Option Number & Text -->
-                        <div class="relative z-10 flex items-center gap-2.5 flex-1 min-w-0">
-                          <div style="width: 2rem; height: 2rem; min-width: 2rem;" class="rounded-lg flex items-center justify-center font-black text-xs shrink-0 border"
+                        <div class="relative z-10 flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                          <div style="width: 2.5rem; height: 2.5rem; min-width: 2.5rem;" class="rounded-xl flex items-center justify-center font-black text-sm sm:text-base 2xl:text-lg shrink-0 border shadow-2xs"
                             [ngClass]="isLeadingOption(stats, opt.id) 
                               ? (isLight() ? 'bg-amber-500 text-white border-amber-600' : 'bg-amber-400/20 text-amber-300 border-amber-400/40') 
                               : (isLight() ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-indigo-400 border-slate-700')">
                             {{ opt.id }}
                           </div>
-                          <div class="text-sm sm:text-base font-bold leading-snug break-words flex-1"
+                          <div class="text-base sm:text-lg lg:text-xl 2xl:text-2xl font-extrabold leading-snug break-words flex-1"
                             [ngClass]="isLight() ? 'text-slate-900' : 'text-slate-100'">
                             {{ opt.text }}
                           </div>
                           @if (isLeadingOption(stats, opt.id) && stats.totalVotes > 0) {
-                            <span class="px-2 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider hidden sm:inline-flex items-center gap-1 shrink-0"
+                            <span class="px-2.5 py-1 rounded-lg border text-xs sm:text-sm font-black uppercase tracking-wider hidden sm:inline-flex items-center gap-1.5 shrink-0 shadow-2xs"
                               [ngClass]="isLight() ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-amber-400/20 border-amber-400/40 text-amber-300'">
                               🏆 Leading
                             </span>
@@ -295,14 +301,14 @@ import QRCode from 'qrcode';
                         </div>
 
                         <!-- Percentage & Votes count -->
-                        <div class="relative z-10 text-right shrink-0 pl-2">
-                          <div class="text-xl sm:text-2xl font-black font-mono leading-none"
+                        <div class="relative z-10 text-right shrink-0 pl-3">
+                          <div class="text-2xl sm:text-3xl lg:text-4xl 2xl:text-5xl font-black font-mono leading-none"
                             [ngClass]="isLeadingOption(stats, opt.id) 
                               ? (isLight() ? 'text-amber-700' : 'text-amber-300') 
                               : (isLight() ? 'text-slate-900' : 'text-white')">
                             {{ stats.percentages[opt.id] || 0 }}%
                           </div>
-                          <div class="text-[10px] font-medium mt-0.5"
+                          <div class="text-xs sm:text-sm 2xl:text-base font-semibold mt-1"
                             [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                             {{ stats.votesPerOption[opt.id] || 0 }} votes
                           </div>
@@ -313,14 +319,14 @@ import QRCode from 'qrcode';
                 }
               } @else {
                 <!-- Waiting Screen on Right Side -->
-                <div class="text-center py-8 space-y-3 rounded-3xl p-6 border shadow-lg max-w-md mx-auto w-full transition-colors"
+                <div class="text-center py-10 sm:py-14 space-y-4 sm:space-y-5 rounded-3xl sm:rounded-4xl p-8 sm:p-12 border shadow-2xl max-w-xl 2xl:max-w-2xl mx-auto w-full transition-colors my-auto"
                   [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800/80'">
-                  <div class="w-12 h-12 rounded-full border flex items-center justify-center mx-auto text-xl animate-bounce"
+                  <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border flex items-center justify-center mx-auto text-2xl sm:text-3xl animate-bounce"
                     [ngClass]="isLight() ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-900 text-indigo-400 border-slate-800'">
                     <i class="pi pi-hourglass"></i>
                   </div>
-                  <h2 class="text-xl font-black" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">Waiting for Presenter to launch poll...</h2>
-                  <p class="max-w-sm mx-auto text-xs" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
+                  <h2 class="text-2xl sm:text-3xl font-black" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">Waiting for Presenter to launch poll...</h2>
+                  <p class="max-w-md mx-auto text-xs sm:text-sm" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                     Scan the QR code on the left or enter PIN <span class="font-mono font-bold" [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">{{ roomCode() }}</span> to join this session.
                   </p>
                 </div>
