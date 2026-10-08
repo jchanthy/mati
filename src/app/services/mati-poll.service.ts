@@ -329,11 +329,35 @@ export class MatiPollService {
     const timerDuration = hasTimer ? timerSeconds : null;
     const timerEndsAt = hasTimer ? Date.now() + (timerSeconds as number) * 1000 : null;
 
+    // Fetch the poll object to embed directly in the room document for 0ms instant load on all clients
+    let activePoll: Poll | null = null;
+    if (pollId) {
+      const localList = this.mockPolls$.getValue().get(code) || [];
+      activePoll = localList.find(p => p.id === pollId) || null;
+      if (!activePoll && this.firestore) {
+        try {
+          const pollSnap = await getDoc(doc(this.firestore, `rooms/${code}/polls/${pollId}`));
+          if (pollSnap.exists()) {
+            activePoll = { id: pollSnap.id, ...pollSnap.data() } as Poll;
+          }
+        } catch {}
+      }
+    }
+
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
         await updateDoc(roomRef, { 
           activePollId: pollId,
+          activePoll: activePoll ? {
+            id: activePoll.id,
+            question: activePoll.question,
+            options: activePoll.options,
+            isLocked: activePoll.isLocked ?? false,
+            showResults: activePoll.showResults ?? true,
+            order: activePoll.order ?? 1,
+            ...(activePoll.correctOptionId !== undefined ? { correctOptionId: activePoll.correctOptionId } : {})
+          } : null,
           status: 'active',
           timerDuration,
           timerEndsAt
@@ -347,6 +371,7 @@ export class MatiPollService {
     const room = rooms.get(code);
     if (room) {
       room.activePollId = pollId;
+      room.activePoll = activePoll;
       room.status = 'active';
       room.timerDuration = timerDuration ?? undefined;
       room.timerEndsAt = timerEndsAt;
@@ -366,6 +391,8 @@ export class MatiPollService {
       try {
         const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
         await updateDoc(pollRef, { isLocked });
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, { 'activePoll.isLocked': isLocked });
       } catch (err) {
         console.warn('[Mati] Firebase toggleLockPoll error:', err);
       }
@@ -394,6 +421,8 @@ export class MatiPollService {
       try {
         const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
         await updateDoc(pollRef, { showResults: show });
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, { 'activePoll.showResults': show });
       } catch (err) {
         console.warn('[Mati] Firebase toggleShowResults error:', err);
       }
@@ -721,7 +750,7 @@ export class MatiPollService {
    * Step 2: listenToActivePoll(roomCode: string)
    * Real-time observable returning poll metadata and aggregated option vote counts.
    */
-  listenToActivePoll(roomCode: string): Observable<PollStats | null> {
+  listenToActivePoll(roomCode: string, includeVotes: boolean = true): Observable<PollStats | null> {
     const code = roomCode.toUpperCase();
 
     // RxJS stream listening to Room -> Active Poll -> Votes
@@ -802,16 +831,31 @@ export class MatiPollService {
 
             if (activeId !== currentActivePollId) {
               currentActivePollId = activeId;
-              latestPollData = null;
-              latestVotes = [];
               if (unsubPoll) unsubPoll();
               if (unsubVotes) unsubVotes();
+
+              // FAST PATH: Check if room document already has embedded activePoll (0ms latency!)
+              if (latestRoomData?.activePoll && latestRoomData.activePoll.id === activeId) {
+                latestPollData = latestRoomData.activePoll;
+                this.currentPoll.set(latestPollData);
+                emitCurrentStats();
+              } else {
+                const localPolls = this.mockPolls$.getValue().get(code) || [];
+                const cached = localPolls.find(p => p.id === activeId);
+                if (cached) {
+                  latestPollData = cached;
+                  this.currentPoll.set(cached);
+                  emitCurrentStats();
+                } else {
+                  latestPollData = null;
+                }
+              }
 
               const pollRef = doc(this.firestore!, `rooms/${code}/polls/${activeId}`);
               unsubPoll = onSnapshot(pollRef, (pollSnap) => {
                 if (pollSnap.exists()) {
                   latestPollData = { id: pollSnap.id, ...pollSnap.data() } as Poll;
-                } else {
+                } else if (!latestPollData) {
                   const localPolls = this.mockPolls$.getValue().get(code) || [];
                   latestPollData = localPolls.find(p => p.id === activeId) || null;
                 }
@@ -821,31 +865,34 @@ export class MatiPollService {
                 }
                 emitCurrentStats();
               }, (err) => {
-                console.warn('[Mati] Poll listener error, fallback to local poll:', err);
-                const localPolls = this.mockPolls$.getValue().get(code) || [];
-                latestPollData = localPolls.find(p => p.id === activeId) || null;
-                if (latestPollData) {
-                  this.currentPoll.set(latestPollData);
-                }
-                emitCurrentStats();
+                console.warn('[Mati] Poll listener error:', err);
               });
 
-              // Listen to votes subcollection
-              const votesCol = collection(this.firestore!, `rooms/${code}/polls/${activeId}/votes`);
-              unsubVotes = onSnapshot(votesCol, (votesSnap) => {
-                if (!votesSnap.empty) {
-                  latestVotes = votesSnap.docs.map(d => d.data() as Vote);
-                } else {
+              // Listen to votes subcollection ONLY if requested (TV stage & controller)
+              if (includeVotes) {
+                const votesCol = collection(this.firestore!, `rooms/${code}/polls/${activeId}/votes`);
+                unsubVotes = onSnapshot(votesCol, (votesSnap) => {
+                  if (!votesSnap.empty) {
+                    latestVotes = votesSnap.docs.map(d => d.data() as Vote);
+                  } else {
+                    latestVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
+                  }
+                  emitCurrentStats();
+                }, (err) => {
                   latestVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
-                }
+                  emitCurrentStats();
+                });
+              } else {
+                // Mobile voter: do not flood with thousands of vote snapshots
+                latestVotes = [];
                 emitCurrentStats();
-              }, (err) => {
-                console.warn('[Mati] Votes listener error, fallback to local votes:', err);
-                latestVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
-                emitCurrentStats();
-              });
+              }
             } else {
-              // Same active poll, but room properties (e.g. timer duration or countdown) changed!
+              // Same active poll, update if embedded activePoll changed (e.g. isLocked or showResults)
+              if (latestRoomData?.activePoll && latestRoomData.activePoll.id === activeId) {
+                latestPollData = { ...latestPollData, ...latestRoomData.activePoll };
+                this.currentPoll.set(latestPollData);
+              }
               emitCurrentStats();
             }
           }, (err) => {

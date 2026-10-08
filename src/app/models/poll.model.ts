@@ -19,6 +19,7 @@ export interface Room {
   code: string;
   title: string;
   activePollId: string | null;
+  activePoll?: Poll | null;
   status: 'draft' | 'active' | 'closed' | 'completed';
   mode?: 'live' | 'survey';
   theme?: 'dark' | 'light';

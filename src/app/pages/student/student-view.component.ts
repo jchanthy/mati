@@ -668,13 +668,37 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   remainingSeconds = signal<number | null>(null);
   timerDuration = signal<number | null>(null);
   private timerInterval: any = null;
+  private questionShownAt = signal<number>(0);
 
-  isTimeUp = computed(() => this.remainingSeconds() !== null && this.remainingSeconds()! <= 0);
+  /**
+   * isTimeUp computation:
+   * 1. If poll is explicitly locked by presenter, time is immediately up.
+   * 2. If timer is active, ensure mobile voter has at least 8 seconds of minimum display time
+   *    from when the question first rendered on their phone, preventing immediate lockout due to network lag.
+   * 3. Provide a 3-second grace period (diff <= -3) after 0s to compensate for client clock skew.
+   */
+  isTimeUp = computed(() => {
+    const stats = this.pollStats();
+    if (stats?.poll?.isLocked) return true;
+
+    const rem = this.remainingSeconds();
+    if (rem === null) return false;
+
+    // Minimum display guarantee: at least 8s after appearing on mobile screen
+    const shownAt = this.questionShownAt();
+    if (shownAt > 0 && Date.now() - shownAt < 8000) {
+      return false;
+    }
+
+    // Grace period of 3 seconds past countdown 0
+    return rem <= -3;
+  });
+
   timerPercent = computed(() => {
     const rem = this.remainingSeconds();
     const dur = this.timerDuration();
     if (rem === null || !dur || dur <= 0) return 0;
-    return Math.min(100, Math.max(0, Math.round((rem / dur) * 100)));
+    return Math.min(100, Math.max(0, Math.round((Math.max(0, rem) / dur) * 100)));
   });
 
   private pollSub?: Subscription;
@@ -850,7 +874,8 @@ export class StudentViewComponent implements OnInit, OnDestroy {
 
   private listenToPoll(code: string) {
     this.pollSub?.unsubscribe();
-    this.pollSub = this.pollService.listenToActivePoll(code).subscribe(stats => {
+    // Pass false to includeVotes so phone does NOT subscribe to 1000s of vote documents
+    this.pollSub = this.pollService.listenToActivePoll(code, false).subscribe(stats => {
       this.pollStats.set(stats);
       if (stats?.poll) {
         const votedOpt = this.pollService.getVotedOption(code, stats.poll.id);
@@ -869,16 +894,17 @@ export class StudentViewComponent implements OnInit, OnDestroy {
           }
         }
 
-        // Synchronize timer with stage and server
+        // Track when question is newly displayed to voter
         const newPollId = stats?.poll?.id || null;
         if (newPollId !== this.currentActivePollIdOnStudent) {
           this.currentActivePollIdOnStudent = newPollId;
+          this.questionShownAt.set(Date.now());
           this.stopLocalTimer(true);
         }
 
         if (stats.timerEndsAt && stats.timerEndsAt > 0) {
           const diff = Math.ceil((stats.timerEndsAt - Date.now()) / 1000);
-          if (diff <= 0) {
+          if (diff < -3) {
             this.remainingSeconds.set(0);
             this.stopLocalTimer(false);
           } else {
@@ -889,6 +915,8 @@ export class StudentViewComponent implements OnInit, OnDestroy {
           this.stopLocalTimer(true);
         }
       } else {
+        this.currentActivePollIdOnStudent = null;
+        this.questionShownAt.set(0);
         this.stopLocalTimer(true);
       }
     });
@@ -898,11 +926,12 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.stopLocalTimer(false);
     const updateCountdown = () => {
       const diff = Math.ceil((timerEndsAt - Date.now()) / 1000);
-      if (diff <= 0) {
+      if (diff < -3) {
         this.remainingSeconds.set(0);
         this.stopLocalTimer(false);
       } else {
-        this.remainingSeconds.set(diff);
+        // Keep actual value down to -3 for grace period, displayed as max(0, diff) in UI
+        this.remainingSeconds.set(Math.max(0, diff));
       }
     };
     updateCountdown();
@@ -923,6 +952,11 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     const stats = this.pollStats();
     if (!stats || stats.poll.isLocked || this.isTimeUp() || this.isSubmitting()) return;
 
+    // OPTIMISTIC UPDATE: Immediate feedback on mobile screen
+    this.selectedOptionId.set(optionId);
+    this.hasVoted.set(true);
+    this.votedOptionsMap.update(m => ({ ...m, [stats.poll.id]: optionId }));
+
     this.isSubmitting.set(true);
     try {
       await this.pollService.submitVote(
@@ -931,9 +965,8 @@ export class StudentViewComponent implements OnInit, OnDestroy {
         this.voterId(),
         optionId
       );
-      this.selectedOptionId.set(optionId);
-      this.hasVoted.set(true);
-      this.votedOptionsMap.update(m => ({ ...m, [stats.poll.id]: optionId }));
+    } catch (err) {
+      console.error('[StudentView] Failed to submit vote:', err);
     } finally {
       this.isSubmitting.set(false);
     }
