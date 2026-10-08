@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, AfterViewInit, OnDestroy, PLATFORM_ID } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
@@ -13,7 +13,8 @@ import QRCode from 'qrcode';
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
-    <div class="stage-container min-h-screen h-screen max-h-screen flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none overflow-hidden relative transition-colors duration-300"
+    <div class="stage-container min-h-screen h-screen max-h-screen flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none overflow-hidden relative"
+      [class.transition-colors]="hasMounted()" [class.duration-300]="hasMounted()"
       [ngClass]="isLight() ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-white'">
       
       <!-- Background Ambient Glow -->
@@ -26,7 +27,8 @@ import QRCode from 'qrcode';
       }
 
       <!-- Top Bar -->
-      <header class="flex items-center justify-between gap-3 z-10 pb-2.5 sm:pb-3 shrink-0 border-b transition-colors duration-300"
+      <header class="flex items-center justify-between gap-3 z-10 pb-2.5 sm:pb-3 shrink-0 border-b"
+        [class.transition-colors]="hasMounted()" [class.duration-300]="hasMounted()"
         [ngClass]="isLight() ? 'border-slate-200' : 'border-slate-800/80'">
         <div class="flex items-center gap-2.5 sm:gap-3">
           <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white text-lg sm:text-xl font-black shadow-lg shadow-indigo-500/30">
@@ -413,7 +415,8 @@ import QRCode from 'qrcode';
       </main>
 
       <!-- Bottom Bar: Compact Footer with total vote counter -->
-      <footer class="flex items-center justify-between gap-4 z-10 border-t pt-2.5 shrink-0 transition-colors duration-300"
+      <footer class="flex items-center justify-between gap-4 z-10 border-t pt-2.5 shrink-0"
+        [class.transition-colors]="hasMounted()" [class.duration-300]="hasMounted()"
         [ngClass]="isLight() ? 'border-slate-200' : 'border-slate-800/80'">
         <div class="flex items-center gap-2 text-xs font-medium"
           [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
@@ -435,11 +438,14 @@ import QRCode from 'qrcode';
     </div>
   `
 })
-export class StageComponent implements OnInit, OnDestroy {
+export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private pollService = inject(MatiPollService);
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+
+  hasMounted = signal<boolean>(false);
+  currentTheme = signal<'dark' | 'light'>(this.resolveInitialStageTheme());
 
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
@@ -468,7 +474,7 @@ export class StageComponent implements OnInit, OnDestroy {
   joinUrlShort = signal<string>('');
 
   // Projector / TV Theme: light vs dark
-  isLight = computed(() => this.room()?.theme === 'light');
+  isLight = computed(() => this.currentTheme() === 'light');
 
   // Total question and vote counts for completed stage
   totalQuestionsCount = computed(() => Math.max(this.polls().length, this.sessionStats().totalQuestions));
@@ -524,6 +530,14 @@ export class StageComponent implements OnInit, OnDestroy {
         this.switchActiveRoom(target, true);
       }
     });
+  }
+
+  ngAfterViewInit() {
+    if (this.isBrowser) {
+      setTimeout(() => {
+        this.hasMounted.set(true);
+      }, 250);
+    }
   }
 
   ngOnDestroy() {
@@ -592,6 +606,9 @@ export class StageComponent implements OnInit, OnDestroy {
     });
     this.remainingSeconds.set(null);
 
+    // Synchronously resolve and set target room theme so UI does not flash dark mode
+    this.currentTheme.set(this.resolveThemeForRoom(target));
+
     this.roomCode.set(target);
     this.setupUrls(target);
     this.generateQr(target);
@@ -602,6 +619,46 @@ export class StageComponent implements OnInit, OnDestroy {
     if (isFromBroadcast) {
       this.showSwitchedNotice(`Live Room Switched to ${target}`);
     }
+  }
+
+  private resolveInitialStageTheme(): 'dark' | 'light' {
+    if (!this.isBrowser) return 'dark';
+    try {
+      let targetCode = this.route.snapshot?.paramMap?.get('roomCode') || '';
+      if (!targetCode && typeof window !== 'undefined') {
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        const stageIdx = parts.indexOf('stage');
+        if (stageIdx !== -1 && parts[stageIdx + 1]) {
+          targetCode = parts[stageIdx + 1];
+        }
+      }
+      targetCode = (targetCode || this.pollService.getActiveBroadcastRoom() || 'MATI01').toUpperCase();
+      return this.resolveThemeForRoom(targetCode);
+    } catch {
+      return 'dark';
+    }
+  }
+
+  private resolveThemeForRoom(code: string): 'dark' | 'light' {
+    if (!this.isBrowser) return 'dark';
+    try {
+      const normalizedCode = (code || 'MATI01').toUpperCase();
+      const saved = localStorage.getItem(`mati_stage_theme_${normalizedCode}`);
+      if (saved === 'light' || saved === 'dark') {
+        return saved;
+      }
+      const cached = this.pollService.getCachedRoom(normalizedCode);
+      if (cached?.theme) {
+        return cached.theme;
+      }
+      const last = localStorage.getItem('mati_stage_theme_last');
+      if (last === 'light' || last === 'dark') {
+        return last;
+      }
+    } catch {
+      // fallback
+    }
+    return 'dark';
   }
 
   private listenToRoomPolls(code: string) {
@@ -618,6 +675,15 @@ export class StageComponent implements OnInit, OnDestroy {
     this.roomSub?.unsubscribe();
     this.roomSub = this.pollService.listenToRoom(code).subscribe(roomData => {
       this.room.set(roomData);
+      if (roomData?.theme) {
+        this.currentTheme.set(roomData.theme);
+        if (this.isBrowser) {
+          try {
+            localStorage.setItem(`mati_stage_theme_${code.toUpperCase()}`, roomData.theme);
+            localStorage.setItem('mati_stage_theme_last', roomData.theme);
+          } catch {}
+        }
+      }
       if (roomData?.status === 'completed') {
         this.fetchSessionSummary(code);
       }

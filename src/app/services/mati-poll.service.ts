@@ -533,6 +533,11 @@ export class MatiPollService {
    */
   async setRoomTheme(roomCode: string, theme: 'dark' | 'light'): Promise<void> {
     const code = roomCode.toUpperCase();
+    if (this.isBrowser) {
+      localStorage.setItem(`mati_stage_theme_${code}`, theme);
+      localStorage.setItem('mati_stage_theme_last', theme);
+    }
+
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
@@ -550,6 +555,28 @@ export class MatiPollService {
       this.mockRooms$.next(new Map(rooms));
       this.currentRoom.set({ ...room });
     }
+  }
+
+  /**
+   * Synchronously retrieves in-memory or persisted cached room
+   */
+  getCachedRoom(roomCode: string): Room | null {
+    const code = (roomCode || 'MATI01').toUpperCase();
+    let room = this.mockRooms$.getValue().get(code) || null;
+    if (!room && this.isBrowser) {
+      const savedTheme = localStorage.getItem(`mati_stage_theme_${code}`);
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        room = {
+          code,
+          title: `Room ${code}`,
+          activePollId: null,
+          status: 'active',
+          theme: savedTheme as 'dark' | 'light',
+          createdAt: new Date().toISOString()
+        };
+      }
+    }
+    return room;
   }
 
   /**
@@ -1008,10 +1035,18 @@ export class MatiPollService {
     const code = roomCode.toUpperCase();
     if (this.firestore) {
       return new Observable<Room | null>((subscriber) => {
+        // Emit in-memory cached room first for 0ms instant UI response
+        const cached = this.getCachedRoom(code);
+        if (cached) {
+          subscriber.next(cached);
+        }
+
         const roomRef = doc(this.firestore!, `rooms/${code}`);
         const unsub = onSnapshot(roomRef, (snap) => {
           if (snap.exists()) {
-            subscriber.next(snap.data() as Room);
+            const data = snap.data() as Room;
+            this.mockRooms$.getValue().set(code, data);
+            subscriber.next(data);
           } else {
             subscriber.next(this.mockRooms$.getValue().get(code) || null);
           }
