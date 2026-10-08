@@ -320,17 +320,23 @@ export class MatiPollService {
   }
 
   /**
-   * Step 2: setActivePoll(roomCode: string, pollId: string | null)
-   * Sets live question on screen.
+   * Step 2: setActivePoll(roomCode: string, pollId: string | null, timerSeconds?: number | null)
+   * Sets live question on screen, and atomically sets or clears countdown timer.
    */
-  async setActivePoll(roomCode: string, pollId: string | null): Promise<void> {
+  async setActivePoll(roomCode: string, pollId: string | null, timerSeconds?: number | null): Promise<void> {
     const code = roomCode.toUpperCase();
+    const hasTimer = timerSeconds !== undefined && timerSeconds !== null && timerSeconds > 0;
+    const timerDuration = hasTimer ? timerSeconds : null;
+    const timerEndsAt = hasTimer ? Date.now() + (timerSeconds as number) * 1000 : null;
+
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
         await updateDoc(roomRef, { 
           activePollId: pollId,
-          status: 'active'
+          status: 'active',
+          timerDuration,
+          timerEndsAt
         });
       } catch (err) {
         console.warn('[Mati] Firebase setActivePoll error:', err);
@@ -342,6 +348,8 @@ export class MatiPollService {
     if (room) {
       room.activePollId = pollId;
       room.status = 'active';
+      room.timerDuration = timerDuration ?? undefined;
+      room.timerEndsAt = timerEndsAt;
       rooms.set(code, { ...room });
       this.mockRooms$.next(new Map(rooms));
       this.currentRoom.set({ ...room });

@@ -806,30 +806,33 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   isFirstQuestion(): boolean {
-    const poll = this.currentPoll();
     const list = this.polls();
-    if (!poll || list.length === 0) return true;
-    return list[0].id === poll.id;
+    if (list.length === 0) return true;
+    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    if (!activeId) return true;
+    return list[0].id === activeId;
   }
 
   isLastQuestion(): boolean {
-    const poll = this.currentPoll();
     const list = this.polls();
-    if (!poll || list.length === 0) return true;
-    return list[list.length - 1].id === poll.id;
+    if (list.length === 0) return true;
+    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    if (!activeId) return true;
+    return list[list.length - 1].id === activeId;
   }
 
   getCurrentQuestionIndex(): number {
-    const poll = this.currentPoll();
     const list = this.polls();
-    if (!poll || list.length === 0) return 0;
-    const idx = list.findIndex(p => p.id === poll.id);
+    if (list.length === 0) return 0;
+    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    const idx = list.findIndex(p => p.id === activeId);
     return idx >= 0 ? idx + 1 : 0;
   }
 
   async onSelectQuestion(pollId: string) {
     if (!pollId) return;
-    await this.pollService.setActivePoll(this.roomCode(), pollId);
+    const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
+    await this.pollService.setActivePoll(this.roomCode(), pollId, timerSec);
     if (this.autoAdvanceEnabled) {
       this.resetTimer();
     }
@@ -841,12 +844,14 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   async prevQuestion() {
-    const poll = this.currentPoll();
     const list = this.polls();
-    if (!poll || list.length === 0) return;
-    const idx = list.findIndex(p => p.id === poll.id);
+    if (list.length === 0) return;
+    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    const idx = list.findIndex(p => p.id === activeId);
     if (idx > 0) {
-      await this.pollService.setActivePoll(this.roomCode(), list[idx - 1].id);
+      const prevPoll = list[idx - 1];
+      const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
+      await this.pollService.setActivePoll(this.roomCode(), prevPoll.id, timerSec);
       if (this.autoAdvanceEnabled) {
         this.resetTimer();
       }
@@ -854,12 +859,14 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   async nextQuestion() {
-    const poll = this.currentPoll();
     const list = this.polls();
-    if (!poll || list.length === 0) return;
-    const idx = list.findIndex(p => p.id === poll.id);
+    if (list.length === 0) return;
+    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    const idx = list.findIndex(p => p.id === activeId);
     if (idx >= 0 && idx < list.length - 1) {
-      await this.pollService.setActivePoll(this.roomCode(), list[idx + 1].id);
+      const nextPoll = list[idx + 1];
+      const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
+      await this.pollService.setActivePoll(this.roomCode(), nextPoll.id, timerSec);
       if (this.autoAdvanceEnabled) {
         this.resetTimer();
       }

@@ -680,6 +680,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   private pollSub?: Subscription;
   private roomSub?: Subscription;
   private pollsListSub?: Subscription;
+  private currentActivePollIdOnStudent: string | null = null;
 
   ngOnInit() {
     const vid = this.pollService.getOrCreateVoterId();
@@ -869,25 +870,37 @@ export class StudentViewComponent implements OnInit, OnDestroy {
         }
 
         // Synchronize timer with stage and server
+        const newPollId = stats?.poll?.id || null;
+        if (newPollId !== this.currentActivePollIdOnStudent) {
+          this.currentActivePollIdOnStudent = newPollId;
+          this.stopLocalTimer(true);
+        }
+
         if (stats.timerEndsAt && stats.timerEndsAt > 0) {
-          this.timerDuration.set(stats.timerDuration || 30);
-          this.startLocalTimer(stats.timerEndsAt);
+          const diff = Math.ceil((stats.timerEndsAt - Date.now()) / 1000);
+          if (diff <= 0) {
+            this.remainingSeconds.set(0);
+            this.stopLocalTimer(false);
+          } else {
+            this.timerDuration.set(stats.timerDuration || 30);
+            this.startLocalTimer(stats.timerEndsAt);
+          }
         } else {
-          this.stopLocalTimer();
+          this.stopLocalTimer(true);
         }
       } else {
-        this.stopLocalTimer();
+        this.stopLocalTimer(true);
       }
     });
   }
 
   private startLocalTimer(timerEndsAt: number) {
-    this.stopLocalTimer();
+    this.stopLocalTimer(false);
     const updateCountdown = () => {
       const diff = Math.ceil((timerEndsAt - Date.now()) / 1000);
       if (diff <= 0) {
         this.remainingSeconds.set(0);
-        this.stopLocalTimer();
+        this.stopLocalTimer(false);
       } else {
         this.remainingSeconds.set(diff);
       }
@@ -896,12 +909,12 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.timerInterval = setInterval(updateCountdown, 500);
   }
 
-  private stopLocalTimer() {
+  private stopLocalTimer(clearRemaining: boolean = true) {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
-    if (this.remainingSeconds() !== 0) {
+    if (clearRemaining) {
       this.remainingSeconds.set(null);
     }
   }

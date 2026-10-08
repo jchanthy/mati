@@ -652,26 +652,42 @@ export class StageComponent implements OnInit, OnDestroy {
     }
   }
 
+  private currentActivePollIdOnStage: string | null = null;
+
   private listenToPoll(code: string) {
     this.pollSub?.unsubscribe();
     this.pollSub = this.pollService.listenToActivePoll(code).subscribe(stats => {
       this.pollStats.set(stats);
+      
+      const newPollId = stats?.poll?.id || null;
+      if (newPollId !== this.currentActivePollIdOnStage) {
+        this.currentActivePollIdOnStage = newPollId;
+        // Brand new question: reset timer state immediately so old "Time's Up" never shows!
+        this.stopLocalTimer(true);
+      }
+
       if (stats?.timerEndsAt && stats.timerEndsAt > 0) {
-        this.timerDuration.set(stats.timerDuration || 30);
-        this.startLocalTimer(stats.timerEndsAt);
+        const diff = Math.ceil((stats.timerEndsAt - Date.now()) / 1000);
+        if (diff <= 0) {
+          this.remainingSeconds.set(0);
+          this.stopLocalTimer(false);
+        } else {
+          this.timerDuration.set(stats.timerDuration || 30);
+          this.startLocalTimer(stats.timerEndsAt);
+        }
       } else {
-        this.stopLocalTimer();
+        this.stopLocalTimer(true);
       }
     });
   }
 
   private startLocalTimer(timerEndsAt: number) {
-    this.stopLocalTimer();
+    this.stopLocalTimer(false);
     const updateCountdown = () => {
       const diff = Math.ceil((timerEndsAt - Date.now()) / 1000);
       if (diff <= 0) {
         this.remainingSeconds.set(0);
-        this.stopLocalTimer();
+        this.stopLocalTimer(false);
       } else {
         this.remainingSeconds.set(diff);
       }
@@ -680,12 +696,12 @@ export class StageComponent implements OnInit, OnDestroy {
     this.timerInterval = setInterval(updateCountdown, 500);
   }
 
-  private stopLocalTimer() {
+  private stopLocalTimer(clearRemaining: boolean = true) {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
-    if (this.remainingSeconds() !== 0) {
+    if (clearRemaining) {
       this.remainingSeconds.set(null);
     }
   }
