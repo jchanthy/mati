@@ -26,6 +26,10 @@ import { MatiPollService } from '../services/mati-poll.service';
       </div>
 
       <div class="flex items-center gap-2.5 sm:gap-3">
+        <a [routerLink]="['/dashboard/control', activeRoomCode()]" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 transition-all shadow-xs cursor-pointer" title="Live Controller">
+          <i class="pi pi-sliders-h text-xs"></i>
+          <span>Controller</span>
+        </a>
         <a routerLink="/dashboard" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xs">
           <i class="pi pi-plus text-xs"></i>
           <span class="hidden sm:inline">Create Room</span>

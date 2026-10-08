@@ -594,8 +594,9 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   polls = computed(() => {
     const list = this.rawPolls();
     const sel = this.room()?.selectedPollIds;
-    if (sel && sel.length > 0) {
-      return list.filter(p => sel.includes(p.id));
+    if (sel && Array.isArray(sel) && sel.length > 0) {
+      const filtered = list.filter(p => sel.includes(p.id));
+      if (filtered.length > 0) return filtered;
     }
     return list;
   });

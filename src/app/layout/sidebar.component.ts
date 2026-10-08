@@ -20,9 +20,10 @@ import { MatiPollService } from '../services/mati-poll.service';
           <span>Overview</span>
         </a>
 
-        <a routerLink="/dashboard/control" routerLinkActive="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <i class="pi pi-sliders-h text-base"></i>
+        <a [routerLink]="['/dashboard/control', activeRoomCode()]" routerLinkActive="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <i class="pi pi-sliders-h text-base text-purple-600 dark:text-purple-400"></i>
           <span>Live Controller</span>
+          <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 ml-auto">{{ activeRoomCode() }}</span>
         </a>
 
         @if (isAdmin()) {

@@ -64,6 +64,36 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/student/student-view.component').then(m => m.StudentViewComponent)
   },
+  {
+    path: 'vote',
+    redirectTo: 'join',
+    pathMatch: 'full'
+  },
+  {
+    path: 'vote/:roomCode',
+    loadComponent: () =>
+      import('./pages/student/student-view.component').then(m => m.StudentViewComponent)
+  },
+
+  // Controller aliases
+  {
+    path: 'control',
+    redirectTo: 'dashboard/control',
+    pathMatch: 'full'
+  },
+  {
+    path: 'control/:roomCode',
+    redirectTo: ({ params }) => `dashboard/control/${params['roomCode']}`
+  },
+  {
+    path: 'controller',
+    redirectTo: 'dashboard/control',
+    pathMatch: 'full'
+  },
+  {
+    path: 'controller/:roomCode',
+    redirectTo: ({ params }) => `dashboard/control/${params['roomCode']}`
+  },
 
   // Redirect root to dashboard
   {

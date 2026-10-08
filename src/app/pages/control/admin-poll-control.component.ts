@@ -94,6 +94,13 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
 
           <button 
             type="button" 
+            (click)="openPickQuestionsDialog()" 
+            class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-600/20 transition-all cursor-pointer">
+            <i class="pi pi-check-square"></i>
+            <span>Pick Questions ({{ selectedQuestionCount() || allRawPolls().length }}/{{ allRawPolls().length }})</span>
+          </button>
+          <button 
+            type="button" 
             (click)="showNewPollDialog = true" 
             class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer">
             <i class="pi pi-plus"></i>
@@ -535,7 +542,7 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
           <div class="flex items-center justify-between text-xs text-gray-500">
             <span>Choose which questions are included in this session.</span>
             <span class="font-bold text-indigo-600 dark:text-indigo-400 font-mono">
-              {{ tempSelectedPollIds.size }} / {{ allRawPolls().length }} Selected
+              {{ tempSelectedPollIds().length }} / {{ allRawPolls().length }} Selected
             </span>
           </div>
 
@@ -587,41 +594,51 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
           </div>
 
           <!-- Question Checklist -->
-          <div class="max-h-80 overflow-y-auto space-y-1.5 pr-1 border border-gray-100 dark:border-gray-800 rounded-2xl p-2 bg-white dark:bg-gray-900">
-            @for (p of allRawPolls(); track p.id; let idx = $index) {
-              <label class="flex items-start gap-3 p-2.5 rounded-xl transition-all cursor-pointer border"
-                [ngClass]="tempSelectedPollIds.has(p.id) 
-                  ? 'bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800' 
-                  : 'bg-gray-50/40 dark:bg-gray-800/30 border-transparent hover:border-gray-200 dark:hover:border-gray-700'">
-                <input 
-                  type="checkbox" 
-                  [checked]="tempSelectedPollIds.has(p.id)" 
-                  (change)="toggleQuestionSelection(p.id)" 
-                  class="mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-mono font-black"
-                      [ngClass]="tempSelectedPollIds.has(p.id) ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'">
-                      #{{ p.order || (idx + 1) }}
-                    </span>
-                    <span class="text-xs font-bold text-gray-900 dark:text-gray-100 leading-snug">
-                      {{ p.question }}
-                    </span>
+          @if (allRawPolls().length === 0) {
+            <div class="p-8 text-center text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 space-y-3">
+              <i class="pi pi-question-circle text-2xl text-indigo-400"></i>
+              <p>No questions found in room <strong>{{ roomCode() }}</strong> yet.</p>
+              <button type="button" (click)="showPickQuestionsDialog = false; showNewPollDialog = true" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1 cursor-pointer">
+                <i class="pi pi-plus"></i> Add First Question
+              </button>
+            </div>
+          } @else {
+            <div class="max-h-80 overflow-y-auto space-y-1.5 pr-1 border border-gray-100 dark:border-gray-800 rounded-2xl p-2 bg-white dark:bg-gray-900">
+              @for (p of allRawPolls(); track p.id; let idx = $index) {
+                <label class="flex items-start gap-3 p-2.5 rounded-xl transition-all cursor-pointer border"
+                  [ngClass]="isQuestionSelected(p.id) 
+                    ? 'bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800' 
+                    : 'bg-gray-50/40 dark:bg-gray-800/30 border-transparent hover:border-gray-200 dark:hover:border-gray-700'">
+                  <input 
+                    type="checkbox" 
+                    [checked]="isQuestionSelected(p.id)" 
+                    (change)="toggleQuestionSelection(p.id)" 
+                    class="mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-mono font-black"
+                        [ngClass]="isQuestionSelected(p.id) ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'">
+                        #{{ p.order || (idx + 1) }}
+                      </span>
+                      <span class="text-xs font-bold text-gray-900 dark:text-gray-100 leading-snug">
+                        {{ p.question }}
+                      </span>
+                    </div>
+                    <div class="text-[11px] text-gray-500 mt-0.5">
+                      {{ p.options.length }} choices
+                      @if (p.correctOptionId !== undefined) {
+                        • <span class="text-emerald-600 font-semibold">Scored (Option #{{ p.correctOptionId }})</span>
+                      }
+                    </div>
                   </div>
-                  <div class="text-[11px] text-gray-500 mt-0.5">
-                    {{ p.options.length }} choices
-                    @if (p.correctOptionId !== undefined) {
-                      • <span class="text-emerald-600 font-semibold">Scored (Option #{{ p.correctOptionId }})</span>
-                    }
-                  </div>
-                </div>
-              </label>
-            }
-          </div>
+                </label>
+              }
+            </div>
+          }
         </div>
         <ng-template pTemplate="footer">
           <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showPickQuestionsDialog = false"></button>
-          <button pButton [label]="'Apply (' + tempSelectedPollIds.size + ' Questions)'" icon="pi pi-check" class="p-button-primary" (click)="savePickedQuestions()"></button>
+          <button pButton [label]="'Apply (' + tempSelectedPollIds().length + ' Questions)'" icon="pi pi-check" class="p-button-primary" (click)="savePickedQuestions()"></button>
         </ng-template>
       </p-dialog>
 
@@ -683,8 +700,9 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   polls = computed(() => {
     const raw = this.allRawPolls();
     const sel = this.room()?.selectedPollIds;
-    if (sel && sel.length > 0) {
-      return raw.filter(p => sel.includes(p.id));
+    if (sel && Array.isArray(sel) && sel.length > 0) {
+      const filtered = raw.filter(p => sel.includes(p.id));
+      if (filtered.length > 0) return filtered;
     }
     return raw;
   });
@@ -699,7 +717,11 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   // Pick questions modal state
   showPickQuestionsDialog = false;
-  tempSelectedPollIds = new Set<string>();
+  tempSelectedPollIds = signal<string[]>([]);
+
+  isQuestionSelected(pollId: string): boolean {
+    return this.tempSelectedPollIds().includes(pollId);
+  }
 
   searchQuery = '';
   filteredPolls = computed(() => {
@@ -739,7 +761,8 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
         this.subscribeToRoom(this.roomCode());
       } else if (!codeFromRoute) {
         const queryCode = this.route.snapshot.queryParamMap.get('room');
-        const activeCode = (queryCode || this.roomCode() || 'MATI01').toUpperCase();
+        const broadcastCode = this.pollService.getActiveBroadcastRoom();
+        const activeCode = (queryCode || broadcastCode || this.roomCode() || 'MATI01').toUpperCase();
         this.roomCode.set(activeCode);
         this.subscribeToRoom(activeCode);
       } else {
@@ -793,50 +816,46 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   // Pick Questions Subset Methods
   openPickQuestionsDialog() {
-    this.tempSelectedPollIds = new Set<string>();
+    const raw = this.allRawPolls();
     const currentSelected = this.room()?.selectedPollIds;
     if (currentSelected && currentSelected.length > 0) {
-      currentSelected.forEach(id => this.tempSelectedPollIds.add(id));
+      const valid = currentSelected.filter(id => raw.some(p => p.id === id));
+      this.tempSelectedPollIds.set(valid.length > 0 ? valid : raw.map(p => p.id));
     } else {
       // By default if none specifically chosen, all are selected
-      this.allRawPolls().forEach(p => this.tempSelectedPollIds.add(p.id));
+      this.tempSelectedPollIds.set(raw.map(p => p.id));
     }
     this.showPickQuestionsDialog = true;
   }
 
   toggleQuestionSelection(pollId: string) {
-    if (this.tempSelectedPollIds.has(pollId)) {
-      this.tempSelectedPollIds.delete(pollId);
-    } else {
-      this.tempSelectedPollIds.add(pollId);
-    }
+    this.tempSelectedPollIds.update(ids => 
+      ids.includes(pollId) ? ids.filter(id => id !== pollId) : [...ids, pollId]
+    );
   }
 
   presetSelectFirst(count: number) {
-    this.tempSelectedPollIds = new Set<string>();
-    const list = this.allRawPolls().slice(0, count);
-    list.forEach(p => this.tempSelectedPollIds.add(p.id));
+    const subset = this.allRawPolls().slice(0, count).map(p => p.id);
+    this.tempSelectedPollIds.set(subset);
   }
 
   presetSelectRandom(count: number) {
-    this.tempSelectedPollIds = new Set<string>();
-    const shuffled = [...this.allRawPolls()].sort(() => 0.5 - Math.random());
-    const subset = shuffled.slice(0, count);
-    subset.forEach(p => this.tempSelectedPollIds.add(p.id));
+    const ids = this.allRawPolls().map(p => p.id);
+    const shuffled = [...ids].sort(() => 0.5 - Math.random());
+    this.tempSelectedPollIds.set(shuffled.slice(0, count));
   }
 
   presetSelectAll() {
-    this.tempSelectedPollIds = new Set<string>();
-    this.allRawPolls().forEach(p => this.tempSelectedPollIds.add(p.id));
+    this.tempSelectedPollIds.set(this.allRawPolls().map(p => p.id));
   }
 
   presetClearAll() {
-    this.tempSelectedPollIds = new Set<string>();
+    this.tempSelectedPollIds.set([]);
   }
 
   async savePickedQuestions() {
     const raw = this.allRawPolls();
-    let pickedList: string[] | null = Array.from(this.tempSelectedPollIds);
+    let pickedList: string[] | null = [...this.tempSelectedPollIds()];
 
     if (pickedList.length === 0) {
       this.messageService.add({
