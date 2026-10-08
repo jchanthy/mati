@@ -244,37 +244,62 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               </div>
 
               <!-- Action buttons -->
-              <div class="pt-2 border-t border-gray-200/80 dark:border-gray-800 flex items-center justify-between gap-1.5 flex-wrap">
-                <button 
-                  type="button" 
-                  (click)="switchRoom(r.code)"
-                  [ngClass]="selectedRoomCode() === r.code ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100'"
-                  class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer">
-                  <i class="pi pi-check text-[10px]"></i>
-                  <span>{{ selectedRoomCode() === r.code ? 'Selected' : 'Manage' }}</span>
-                </button>
+              <div class="pt-3 border-t border-gray-200/80 dark:border-gray-800 space-y-2">
+                <!-- Direct Add Question & Import for this specific room -->
+                <div class="flex items-center gap-1.5 w-full">
+                  <button 
+                    type="button" 
+                    (click)="openAddQuestionForRoom(r.code)"
+                    class="flex-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="Add question directly to {{ r.code }}">
+                    <i class="pi pi-plus text-[10px]"></i>
+                    <span>+ Add Question</span>
+                  </button>
 
-                <a 
-                  [routerLink]="['/dashboard/control', r.code]" 
-                  class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all flex items-center gap-1">
-                  <i class="pi pi-sliders-h text-[10px]"></i> Controller
-                </a>
+                  <button 
+                    type="button" 
+                    (click)="openImportForRoom(r.code)"
+                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 transition-all flex items-center gap-1 cursor-pointer"
+                    title="Import CSV or XML questions into {{ r.code }}">
+                    <i class="pi pi-file-import text-[10px]"></i>
+                    <span>Import</span>
+                  </button>
+                </div>
 
-                <a 
-                  [routerLink]="['/stage', r.code]" 
-                  target="_blank" 
-                  class="p-1.5 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" 
-                  title="Open Projector Stage">
-                  <i class="pi pi-desktop text-sm"></i>
-                </a>
+                <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                  <button 
+                    type="button" 
+                    (click)="switchRoom(r.code)"
+                    [ngClass]="selectedRoomCode() === r.code ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100'"
+                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer">
+                    <i class="pi pi-check text-[10px]"></i>
+                    <span>{{ selectedRoomCode() === r.code ? 'Selected' : 'Manage' }}</span>
+                  </button>
 
-                <a 
-                  [routerLink]="['/join', r.code]" 
-                  target="_blank" 
-                  class="p-1.5 rounded-xl text-gray-500 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" 
-                  title="Open Voter Phone View">
-                  <i class="pi pi-mobile text-sm"></i>
-                </a>
+                  <a 
+                    [routerLink]="['/dashboard/control', r.code]" 
+                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all flex items-center gap-1">
+                    <i class="pi pi-sliders-h text-[10px]"></i> Controller
+                  </a>
+
+                  <div class="flex items-center gap-1 ml-auto">
+                    <a 
+                      [routerLink]="['/stage', r.code]" 
+                      target="_blank" 
+                      class="p-1.5 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" 
+                      title="Open Projector Stage (TV)">
+                      <i class="pi pi-desktop text-sm"></i>
+                    </a>
+
+                    <a 
+                      [routerLink]="['/join', r.code]" 
+                      target="_blank" 
+                      class="p-1.5 rounded-xl text-gray-500 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" 
+                      title="Open Voter Phone View">
+                      <i class="pi pi-mobile text-sm"></i>
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
           } @empty {
@@ -289,12 +314,17 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
       <div class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
         <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Active Room Polls: {{ selectedRoomCode() }}</h2>
-            <p class="text-xs text-gray-500">Select which question to project live onto the presenter stage.</p>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white">Active Room Polls:</h2>
+              <span class="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-mono font-black text-sm border border-indigo-200 dark:border-indigo-800">
+                {{ selectedRoomCode() }}
+              </span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Select which question to project live onto the presenter stage.</p>
           </div>
           <div class="flex items-center gap-2">
-            <button pButton label="Import Moodle XML" icon="pi pi-file-import" class="p-button-outlined p-button-sm rounded-xl" (click)="showImportDialog = true"></button>
-            <button pButton label="New Question" icon="pi pi-plus" class="p-button-primary p-button-sm rounded-xl" (click)="showNewPollDialog = true"></button>
+            <button pButton label="Import (CSV / XML)" icon="pi pi-file-import" class="p-button-outlined p-button-sm rounded-xl" (click)="openImportForRoom(selectedRoomCode())"></button>
+            <button pButton label="+ Add Question" icon="pi pi-plus" class="p-button-primary p-button-sm rounded-xl" (click)="openAddQuestionForRoom(selectedRoomCode())"></button>
           </div>
         </div>
 
@@ -348,9 +378,32 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               </div>
             </div>
           } @empty {
-            <div class="text-center py-12 text-gray-400">
-              <i class="pi pi-inbox text-4xl mb-2"></i>
-              <p>No questions yet in this room. Click "New Question" or "Import Moodle XML".</p>
+            <div class="text-center py-12 px-6 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 space-y-4">
+              <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-2xl shadow-xs">
+                <i class="pi pi-question-circle"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">No questions in room {{ selectedRoomCode() }} yet</h3>
+                <p class="text-xs text-gray-500 max-w-md mx-auto mt-1">
+                  Start adding interactive questions manually or import multiple questions at once from a CSV or Moodle XML file.
+                </p>
+              </div>
+              <div class="flex items-center justify-center gap-3 flex-wrap pt-1">
+                <button 
+                  type="button" 
+                  (click)="openAddQuestionForRoom(selectedRoomCode())" 
+                  class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-600/30 transition-all cursor-pointer">
+                  <i class="pi pi-plus"></i>
+                  <span>Add Question to {{ selectedRoomCode() }}</span>
+                </button>
+                <button 
+                  type="button" 
+                  (click)="openImportForRoom(selectedRoomCode())" 
+                  class="px-4 py-2.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer">
+                  <i class="pi pi-file-import"></i>
+                  <span>Import Questions (CSV / XML)</span>
+                </button>
+              </div>
             </div>
           }
         </div>
@@ -378,8 +431,20 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
       </p-dialog>
 
       <!-- Create Poll Dialog -->
-      <p-dialog [header]="'Create Question for ' + selectedRoomCode()" [(visible)]="showNewPollDialog" [modal]="true" [style]="{width: '550px'}" class="p-fluid">
+      <p-dialog [header]="'Create Question for Room ' + targetRoomForNewPoll()" [(visible)]="showNewPollDialog" [modal]="true" [style]="{width: '550px'}" class="p-fluid">
         <div class="space-y-4 pt-2">
+          <!-- Target Room Selector -->
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1 flex items-center justify-between">
+              <span>Target Room</span>
+              <span class="text-indigo-600 dark:text-indigo-400 font-normal">Question will be added here</span>
+            </label>
+            <select [ngModel]="targetRoomForNewPoll()" (ngModelChange)="targetRoomForNewPoll.set($event)" class="w-full p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-bold text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+              @for (r of rooms(); track r.code) {
+                <option [value]="r.code">{{ r.code }} - {{ r.title || ('Room ' + r.code) }}</option>
+              }
+            </select>
+          </div>
           <div>
             <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Question</label>
             <input pInputText type="text" [(ngModel)]="newPollQuestion" placeholder="e.g. Which framework is your favorite?" class="w-full" />
@@ -436,6 +501,19 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             </div>
           </div>
 
+          <!-- Target Room Selection -->
+          <div class="flex items-center justify-between p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-xs gap-3">
+            <label class="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <i class="pi pi-building text-indigo-600 dark:text-indigo-400 text-sm"></i>
+              <span>Target Room to Receive Questions:</span>
+            </label>
+            <select [ngModel]="targetRoomForImport()" (ngModelChange)="targetRoomForImport.set($event)" class="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs font-bold text-indigo-600 dark:text-indigo-400 focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+              @for (r of rooms(); track r.code) {
+                <option [value]="r.code">{{ r.code }} - {{ r.title || ('Room ' + r.code) }}</option>
+              }
+            </select>
+          </div>
+
           <!-- File Upload Zone -->
           <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-5 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/50">
             <input type="file" #fileInput (change)="onFileSelected($event)" accept=".csv,.tsv,.xml,text/csv,text/xml,application/xml" class="hidden" />
@@ -481,7 +559,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   <span>Ready to import {{ parsedQuestions.length }} question(s)</span>
                 </span>
                 <span class="text-gray-500 dark:text-gray-400 font-normal">
-                  Target Room: <strong class="text-indigo-600 dark:text-indigo-400 font-bold">{{ selectedRoomCode() }}</strong>
+                  Target Room: <strong class="text-indigo-600 dark:text-indigo-400 font-bold">{{ targetRoomForImport() }}</strong>
                 </span>
               </div>
               <div class="max-h-52 overflow-y-auto space-y-2 pr-1 border border-gray-200 dark:border-gray-800 rounded-xl p-2 bg-gray-50/60 dark:bg-gray-900/60">
@@ -571,6 +649,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   parsedQuestions: ParsedQuestion[] = [];
   detectedFormat = signal<'csv' | 'xml'>('csv');
   uploadedFileName = signal<string>('');
+  targetRoomForNewPoll = signal<string>('MATI01');
+  targetRoomForImport = signal<string>('MATI01');
   isImporting = false;
 
   ngOnInit() {
@@ -597,11 +677,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   switchRoom(code: string) {
     this.selectedRoomCode.set(code);
+    this.targetRoomForNewPoll.set(code);
+    this.targetRoomForImport.set(code);
     this.pollService.broadcastActiveRoom(code, this.currentUser()?.email);
     this.pollsSub?.unsubscribe();
     this.pollsSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
       this.polls.set(list);
     });
+  }
+
+  openAddQuestionForRoom(code: string) {
+    this.switchRoom(code);
+    this.targetRoomForNewPoll.set(code);
+    this.showNewPollDialog = true;
+  }
+
+  openImportForRoom(code: string) {
+    this.switchRoom(code);
+    this.targetRoomForImport.set(code);
+    this.showImportDialog = true;
   }
 
   getSelectedRoomTitle(): string {
@@ -671,14 +765,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     const correctId = this.newPollCorrectIndex ? Number(this.newPollCorrectIndex) : undefined;
-    await this.pollService.createPoll(this.selectedRoomCode(), this.newPollQuestion, opts, correctId);
+    const targetRoom = this.targetRoomForNewPoll() || this.selectedRoomCode();
+    await this.pollService.createPoll(targetRoom, this.newPollQuestion, opts, correctId);
+    this.switchRoom(targetRoom);
     this.showNewPollDialog = false;
     this.newPollQuestion = '';
     this.newPollCorrectIndex = null;
     this.messageService.add({
       severity: 'success',
       summary: 'Question Created',
-      detail: `Question added to ${this.selectedRoomCode()}!`
+      detail: `Question added to ${targetRoom}!`
     });
   }
 
@@ -799,8 +895,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.parsedQuestions.length === 0 || this.isImporting) return;
     this.isImporting = true;
     try {
-      const targetRoom = this.selectedRoomCode();
+      const targetRoom = this.targetRoomForImport() || this.selectedRoomCode();
       const count = await this.pollService.createPollsBatch(targetRoom, this.parsedQuestions);
+      this.switchRoom(targetRoom);
       this.showImportDialog = false;
       this.xmlContent = '';
       this.parsedQuestions = [];

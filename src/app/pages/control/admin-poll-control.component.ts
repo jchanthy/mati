@@ -94,9 +94,16 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
 
           <button 
             type="button" 
+            (click)="showNewPollDialog = true" 
+            class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer">
+            <i class="pi pi-plus"></i>
+            <span>Add Question</span>
+          </button>
+          <button 
+            type="button" 
             (click)="showNewRoomDialog = true" 
             class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer">
-            <i class="pi pi-plus"></i>
+            <i class="pi pi-building"></i>
             <span>New Room</span>
           </button>
           <a [routerLink]="['/stage', roomCode()]" target="_blank" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
@@ -373,6 +380,13 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
                 <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold font-mono">
                   {{ polls().length }} Questions
                 </span>
+                <button 
+                  type="button" 
+                  (click)="showNewPollDialog = true" 
+                  class="ml-2 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-all cursor-pointer">
+                  <i class="pi pi-plus text-[10px]"></i>
+                  <span>+ Add Question</span>
+                </button>
               </div>
               <p class="text-[11px] text-gray-500">
                 Click any question to instantly broadcast it live to the Stage TV and audience phones.
@@ -476,6 +490,28 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
         </div>
       </div>
 
+      <!-- Create Question Dialog in Controller -->
+      <p-dialog [header]="'Add Question to Room ' + roomCode()" [(visible)]="showNewPollDialog" [modal]="true" [style]="{width: '520px'}" class="p-fluid">
+        <div class="space-y-4 pt-2">
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Question</label>
+            <input pInputText type="text" [(ngModel)]="newPollQuestion" placeholder="e.g. Which technology stack do you prefer?" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Options (One per line)</label>
+            <textarea [(ngModel)]="newPollOptionsRaw" rows="4" placeholder="Option 1&#10;Option 2&#10;Option 3&#10;Option 4" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Correct Option Number (Optional, 1-based)</label>
+            <input pInputText type="number" [(ngModel)]="newPollCorrectIndex" placeholder="e.g. 1" class="w-full" />
+          </div>
+        </div>
+        <ng-template pTemplate="footer">
+          <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showNewPollDialog = false"></button>
+          <button pButton label="Save Question" icon="pi pi-check" class="p-button-primary" (click)="createNewPoll()"></button>
+        </ng-template>
+      </p-dialog>
+
       <!-- Create Room Dialog -->
       <p-dialog header="Create New Mati Room" [(visible)]="showNewRoomDialog" [modal]="true" [style]="{width: '450px'}" class="p-fluid">
         <div class="space-y-4 pt-2">
@@ -509,6 +545,11 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   showNewRoomDialog = false;
   newRoomTitle = '';
   newRoomCode = '';
+
+  showNewPollDialog = false;
+  newPollQuestion = '';
+  newPollOptionsRaw = 'Option 1\nOption 2\nOption 3\nOption 4';
+  newPollCorrectIndex: number | null = null;
 
   roomCode = signal<string>('MATI01');
   allRooms = signal<Room[]>([]);
@@ -655,6 +696,34 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       detail: `New room ${code} has been created and is ready!`
     });
     this.switchRoom(code);
+  }
+
+  async createNewPoll() {
+    if (!this.newPollQuestion.trim()) return;
+    const opts = this.newPollOptionsRaw
+      .split('\n')
+      .map(o => o.trim())
+      .filter(o => o.length > 0);
+
+    if (opts.length < 2) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'At least 2 options needed',
+        detail: 'Please provide at least 2 answer choices.'
+      });
+      return;
+    }
+
+    const correctId = this.newPollCorrectIndex ? Number(this.newPollCorrectIndex) : undefined;
+    await this.pollService.createPoll(this.roomCode(), this.newPollQuestion, opts, correctId);
+    this.showNewPollDialog = false;
+    this.newPollQuestion = '';
+    this.newPollCorrectIndex = null;
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Question Added 🎉',
+      detail: `Question added to ${this.roomCode()}!`
+    });
   }
 
   async deletePoll(pollId: string) {
