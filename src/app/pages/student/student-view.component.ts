@@ -590,7 +590,15 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
   room = signal<Room | null>(null);
-  polls = signal<Poll[]>([]);
+  rawPolls = signal<Poll[]>([]);
+  polls = computed(() => {
+    const list = this.rawPolls();
+    const sel = this.room()?.selectedPollIds;
+    if (sel && sel.length > 0) {
+      return list.filter(p => sel.includes(p.id));
+    }
+    return list;
+  });
   activeTab = signal<'live' | 'survey'>('live');
   selectedSurveyPollId = signal<string | null>(null);
   votedOptionsMap = signal<{ [pollId: string]: number }>({});
@@ -835,9 +843,10 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   private listenToRoomPolls(code: string) {
     this.pollsListSub?.unsubscribe();
     this.pollsListSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
-      this.polls.set(list);
-      if (!this.selectedSurveyPollId() && list.length > 0) {
-        this.selectedSurveyPollId.set(list[0].id);
+      this.rawPolls.set(list);
+      const activeList = this.polls();
+      if (!this.selectedSurveyPollId() && activeList.length > 0) {
+        this.selectedSurveyPollId.set(activeList[0].id);
       }
       this.refreshVotedOptions(code, list);
     });

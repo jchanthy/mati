@@ -322,7 +322,14 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             </div>
             <p class="text-xs text-gray-500 mt-1">Select which question to project live onto the presenter stage.</p>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <button 
+              type="button" 
+              (click)="openPickQuestionsDialog()" 
+              class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs">
+              <i class="pi pi-check-square text-xs"></i>
+              <span>Pick Questions to Vote ({{ selectedQuestionCount() || allRawPolls().length }})</span>
+            </button>
             <button pButton label="Import (CSV / XML)" icon="pi pi-file-import" class="p-button-outlined p-button-sm rounded-xl" (click)="openImportForRoom(selectedRoomCode())"></button>
             <button pButton label="+ Add Question" icon="pi pi-plus" class="p-button-primary p-button-sm rounded-xl" (click)="openAddQuestionForRoom(selectedRoomCode())"></button>
           </div>
@@ -592,6 +599,107 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
           <button pButton [label]="'Import ' + parsedQuestions.length + ' Questions'" icon="pi pi-check" class="p-button-primary" [disabled]="parsedQuestions.length === 0 || isImporting" (click)="importParsedQuestions()"></button>
         </ng-template>
       </p-dialog>
+
+      <!-- Pick Questions to Vote Dialog (Subset Selector) -->
+      <p-dialog 
+        [header]="'Pick Questions to Vote (' + selectedRoomCode() + ')'" 
+        [(visible)]="showPickQuestionsDialog" 
+        [modal]="true" 
+        [style]="{width: '640px', maxWidth: '95vw'}" 
+        class="p-fluid">
+        <div class="space-y-4 pt-1">
+          <div class="flex items-center justify-between text-xs text-gray-500">
+            <span>Choose which questions are included in this room session.</span>
+            <span class="font-bold text-indigo-600 dark:text-indigo-400 font-mono">
+              {{ tempSelectedPollIds.size }} / {{ allRawPolls().length }} Selected
+            </span>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="flex items-center gap-1.5 flex-wrap p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Presets:</span>
+            <button 
+              type="button" 
+              (click)="presetSelectFirst(5)" 
+              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:text-indigo-600 cursor-pointer transition-all">
+              First 5
+            </button>
+            <button 
+              type="button" 
+              (click)="presetSelectFirst(10)" 
+              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:text-indigo-600 cursor-pointer transition-all">
+              First 10
+            </button>
+            <button 
+              type="button" 
+              (click)="presetSelectFirst(15)" 
+              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-indigo-600 dark:text-indigo-400 font-black cursor-pointer transition-all shadow-2xs">
+              First 15
+            </button>
+            <button 
+              type="button" 
+              (click)="presetSelectFirst(20)" 
+              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:text-indigo-600 cursor-pointer transition-all">
+              First 20
+            </button>
+            <button 
+              type="button" 
+              (click)="presetSelectRandom(15)" 
+              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 cursor-pointer transition-all">
+              🎲 Random 15
+            </button>
+            <button 
+              type="button" 
+              (click)="presetSelectAll()" 
+              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 cursor-pointer transition-all ml-auto">
+              Select All ({{ allRawPolls().length }})
+            </button>
+            <button 
+              type="button" 
+              (click)="presetClearAll()" 
+              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 cursor-pointer transition-all">
+              Clear
+            </button>
+          </div>
+
+          <!-- Question Checklist -->
+          <div class="max-h-80 overflow-y-auto space-y-1.5 pr-1 border border-gray-100 dark:border-gray-800 rounded-2xl p-2 bg-white dark:bg-gray-900">
+            @for (p of allRawPolls(); track p.id; let idx = $index) {
+              <label class="flex items-start gap-3 p-2.5 rounded-xl transition-all cursor-pointer border"
+                [ngClass]="tempSelectedPollIds.has(p.id) 
+                  ? 'bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800' 
+                  : 'bg-gray-50/40 dark:bg-gray-800/30 border-transparent hover:border-gray-200 dark:hover:border-gray-700'">
+                <input 
+                  type="checkbox" 
+                  [checked]="tempSelectedPollIds.has(p.id)" 
+                  (change)="toggleQuestionSelection(p.id)" 
+                  class="mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono font-black"
+                      [ngClass]="tempSelectedPollIds.has(p.id) ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'">
+                      #{{ p.order || (idx + 1) }}
+                    </span>
+                    <span class="text-xs font-bold text-gray-900 dark:text-gray-100 leading-snug">
+                      {{ p.question }}
+                    </span>
+                  </div>
+                  <div class="text-[11px] text-gray-500 mt-0.5">
+                    {{ p.options.length }} choices
+                    @if (p.correctOptionId !== undefined) {
+                      • <span class="text-emerald-600 font-semibold">Scored (Option #{{ p.correctOptionId }})</span>
+                    }
+                  </div>
+                </div>
+              </label>
+            }
+          </div>
+        </div>
+        <ng-template pTemplate="footer">
+          <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showPickQuestionsDialog = false"></button>
+          <button pButton [label]="'Apply (' + tempSelectedPollIds.size + ' Questions)'" icon="pi pi-check" class="p-button-primary" (click)="savePickedQuestions()"></button>
+        </ng-template>
+      </p-dialog>
     </div>
   `
 })
@@ -606,8 +714,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
   rooms = signal<Room[]>([]);
   roomFilter = signal<'all' | 'mine'>('all');
   selectedRoomCode = signal<string>('MATI01');
-  polls = signal<Poll[]>([]);
+  allRawPolls = signal<Poll[]>([]);
   currentRoom = this.pollService.currentRoom;
+
+  // Selected active questions subset
+  polls = computed(() => {
+    const raw = this.allRawPolls();
+    const sel = this.currentRoom()?.selectedPollIds;
+    if (sel && sel.length > 0) {
+      return raw.filter(p => sel.includes(p.id));
+    }
+    return raw;
+  });
+
+  selectedQuestionCount = computed(() => {
+    const sel = this.currentRoom()?.selectedPollIds;
+    return sel && sel.length > 0 ? sel.length : 0;
+  });
 
   // Filtered rooms depending on user role and filter selection
   filteredRooms = computed(() => {
@@ -638,6 +761,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   showNewRoomDialog = false;
   showNewPollDialog = false;
   showImportDialog = false;
+  showPickQuestionsDialog = false;
+  tempSelectedPollIds = new Set<string>();
 
   newRoomTitle = '';
   newRoomCode = '';
@@ -682,7 +807,79 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.pollService.broadcastActiveRoom(code, this.currentUser()?.email);
     this.pollsSub?.unsubscribe();
     this.pollsSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
-      this.polls.set(list);
+      this.allRawPolls.set(list);
+    });
+  }
+
+  // Pick Questions Subset Methods for Dashboard
+  openPickQuestionsDialog() {
+    this.tempSelectedPollIds = new Set<string>();
+    const currentSelected = this.currentRoom()?.selectedPollIds;
+    if (currentSelected && currentSelected.length > 0) {
+      currentSelected.forEach(id => this.tempSelectedPollIds.add(id));
+    } else {
+      this.allRawPolls().forEach(p => this.tempSelectedPollIds.add(p.id));
+    }
+    this.showPickQuestionsDialog = true;
+  }
+
+  toggleQuestionSelection(pollId: string) {
+    if (this.tempSelectedPollIds.has(pollId)) {
+      this.tempSelectedPollIds.delete(pollId);
+    } else {
+      this.tempSelectedPollIds.add(pollId);
+    }
+  }
+
+  presetSelectFirst(count: number) {
+    this.tempSelectedPollIds = new Set<string>();
+    const list = this.allRawPolls().slice(0, count);
+    list.forEach(p => this.tempSelectedPollIds.add(p.id));
+  }
+
+  presetSelectRandom(count: number) {
+    this.tempSelectedPollIds = new Set<string>();
+    const shuffled = [...this.allRawPolls()].sort(() => 0.5 - Math.random());
+    const subset = shuffled.slice(0, count);
+    subset.forEach(p => this.tempSelectedPollIds.add(p.id));
+  }
+
+  presetSelectAll() {
+    this.tempSelectedPollIds = new Set<string>();
+    this.allRawPolls().forEach(p => this.tempSelectedPollIds.add(p.id));
+  }
+
+  presetClearAll() {
+    this.tempSelectedPollIds = new Set<string>();
+  }
+
+  async savePickedQuestions() {
+    const raw = this.allRawPolls();
+    let pickedList: string[] | null = Array.from(this.tempSelectedPollIds);
+
+    if (pickedList.length === 0) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'No Questions Selected',
+        detail: 'Please pick at least 1 question for the session.'
+      });
+      return;
+    }
+
+    if (pickedList.length === raw.length) {
+      pickedList = null;
+    }
+
+    const code = this.selectedRoomCode();
+    await this.pollService.updateRoomSelectedPollIds(code, pickedList);
+    this.showPickQuestionsDialog = false;
+
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Session Questions Updated! 🎯',
+      detail: pickedList 
+        ? `${pickedList.length} of ${raw.length} questions activated for room ${code}.`
+        : `All ${raw.length} questions activated for room ${code}.`
     });
   }
 

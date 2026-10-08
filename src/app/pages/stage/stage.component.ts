@@ -444,7 +444,15 @@ export class StageComponent implements OnInit, OnDestroy {
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
   room = signal<Room | null>(null);
-  polls = signal<Poll[]>([]);
+  rawPolls = signal<Poll[]>([]);
+  polls = computed(() => {
+    const list = this.rawPolls();
+    const sel = this.room()?.selectedPollIds;
+    if (sel && sel.length > 0) {
+      return list.filter(p => sel.includes(p.id));
+    }
+    return list;
+  });
   sessionStats = signal<DetailedSessionSummary>({
     totalQuestions: 0,
     totalVotes: 0,
@@ -571,7 +579,7 @@ export class StageComponent implements OnInit, OnDestroy {
 
     this.pollStats.set(null);
     this.room.set(null);
-    this.polls.set([]);
+    this.rawPolls.set([]);
     this.sessionStats.set({
       totalQuestions: 0,
       totalVotes: 0,
@@ -598,7 +606,7 @@ export class StageComponent implements OnInit, OnDestroy {
   private listenToRoomPolls(code: string) {
     this.pollsListSub?.unsubscribe();
     this.pollsListSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
-      this.polls.set(list);
+      this.rawPolls.set(list);
       if (this.room()?.status === 'completed') {
         this.fetchSessionSummary(code);
       }

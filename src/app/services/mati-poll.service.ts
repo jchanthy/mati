@@ -15,7 +15,8 @@ import {
   query,
   orderBy,
   onSnapshot,
-  Unsubscribe
+  Unsubscribe,
+  deleteField
 } from '@angular/fire/firestore';
 import { Observable, BehaviorSubject, of, combineLatest, map } from 'rxjs';
 import { Room, Poll, Vote, PollStats, DetailedSessionSummary, QuestionResultSummary } from '../models/poll.model';
@@ -499,6 +500,35 @@ export class MatiPollService {
   }
 
   /**
+   * Sets chosen question subset for the room (e.g. pick 15 of 30 questions).
+   * Pass null or empty array to include all questions.
+   */
+  async updateRoomSelectedPollIds(roomCode: string, selectedPollIds: string[] | null): Promise<void> {
+    const code = roomCode.toUpperCase();
+    const list = selectedPollIds && selectedPollIds.length > 0 ? selectedPollIds : null;
+
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, {
+          selectedPollIds: list ? list : deleteField()
+        });
+      } catch (err) {
+        console.warn('[Mati] Firebase updateRoomSelectedPollIds error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room) {
+      room.selectedPollIds = list || undefined;
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+  }
+
+  /**
    * Sets room projection stage theme: 'dark' or 'light'.
    */
   async setRoomTheme(roomCode: string, theme: 'dark' | 'light'): Promise<void> {
@@ -558,7 +588,11 @@ export class MatiPollService {
    */
   async restartSession(roomCode: string): Promise<void> {
     const code = roomCode.toUpperCase();
-    const polls = await this.getPollsForRoom(code);
+    const roomData = await this.getRoom(code);
+    const allPolls = await this.getPollsForRoom(code);
+    const polls = roomData?.selectedPollIds && roomData.selectedPollIds.length > 0
+      ? allPolls.filter(p => roomData.selectedPollIds!.includes(p.id))
+      : allPolls;
     const firstPollId = polls.length > 0 ? polls[0].id : null;
 
     if (this.firestore) {
@@ -593,7 +627,11 @@ export class MatiPollService {
    */
   async getSessionSummary(roomCode: string): Promise<DetailedSessionSummary> {
     const code = roomCode.toUpperCase();
-    const polls = await this.getPollsForRoom(code);
+    const roomData = await this.getRoom(code);
+    const allPolls = await this.getPollsForRoom(code);
+    const polls = roomData?.selectedPollIds && roomData.selectedPollIds.length > 0
+      ? allPolls.filter(p => roomData.selectedPollIds!.includes(p.id))
+      : allPolls;
     let totalVotes = 0;
     let totalScoredQuestions = 0;
     let totalScoredVotes = 0;
