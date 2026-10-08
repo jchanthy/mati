@@ -317,12 +317,17 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
               </div>
 
               <!-- Live Countdown Timer Row -->
-              <div class="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+              <div class="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div class="text-xs">
-                  <span class="font-bold text-gray-900 dark:text-white">Broadcast Timer</span>
-                  <span class="text-[10px] text-gray-500 ml-1.5">Sync TV & Phones</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-bold text-gray-900 dark:text-white">Broadcast Timer</span>
+                    <span class="text-[10px] text-gray-500">Sync TV & Phones</span>
+                  </div>
+                  <div class="text-[10px] text-gray-500 dark:text-gray-400">
+                    Countdown for this question. Locks voting when time's up.
+                  </div>
                 </div>
-                <div class="flex items-center gap-1">
+                <div class="flex items-center gap-1 shrink-0">
                   <button type="button" (click)="triggerQuestionTimer(15)" class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-all cursor-pointer">15s</button>
                   <button type="button" (click)="triggerQuestionTimer(30)" class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-all cursor-pointer">30s</button>
                   <button type="button" (click)="triggerQuestionTimer(60)" class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-all cursor-pointer">60s</button>
@@ -1054,16 +1059,18 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     const list = this.polls();
     if (list.length === 0) return true;
     const activeId = this.room()?.activePollId || this.currentPoll()?.id;
-    if (!activeId) return true;
-    return list[0].id === activeId;
+    if (!activeId) return false;
+    const idx = list.findIndex(p => p.id === activeId);
+    return idx <= 0;
   }
 
   isLastQuestion(): boolean {
     const list = this.polls();
     if (list.length === 0) return true;
     const activeId = this.room()?.activePollId || this.currentPoll()?.id;
-    if (!activeId) return true;
-    return list[list.length - 1].id === activeId;
+    if (!activeId) return false;
+    const idx = list.findIndex(p => p.id === activeId);
+    return idx !== -1 && idx === list.length - 1;
   }
 
   getCurrentQuestionIndex(): number {
@@ -1110,6 +1117,13 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     const idx = list.findIndex(p => p.id === activeId);
     if (idx >= 0 && idx < list.length - 1) {
       const nextPoll = list[idx + 1];
+      const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
+      await this.pollService.setActivePoll(this.roomCode(), nextPoll.id, timerSec);
+      if (this.autoAdvanceEnabled) {
+        this.resetTimer();
+      }
+    } else if (idx === -1 && list.length > 0) {
+      const nextPoll = list[0];
       const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
       await this.pollService.setActivePoll(this.roomCode(), nextPoll.id, timerSec);
       if (this.autoAdvanceEnabled) {

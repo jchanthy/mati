@@ -295,10 +295,10 @@ import QRCode from 'qrcode';
                       }
                     }
 
-                    @if (stats.poll.isLocked || isTimeUp()) {
+                    @if (stats.poll.isLocked && !isTimeUp()) {
                       <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-bold border"
                         [ngClass]="isLight() ? 'bg-red-50 text-red-700 border-red-200' : 'bg-red-500/20 text-red-300 border-red-500/30'">
-                        <i class="pi pi-lock text-[10px]"></i> {{ isTimeUp() ? "Time's Up" : "Voting Locked" }}
+                        <i class="pi pi-lock text-[10px]"></i> Voting Locked
                       </span>
                     }
                   </div>
