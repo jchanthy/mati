@@ -13,7 +13,7 @@ import { MessageService } from 'primeng/api';
 import { MatiPollService } from '../../services/mati-poll.service';
 import { AuthService } from '../../services/auth.service';
 import { Room, Poll } from '../../models/poll.model';
-import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
+import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
 
 @Component({
   selector: 'app-dashboard',
@@ -71,7 +71,7 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
               (click)="showImportDialog = true" 
               class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white border border-white/30 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer">
               <i class="pi pi-file-import"></i>
-              <span>Import Moodle / XML</span>
+              <span>Import Questions (CSV / XML)</span>
             </button>
 
             <a 
@@ -399,58 +399,106 @@ import { MoodleXmlParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
         </ng-template>
       </p-dialog>
 
-      <!-- Import Moodle / XML Dialog -->
-      <p-dialog header="Import Questions from Moodle / XML" [(visible)]="showImportDialog" [modal]="true" [style]="{width: '700px'}" class="p-fluid">
+      <!-- Import Questions Dialog (CSV & Moodle XML) -->
+      <p-dialog header="Import Questions (CSV / Moodle XML)" [(visible)]="showImportDialog" [modal]="true" [style]="{width: '740px'}" class="p-fluid">
         <div class="space-y-4 pt-2">
-          <div class="p-4 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 text-xs text-indigo-900 dark:text-indigo-200">
-            <div class="font-bold mb-1 flex items-center gap-1.5">
-              <i class="pi pi-info-circle text-indigo-600"></i>
-              Supported Formats:
+          <!-- Information Banner -->
+          <div class="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 text-xs text-indigo-950 dark:text-indigo-200 space-y-2">
+            <div class="font-bold flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400">
+              <i class="pi pi-file-excel text-sm"></i>
+              Supported Formats: CSV, TSV, or Moodle XML
             </div>
-            <span>Upload or paste a standard <strong>Moodle XML</strong> file (exported from Moodle Question Bank) or standard question XML. Multiple choice and true/false questions will be parsed automatically.</span>
+            <p class="leading-relaxed">
+              Upload a <strong>CSV / TSV</strong> spreadsheet or a <strong>Moodle XML</strong> export file. Mati automatically detects the format, question titles, multiple choices (2 to 8 answers), and correct answer markings.
+            </p>
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              <button 
+                type="button" 
+                (click)="downloadCsvTemplate()" 
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all cursor-pointer">
+                <i class="pi pi-download"></i>
+                <span>Download CSV Template</span>
+              </button>
+              <button 
+                type="button" 
+                (click)="loadSampleCsv()" 
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 transition-all cursor-pointer">
+                <i class="pi pi-file-edit"></i>
+                <span>Load Sample CSV</span>
+              </button>
+              <button 
+                type="button" 
+                (click)="loadSampleXml()" 
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 transition-all cursor-pointer">
+                <i class="pi pi-code"></i>
+                <span>Load Sample XML</span>
+              </button>
+            </div>
           </div>
 
           <!-- File Upload Zone -->
-          <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-6 text-center hover:border-indigo-500 transition-colors">
-            <input type="file" #fileInput (change)="onFileSelected($event)" accept=".xml" class="hidden" />
-            <div class="space-y-2 cursor-pointer" (click)="fileInput.click()">
-              <i class="pi pi-upload text-3xl text-indigo-600"></i>
+          <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-5 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/50">
+            <input type="file" #fileInput (change)="onFileSelected($event)" accept=".csv,.tsv,.xml,text/csv,text/xml,application/xml" class="hidden" />
+            <div class="space-y-1.5 cursor-pointer" (click)="fileInput.click()">
+              <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-lg">
+                <i class="pi pi-cloud-upload"></i>
+              </div>
               <div class="text-sm font-bold text-gray-800 dark:text-gray-200">
-                Click to browse Moodle XML file (.xml)
+                Click to browse CSV or XML file
               </div>
               <div class="text-xs text-gray-500">
-                Or paste your raw XML content in the box below
+                Supports .csv, .tsv, .xml • UTF-8 Unicode &amp; Khmer font supported
               </div>
+              @if (uploadedFileName()) {
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium">
+                  <i class="pi pi-file"></i>
+                  <span>{{ uploadedFileName() }}</span>
+                </div>
+              }
             </div>
           </div>
 
           <div>
             <div class="flex items-center justify-between mb-1">
-              <label class="text-xs font-bold uppercase text-gray-600 dark:text-gray-300">Raw XML Content</label>
-              <button type="button" (click)="loadSampleXml()" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
-                Load Sample Moodle XML
-              </button>
+              <label class="text-xs font-bold uppercase text-gray-600 dark:text-gray-300">Raw Content (CSV or XML)</label>
+              @if (parsedQuestions.length > 0) {
+                <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                  [ngClass]="detectedFormat() === 'csv' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300' : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300'">
+                  <i [class]="detectedFormat() === 'csv' ? 'pi pi-table' : 'pi pi-code'"></i>
+                  <span>{{ detectedFormat() === 'csv' ? 'CSV Format Detected' : 'Moodle XML Detected' }}</span>
+                </span>
+              }
             </div>
-            <textarea [(ngModel)]="xmlContent" (ngModelChange)="onXmlContentChange()" rows="6" placeholder="<quiz>&#10;  <question type='multichoice'>...&#10;</quiz>" class="w-full p-3 font-mono text-xs rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"></textarea>
+            <textarea [(ngModel)]="xmlContent" (ngModelChange)="onXmlContentChange()" rows="5" placeholder="&quot;Question&quot;,&quot;Option 1&quot;,&quot;Option 2&quot;,&quot;Option 3&quot;,&quot;Option 4&quot;,&quot;Correct Option (1-4 or A-D)&quot;&#10;or paste Moodle XML..." class="w-full p-3 font-mono text-xs rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"></textarea>
           </div>
 
           <!-- Parsed Preview -->
           @if (parsedQuestions.length > 0) {
             <div class="space-y-2">
               <div class="flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                <span>✓ Successfully detected {{ parsedQuestions.length }} question(s)</span>
-                <span>Target Room: {{ selectedRoomCode() }}</span>
+                <span class="flex items-center gap-1.5">
+                  <i class="pi pi-check-circle"></i>
+                  <span>Ready to import {{ parsedQuestions.length }} question(s)</span>
+                </span>
+                <span class="text-gray-500 dark:text-gray-400 font-normal">
+                  Target Room: <strong class="text-indigo-600 dark:text-indigo-400 font-bold">{{ selectedRoomCode() }}</strong>
+                </span>
               </div>
-              <div class="max-h-48 overflow-y-auto space-y-2 pr-1">
+              <div class="max-h-52 overflow-y-auto space-y-2 pr-1 border border-gray-200 dark:border-gray-800 rounded-xl p-2 bg-gray-50/60 dark:bg-gray-900/60">
                 @for (q of parsedQuestions; track q.question; let idx = $index) {
-                  <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 text-xs">
-                    <div class="font-bold text-gray-900 dark:text-white">
-                      {{ idx + 1 }}. {{ q.question }}
+                  <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-xs shadow-xs">
+                    <div class="font-bold text-gray-900 dark:text-white flex items-start gap-1.5">
+                      <span class="text-indigo-600 dark:text-indigo-400 font-black">{{ idx + 1 }}.</span>
+                      <span class="flex-1">{{ q.question }}</span>
                     </div>
-                    <div class="text-gray-500 mt-1 flex flex-wrap gap-1.5">
-                      @for (opt of q.options; track opt) {
-                        <span class="px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                          {{ opt }}
+                    <div class="text-gray-500 mt-2 flex flex-wrap gap-1.5">
+                      @for (opt of q.options; track opt; let optIdx = $index) {
+                        <span class="px-2 py-0.5 rounded-md flex items-center gap-1"
+                          [ngClass]="optIdx === q.correctOptionIndex ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
+                          @if (optIdx === q.correctOptionIndex) {
+                            <i class="pi pi-check text-[10px]"></i>
+                          }
+                          <span>{{ opt }}</span>
                         </span>
                       }
                     </div>
@@ -521,6 +569,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   xmlContent = '';
   parsedQuestions: ParsedQuestion[] = [];
+  detectedFormat = signal<'csv' | 'xml'>('csv');
+  uploadedFileName = signal<string>('');
   isImporting = false;
 
   ngOnInit() {
@@ -648,12 +698,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const file = target.files?.[0];
     if (!file) return;
 
+    this.uploadedFileName.set(file.name);
     const reader = new FileReader();
     reader.onload = (e) => {
       this.xmlContent = (e.target?.result as string) || '';
       this.onXmlContentChange();
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'utf-8');
   }
 
   onXmlContentChange() {
@@ -662,18 +713,48 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
     try {
-      this.parsedQuestions = MoodleXmlParser.parse(this.xmlContent);
+      const result = QuestionImporter.parse(this.xmlContent, this.uploadedFileName());
+      this.detectedFormat.set(result.format);
+      this.parsedQuestions = result.questions;
     } catch (err: any) {
       this.parsedQuestions = [];
       this.messageService.add({
         severity: 'error',
-        summary: 'XML Parse Error',
-        detail: err.message || 'Unable to parse XML file.'
+        summary: 'Parse Error',
+        detail: err.message || 'Unable to parse questions.'
       });
     }
   }
 
+  loadSampleCsv() {
+    this.uploadedFileName.set('sample_questions.csv');
+    this.xmlContent = `"Question","Option A","Option B","Option C","Option D","Correct Answer"
+"តើបច្ចេកវិទ្យា AI ណាដែលមានឥទ្ធិពលខ្លាំងលើវិស័យអប់រំនៅកម្ពុជា?","Generative AI & Intelligent Tutors","Static Rule-based LMS","Paper-based Quizzes","Legacy Video Tapes","1"
+"What is the primary benefit of live audience polling?","Immediate comprehension check & real-time feedback","Midterm final exam scoring","Replacing instructors entirely","Passive listening","A"
+"តើ Mati អាចប្រើប្រាស់សម្រាប់ថ្នាក់រៀនអន្តរកម្មបានដែរឬទេ?","True (ពិត)","False (មិនពិត)","","","True"
+"Which language is primarily used for styling modern web applications?","CSS","Python","SQL","C++","CSS"`;
+    this.onXmlContentChange();
+  }
+
+  downloadCsvTemplate() {
+    const templateContent = `"Question","Option A","Option B","Option C","Option D","Correct Answer"\r\n` +
+      `"តើបច្ចេកវិទ្យា AI ណាដែលមានឥទ្ធិពលខ្លាំងលើវិស័យអប់រំ?","Generative AI","Static Rules","Legacy LMS","None","1"\r\n` +
+      `"What is the primary benefit of live polling?","Live audience engagement","Final exam grading","Replacing teachers","Manual paper check","A"\r\n` +
+      `"តើលោកអ្នកចូលចិត្តបច្ចេកវិទ្យាថ្មីៗដែរឬទេ?","True (ពិត)","False (មិនពិត)","","","A"\r\n`;
+
+    const blob = new Blob(["\uFEFF" + templateContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'mati_questions_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   loadSampleXml() {
+    this.uploadedFileName.set('sample_moodle.xml');
     this.xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <quiz>
   <question type="multichoice">

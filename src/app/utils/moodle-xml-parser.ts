@@ -151,3 +151,226 @@ export class MoodleXmlParser {
     return results;
   }
 }
+
+/**
+ * Service to parse standard CSV/TSV formats into question objects.
+ * Supports:
+ * - RFC 4180 quotes, embedded commas, and escaped quotes ("")
+ * - Delimiters: comma (,), semicolon (;), and tab (\t)
+ * - Variable number of options (2 to 8 choices)
+ * - Correct answer column: numbers (1, 2, 3), letters (A, B, C), or matching text
+ * - Multilingual and UTF-8 / Khmer Unicode content
+ */
+export class CsvQuestionParser {
+  /**
+   * Parse CSV string into array of rows (string[][]),
+   * handling quotes, custom delimiters, and multiline cells.
+   */
+  static parseCsvRows(csvText: string): string[][] {
+    let text = csvText.replace(/^\uFEFF/, '').trim();
+    if (!text) return [];
+
+    // Auto-detect delimiter from the first line
+    const firstLine = text.split(/\r\n|\n|\r/)[0] || '';
+    let delimiter = ',';
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semicolonCount = (firstLine.match(/;/g) || []).length;
+    const tabCount = (firstLine.match(/\t/g) || []).length;
+    if (semicolonCount > commaCount && semicolonCount > tabCount) {
+      delimiter = ';';
+    } else if (tabCount > commaCount && tabCount > semicolonCount) {
+      delimiter = '\t';
+    }
+
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let currentField = '';
+    let insideQuotes = false;
+    let i = 0;
+
+    while (i < text.length) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+
+      if (insideQuotes) {
+        if (char === '"') {
+          if (nextChar === '"') {
+            currentField += '"';
+            i += 2;
+            continue;
+          } else {
+            insideQuotes = false;
+            i++;
+            continue;
+          }
+        } else {
+          currentField += char;
+          i++;
+          continue;
+        }
+      } else {
+        if (char === '"') {
+          insideQuotes = true;
+          i++;
+          continue;
+        } else if (char === delimiter) {
+          currentRow.push(currentField.trim());
+          currentField = '';
+          i++;
+          continue;
+        } else if (char === '\r' || char === '\n') {
+          if (char === '\r' && nextChar === '\n') {
+            i += 2;
+          } else {
+            i++;
+          }
+          currentRow.push(currentField.trim());
+          if (currentRow.some(col => col.length > 0)) {
+            rows.push(currentRow);
+          }
+          currentRow = [];
+          currentField = '';
+          continue;
+        } else {
+          currentField += char;
+          i++;
+          continue;
+        }
+      }
+    }
+
+    if (currentField.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentField.trim());
+      if (currentRow.some(col => col.length > 0)) {
+        rows.push(currentRow);
+      }
+    }
+
+    return rows;
+  }
+
+  /**
+   * Parses CSV string into ParsedQuestion array.
+   */
+  static parse(csvText: string): ParsedQuestion[] {
+    const rows = this.parseCsvRows(csvText);
+    if (rows.length === 0) return [];
+
+    const questions: ParsedQuestion[] = [];
+    let startIdx = 0;
+
+    // Check if the first row is a header row
+    const firstRow = rows[0].map(c => c.toLowerCase());
+    const isHeader = firstRow.some(c => 
+      c.includes('question') || 
+      c.includes('option') || 
+      c.includes('answer') || 
+      c.includes('choice') ||
+      c.includes('correct') ||
+      c.includes('សំណួរ') ||
+      c.includes('ចម្លើយ')
+    );
+
+    if (isHeader) {
+      startIdx = 1;
+    }
+
+    for (let r = startIdx; r < rows.length; r++) {
+      const cols = rows[r].filter(c => c !== undefined);
+      if (cols.length < 2) continue;
+
+      const questionText = cols[0].trim();
+      if (!questionText) continue;
+
+      let rawOptions = cols.slice(1).map(c => c.trim()).filter(c => c.length > 0);
+      if (rawOptions.length === 0) continue;
+
+      let correctIndex: number | undefined = undefined;
+
+      // Detect if the last column is a correct answer indicator
+      const lastCol = rawOptions[rawOptions.length - 1];
+      const secondLastExists = rawOptions.length >= 3;
+
+      if (secondLastExists) {
+        const numVal = parseInt(lastCol, 10);
+        // Case 1: Number (1-based index, e.g. 1, 2, 3)
+        if (!isNaN(numVal) && numVal >= 1 && numVal <= rawOptions.length - 1 && /^\d+$/.test(lastCol)) {
+          correctIndex = numVal - 1;
+          rawOptions.pop();
+        }
+        // Case 2: Letter (A, B, C, D)
+        else if (/^[A-Za-z]$/.test(lastCol)) {
+          const letterIdx = lastCol.toUpperCase().charCodeAt(0) - 65;
+          if (letterIdx >= 0 && letterIdx < rawOptions.length - 1) {
+            correctIndex = letterIdx;
+            rawOptions.pop();
+          }
+        }
+        // Case 3: Exact match with one of the preceding option texts
+        else {
+          const matchingIdx = rawOptions.slice(0, rawOptions.length - 1).findIndex(
+            opt => opt.toLowerCase() === lastCol.toLowerCase()
+          );
+          if (matchingIdx >= 0) {
+            correctIndex = matchingIdx;
+            rawOptions.pop();
+          }
+        }
+      }
+
+      if (rawOptions.length >= 2) {
+        questions.push({
+          question: questionText,
+          options: rawOptions,
+          correctOptionIndex: correctIndex,
+          type: 'multichoice'
+        });
+      } else if (rawOptions.length === 1 && (rawOptions[0].toLowerCase() === 'true' || rawOptions[0].toLowerCase() === 'false')) {
+        questions.push({
+          question: questionText,
+          options: ['True (ពិត)', 'False (មិនពិត)'],
+          correctOptionIndex: rawOptions[0].toLowerCase() === 'true' ? 0 : 1,
+          type: 'truefalse'
+        });
+      }
+    }
+
+    return questions;
+  }
+}
+
+/**
+ * Unified Question Importer: auto-detects CSV or Moodle XML format.
+ */
+export class QuestionImporter {
+  static parse(content: string, filename?: string): { format: 'csv' | 'xml'; questions: ParsedQuestion[] } {
+    const trimmed = (content || '').trim();
+    if (!trimmed) {
+      return { format: 'csv', questions: [] };
+    }
+
+    const isExplicitCsv = filename?.toLowerCase().endsWith('.csv') || filename?.toLowerCase().endsWith('.tsv');
+    const isExplicitXml = filename?.toLowerCase().endsWith('.xml');
+
+    if (isExplicitXml || (trimmed.startsWith('<') && trimmed.includes('</'))) {
+      const xmlQuestions = MoodleXmlParser.parse(content);
+      if (xmlQuestions.length > 0 || isExplicitXml) {
+        return { format: 'xml', questions: xmlQuestions };
+      }
+    }
+
+    // Try CSV parser
+    const csvQuestions = CsvQuestionParser.parse(content);
+    if (csvQuestions.length > 0 || isExplicitCsv) {
+      return { format: 'csv', questions: csvQuestions };
+    }
+
+    // Fallback: try XML
+    const xmlFallback = MoodleXmlParser.parse(content);
+    if (xmlFallback.length > 0) {
+      return { format: 'xml', questions: xmlFallback };
+    }
+
+    return { format: 'csv', questions: [] };
+  }
+}
