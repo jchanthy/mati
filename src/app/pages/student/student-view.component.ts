@@ -51,50 +51,51 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
 
       <!-- Content Area -->
       <main class="p-4 sm:p-5 flex-1 flex flex-col justify-start overflow-y-auto">
-        @if (room()?.status === 'completed') {
-          <!-- Slido-Style Trophy Celebration Card -->
+        @if (room()?.status === 'completed' || (room()?.mode === 'survey' && showSurveyCompletedOverview())) {
+          <!-- Complete Session & Results Overview Screen for Participant Mobile -->
           <div class="w-full space-y-4 my-auto animate-fadein pb-4">
+            
+            <!-- 1. Top Card: Differentiated for Quiz vs Survey -->
             <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 text-center shadow-lg relative overflow-hidden">
               <!-- Soft festive background confetti dots -->
               <div class="absolute -top-12 -left-12 w-32 h-32 bg-amber-400/10 rounded-full blur-2xl pointer-events-none"></div>
               <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-              <!-- Big Golden Trophy Icon with Rank Badge -->
-              <div class="relative w-28 h-28 mx-auto flex items-center justify-center mb-3">
-                <!-- SVG Trophy identical to Slido styling -->
-                <svg viewBox="0 0 120 120" class="w-24 h-24 drop-shadow-md">
-                  <!-- Base / Stand -->
-                  <path d="M42 104 h36 v5 h-36 z" fill="#D97706" />
-                  <path d="M48 94 h24 v10 h-24 z" fill="#F59E0B" />
-                  <path d="M54 78 h12 v16 h-12 z" fill="#FBBF24" />
-                  <!-- Handles -->
-                  <path d="M34 38 C18 38 18 64 36 66 L38 58 C26 56 26 44 36 44 Z" fill="#F59E0B" />
-                  <path d="M86 38 C102 38 102 64 84 66 L82 58 C94 56 94 44 84 44 Z" fill="#F59E0B" />
-                  <!-- Cup Body -->
-                  <path d="M36 28 h48 c0 32 -10 52 -24 52 c-14 0 -24 -20 -24 -52 z" fill="#FBBF24" />
-                  <path d="M36 28 h48 v8 h-48 z" fill="#F59E0B" opacity="0.4" />
-                  <!-- Center Medal on Cup -->
-                  <circle cx="60" cy="50" r="14" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="2" />
-                  <text x="60" y="55" font-size="13" font-weight="900" text-anchor="middle" fill="#475569" font-family="sans-serif">1</text>
-                </svg>
-              </div>
+              @if (studentScoredQuestionsCount() > 0) {
+                <!-- QUIZ MODE: Big Golden Trophy Icon with Rank Badge -->
+                <div class="relative w-28 h-28 mx-auto flex items-center justify-center mb-3">
+                  <svg viewBox="0 0 120 120" class="w-24 h-24 drop-shadow-md">
+                    <!-- Base / Stand -->
+                    <path d="M42 104 h36 v5 h-36 z" fill="#D97706" />
+                    <path d="M48 94 h24 v10 h-24 z" fill="#F59E0B" />
+                    <path d="M54 78 h12 v16 h-12 z" fill="#FBBF24" />
+                    <!-- Handles -->
+                    <path d="M34 38 C18 38 18 64 36 66 L38 58 C26 56 26 44 36 44 Z" fill="#F59E0B" />
+                    <path d="M86 38 C102 38 102 64 84 66 L82 58 C94 56 94 44 84 44 Z" fill="#F59E0B" />
+                    <!-- Cup Body -->
+                    <path d="M36 28 h48 c0 32 -10 52 -24 52 c-14 0 -24 -20 -24 -52 z" fill="#FBBF24" />
+                    <path d="M36 28 h48 v8 h-48 z" fill="#F59E0B" opacity="0.4" />
+                    <!-- Center Medal on Cup -->
+                    <circle cx="60" cy="50" r="14" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="2" />
+                    <text x="60" y="55" font-size="13" font-weight="900" text-anchor="middle" fill="#475569" font-family="sans-serif">1</text>
+                  </svg>
+                </div>
 
-              <!-- Main Heading & Name -->
-              <div class="space-y-1">
-                <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                  You finished 1<sup>st</sup>
-                </h2>
-                <p class="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-300">
-                  Well done, {{ participantName() }}!
-                </p>
-              </div>
+                <!-- Main Heading & Name -->
+                <div class="space-y-1">
+                  <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                    You finished 1<sup>st</sup>
+                  </h2>
+                  <p class="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-300">
+                    Well done, {{ participantName() }}!
+                  </p>
+                </div>
 
-              <!-- Primary Stats Table (Clean Slido Style) -->
-              <div class="max-w-xs mx-auto py-4 space-y-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
-                @if (studentScoredQuestionsCount() > 0) {
+                <!-- Primary Stats Table -->
+                <div class="max-w-xs mx-auto py-4 space-y-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
                   <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                     <span class="text-slate-500 dark:text-slate-400 font-medium">Correct answers:</span>
-                    <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
+                    <span class="text-slate-900 dark:text-white font-mono font-bold text-base text-emerald-600 dark:text-emerald-400">
                       {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() }}
                     </span>
                   </div>
@@ -104,63 +105,112 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                       {{ studentAccuracyPercent() }}%
                     </span>
                   </div>
-                }
-                <div class="flex items-center justify-between pt-1">
-                  <span class="text-slate-500 dark:text-slate-400 font-medium">Participation:</span>
-                  <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
-                    {{ progressPercent() }}% ({{ answeredCount() }}/{{ polls().length }})
-                  </span>
-                </div>
-              </div>
-
-              <!-- Slido Top Participant Badges / Leaderboard Cards -->
-              <div class="space-y-2 pt-1 max-w-xs mx-auto">
-                <!-- User's entry -->
-                <div class="flex items-center justify-between px-4 py-3 rounded-2xl bg-sky-700 text-white font-bold text-sm shadow-md">
-                  <div class="flex items-center gap-2.5 min-w-0">
-                    <span class="w-6 h-6 rounded-full bg-white text-sky-800 text-xs font-black flex items-center justify-center shrink-0">
-                      1
+                  <div class="flex items-center justify-between pt-1">
+                    <span class="text-slate-500 dark:text-slate-400 font-medium">Participation:</span>
+                    <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
+                      {{ progressPercent() }}% ({{ answeredCount() }}/{{ polls().length }})
                     </span>
-                    <span class="truncate">{{ participantName() }} (me)</span>
-                  </div>
-                  <div class="font-mono text-xs text-sky-100 shrink-0">
-                    @if (studentScoredQuestionsCount() > 0) {
-                      {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() }}
-                    } @else {
-                      {{ answeredCount() }}/{{ polls().length }}
-                    }
                   </div>
                 </div>
 
-                @if (sessionStats().totalVotes > answeredCount()) {
-                  <div class="flex items-center justify-between px-4 py-3 rounded-2xl bg-sky-800/90 text-white font-bold text-sm">
+                <!-- Leaderboard Cards -->
+                <div class="space-y-2 pt-1 max-w-xs mx-auto">
+                  <div class="flex items-center justify-between px-4 py-3 rounded-2xl bg-sky-700 text-white font-bold text-sm shadow-md">
                     <div class="flex items-center gap-2.5 min-w-0">
-                      <span class="w-6 h-6 rounded-full bg-white/20 text-white text-xs font-black flex items-center justify-center shrink-0">
-                        2
+                      <span class="w-6 h-6 rounded-full bg-white text-sky-800 text-xs font-black flex items-center justify-center shrink-0">
+                        1
                       </span>
-                      <span class="truncate">Audience Group</span>
+                      <span class="truncate">{{ participantName() }} (me)</span>
                     </div>
-                    <div class="font-mono text-xs text-sky-200 shrink-0">
-                      {{ sessionStats().overallAccuracy }}% accuracy
+                    <div class="font-mono text-xs text-sky-100 shrink-0">
+                      {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() }}
                     </div>
                   </div>
+
+                  @if (sessionStats().totalVotes > answeredCount()) {
+                    <div class="flex items-center justify-between px-4 py-3 rounded-2xl bg-sky-800/90 text-white font-bold text-sm">
+                      <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-6 h-6 rounded-full bg-white/20 text-white text-xs font-black flex items-center justify-center shrink-0">
+                          2
+                        </span>
+                        <span class="truncate">Audience Group</span>
+                      </div>
+                      <div class="font-mono text-xs text-sky-200 shrink-0">
+                        {{ sessionStats().overallAccuracy }}% accuracy
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <!-- SURVEY MODE: Celebration Icon & Card -->
+                <div class="w-20 h-20 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl mx-auto mb-3 shadow-md border border-emerald-200 dark:border-emerald-800">
+                  <span>📋</span>
+                </div>
+
+                <!-- Main Heading & Name -->
+                <div class="space-y-1">
+                  <span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    🎉 ការស្ទង់មតិបានបញ្ចប់ • Survey Completed
+                  </span>
+                  <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight pt-1">
+                    Thank you, {{ participantName() }}!
+                  </h2>
+                  <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                    Your responses have been successfully recorded for room <span class="font-mono font-bold text-amber-600 dark:text-amber-400">{{ roomCode() }}</span>.
+                  </p>
+                </div>
+
+                <!-- Survey Participation Stats -->
+                <div class="max-w-xs mx-auto py-4 space-y-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
+                  <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <span class="text-slate-500 dark:text-slate-400 font-medium">Questions Answered:</span>
+                    <span class="text-slate-900 dark:text-white font-mono font-bold text-base text-emerald-600 dark:text-emerald-400">
+                      {{ answeredCount() }}/{{ polls().length }} ({{ progressPercent() }}%)
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between pt-1">
+                    <span class="text-slate-500 dark:text-slate-400 font-medium">Total Submissions:</span>
+                    <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
+                      {{ sessionStats().totalVotes }}
+                    </span>
+                  </div>
+                </div>
+
+                @if (room()?.mode === 'survey' && room()?.status !== 'completed') {
+                  <div class="pt-1">
+                    <button
+                      type="button"
+                      (click)="toggleSurveyCompletedOverview()"
+                      class="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 transition-all cursor-pointer">
+                      ← Back to Survey Questions
+                    </button>
+                  </div>
                 }
+              }
+
+              <!-- 2. Dual Tab Selector: "My Answers" vs "Class Results Overview" -->
+              <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div class="p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center gap-1 max-w-xs mx-auto">
+                  <button
+                    type="button"
+                    (click)="setStudentResultTab('my_answers')"
+                    [ngClass]="studentResultTab() === 'my_answers' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'"
+                    class="flex-1 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer">
+                    {{ studentScoredQuestionsCount() > 0 ? 'My Answers' : 'My Responses' }}
+                  </button>
+                  <button
+                    type="button"
+                    (click)="setStudentResultTab('class_overview')"
+                    [ngClass]="studentResultTab() === 'class_overview' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400'"
+                    class="flex-1 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer">
+                    Class Results
+                  </button>
+                </div>
               </div>
 
-              <!-- Collapsible "View Answers" button -->
-              <div class="pt-5">
-                <button
-                  type="button"
-                  (click)="toggleViewAnswers()"
-                  class="inline-flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 transition-colors cursor-pointer py-1 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
-                  <span>{{ showAnswersBreakdown() ? 'Hide answers' : 'View answers' }}</span>
-                  <i class="pi" [ngClass]="showAnswersBreakdown() ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-                </button>
-              </div>
-
-              <!-- Detailed Answers Accordion List -->
-              @if (showAnswersBreakdown()) {
-                <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3 text-left animate-fadein">
+              <!-- TAB 1: MY INDIVIDUAL RESPONSES -->
+              @if (studentResultTab() === 'my_answers') {
+                <div class="mt-4 space-y-3 text-left animate-fadein">
                   @for (p of polls(); track p.id; let idx = $index) {
                     <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
                       <div class="flex items-start justify-between gap-2">
@@ -176,6 +226,10 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                           <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase shrink-0 border"
                             [ngClass]="getVotedOptionFor(p.id) === p.correctOptionId ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' : 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800'">
                             {{ getVotedOptionFor(p.id) === p.correctOptionId ? '✓ Correct' : '✗ Incorrect' }}
+                          </span>
+                        } @else if (hasVotedFor(p.id)) {
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                            Answered
                           </span>
                         }
                       </div>
@@ -209,6 +263,67 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   }
                 </div>
               }
+
+              <!-- TAB 2: CLASS RESULTS OVERVIEW (AGGREGATE DISTRIBUTION) -->
+              @if (studentResultTab() === 'class_overview') {
+                <div class="mt-4 space-y-3.5 text-left animate-fadein">
+                  @for (q of sessionStats().questionResults; track q.pollId; let qIdx = $index) {
+                    <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                      <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-start gap-2 flex-1 min-w-0">
+                          <span class="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                            Q{{ q.order || (qIdx + 1) }}
+                          </span>
+                          <span class="text-xs font-bold text-slate-900 dark:text-white leading-snug">
+                            {{ q.question }}
+                          </span>
+                        </div>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                          👥 {{ q.totalVotes }} votes
+                        </span>
+                      </div>
+
+                      <!-- Options with Distribution Bars -->
+                      <div class="space-y-1.5 pt-1">
+                        @for (opt of q.options; track opt.id; let optIdx = $index) {
+                          <div class="p-2 rounded-xl border bg-white dark:bg-slate-900 text-xs space-y-1"
+                            [ngClass]="{
+                              'border-emerald-500/70 bg-emerald-50/50 dark:bg-emerald-950/20': opt.isCorrect,
+                              'border-indigo-400/60 bg-indigo-50/30 dark:bg-indigo-950/20': !opt.isCorrect && getVotedOptionFor(q.pollId) === opt.id,
+                              'border-slate-200 dark:border-slate-800': !opt.isCorrect && getVotedOptionFor(q.pollId) !== opt.id
+                            }">
+                            <div class="flex items-center justify-between gap-1">
+                              <div class="flex items-center gap-1.5 min-w-0">
+                                <span class="font-bold text-slate-500">{{ opt.id }}.</span>
+                                <span class="truncate font-medium text-slate-800 dark:text-slate-200" [ngClass]="opt.isCorrect ? 'font-bold text-emerald-900 dark:text-emerald-200' : ''">
+                                  {{ opt.text }}
+                                </span>
+                                @if (getVotedOptionFor(q.pollId) === opt.id) {
+                                  <span class="text-[9px] uppercase tracking-wider px-1 py-0.2 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 shrink-0 font-bold">You</span>
+                                }
+                                @if (opt.isCorrect) {
+                                  <i class="pi pi-check text-emerald-600 dark:text-emerald-400 text-[10px] shrink-0"></i>
+                                }
+                              </div>
+                              <span class="font-mono font-bold text-xs shrink-0" [ngClass]="opt.isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'">
+                                {{ opt.percentage }}%
+                              </span>
+                            </div>
+
+                            <div class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div class="h-full rounded-full transition-all duration-300"
+                                [style.width.%]="opt.percentage"
+                                [ngClass]="opt.isCorrect ? 'bg-emerald-500' : (getVotedOptionFor(q.pollId) === opt.id ? 'bg-indigo-600' : 'bg-slate-400')">
+                              </div>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+
             </div>
           </div>
         } @else if (room()?.mode === 'survey') {
@@ -229,6 +344,25 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 </div>
               </div>
             </div>
+
+            <!-- All Answered Quick Action Banner -->
+            @if (answeredCount() === polls().length && polls().length > 0) {
+              <div class="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-2 shadow-xs animate-fadein">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">🎉</span>
+                  <div>
+                    <h4 class="text-xs font-bold text-emerald-900 dark:text-emerald-200">All questions answered!</h4>
+                    <p class="text-[11px] text-emerald-700 dark:text-emerald-400">View overall survey results & feedback.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  (click)="toggleSurveyCompletedOverview()"
+                  class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0 transition-all cursor-pointer shadow-xs">
+                  View Overview
+                </button>
+              </div>
+            }
 
             <!-- Quick Number Selector Pills [1] [2] ... [30] -->
             <div class="space-y-1.5">
@@ -325,13 +459,22 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     class="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                     ← Prev
                   </button>
-                  <button
-                    type="button"
-                    (click)="nextSurveyQuestion()"
-                    [disabled]="isLastSurveyQuestion()"
-                    class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-700 cursor-pointer">
-                    Next →
-                  </button>
+                  @if (isLastSurveyQuestion()) {
+                    <button
+                      type="button"
+                      (click)="toggleSurveyCompletedOverview()"
+                      class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs">
+                      <span>View Results</span>
+                      <i class="pi pi-check text-[10px]"></i>
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="nextSurveyQuestion()"
+                      class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer">
+                      Next →
+                    </button>
+                  }
                 </div>
               </div>
             }
@@ -621,8 +764,33 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   selectedOptionId = signal<number | null>(null);
   isSubmitting = signal<boolean>(false);
 
+  studentResultTab = signal<'my_answers' | 'class_overview'>('my_answers');
+  showSurveyCompletedOverview = signal<boolean>(false);
+
   toggleViewAnswers() {
     this.showAnswersBreakdown.update(v => !v);
+  }
+
+  toggleSurveyCompletedOverview() {
+    this.showSurveyCompletedOverview.update(v => !v);
+    if (this.showSurveyCompletedOverview()) {
+      this.pollService.getSessionSummary(this.roomCode()).then(summary => {
+        this.sessionStats.set(summary);
+      });
+    }
+  }
+
+  setStudentResultTab(tab: 'my_answers' | 'class_overview') {
+    this.studentResultTab.set(tab);
+    if (tab === 'class_overview') {
+      this.pollService.getSessionSummary(this.roomCode()).then(summary => {
+        this.sessionStats.set(summary);
+      });
+    }
+  }
+
+  getOptionLetter(idx: number): string {
+    return String.fromCharCode(65 + (idx % 26));
   }
 
   // Survey and overall computed values

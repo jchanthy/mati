@@ -313,6 +313,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                             <!-- View results -->
                             <a 
                               [routerLink]="['/stage', r.code]" 
+                              [queryParams]="{ view: 'overview' }"
                               target="_blank"
                               (click)="activeMenuRoom.set(null)"
                               class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs no-underline">

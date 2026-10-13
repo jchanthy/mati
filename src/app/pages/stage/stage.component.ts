@@ -28,61 +28,123 @@ import QRCode from 'qrcode';
 
       <!-- Main Central Presentation Area: Scaled dynamically to TV viewport -->
       <main class="flex-1 min-h-0 flex flex-col justify-center z-10 w-full max-w-[1850px] 2xl:max-w-[2400px] mx-auto overflow-hidden">
-        @if (room()?.status === 'completed') {
-          <!-- Grand Finale Celebration Screen for Big TV / Projector with Results Breakdown -->
-          <div class="w-full max-w-5xl xl:max-w-6xl mx-auto flex flex-col justify-center items-center space-y-3 sm:space-y-4 lg:space-y-5 px-3 sm:px-6 my-auto overflow-hidden animate-fadein">
-            <!-- Festive Badge & Title -->
-            <div class="text-center space-y-1.5 sm:space-y-2 shrink-0">
-              <div class="flex items-center justify-center">
-                <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider shadow-2xs border"
-                  [ngClass]="isLight() ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'">
-                  <span>🎉</span>
-                  <span>Poll Completed • ការស្ទង់មតិបានបញ្ចប់</span>
-                </span>
+        @if (room()?.status === 'completed' || isOverviewMode()) {
+          <!-- Complete Grand Finale & Overview Results Screen for Big TV / Projector -->
+          <div class="w-full h-full flex flex-col min-h-0 overflow-hidden animate-fadein py-1">
+            
+            <!-- 1. Header Bar: Room PIN, Title, and Tab Switchers -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 shrink-0 border-b"
+              [ngClass]="isLight() ? 'border-slate-200' : 'border-slate-800/80'">
+              
+              <!-- Left: Title & Room Badge -->
+              <div class="flex items-center gap-3 text-left">
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center text-lg sm:text-xl shrink-0 shadow-md"
+                  [ngClass]="sessionStats().hasScoredQuestions 
+                    ? (isLight() ? 'bg-amber-100 text-amber-700' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40')
+                    : (isLight() ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40')">
+                  <span>{{ sessionStats().hasScoredQuestions ? '🏆' : '📊' }}</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider border font-mono"
+                      [ngClass]="isLight() ? 'bg-white text-slate-700 border-slate-200 shadow-2xs' : 'bg-slate-900 text-slate-300 border-slate-700'">
+                      PIN: <span [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">{{ roomCode() }}</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                      [ngClass]="sessionStats().hasScoredQuestions 
+                        ? (isLight() ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-300') 
+                        : (isLight() ? 'bg-indigo-100 text-indigo-800' : 'bg-indigo-500/20 text-indigo-300')">
+                      {{ sessionStats().hasScoredQuestions ? '🎯 Quiz Mode Finale' : '📋 Survey Feedback Finale' }}
+                    </span>
+                  </div>
+                  <h1 class="text-lg sm:text-xl md:text-2xl font-black tracking-tight leading-snug"
+                    [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                    {{ sessionStats().hasScoredQuestions ? 'ទិដ្ឋភាពទូទៅនៃលទ្ធផលប្រឡង • Quiz Overview Results' : 'ទិដ្ឋភាពទូទៅនៃការស្ទង់មតិ • Survey Overview Results' }}
+                  </h1>
+                </div>
               </div>
-              <h1 class="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight leading-snug"
-                [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
-                ការស្ទង់មតិបានបញ្ចប់ដោយជោគជ័យ!
-              </h1>
-              <p class="text-xs sm:text-sm md:text-base font-medium"
-                [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">
-                Final Audience Results & Performance Summary for Room <span class="font-mono font-bold" [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">{{ roomCode() }}</span>
-              </p>
+
+              <!-- Right: Navigation View Tabs -->
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="p-1 rounded-2xl flex items-center gap-1 border shadow-xs"
+                  [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'">
+                  <button
+                    type="button"
+                    (click)="setOverviewTab('breakdown')"
+                    [ngClass]="overviewTab() === 'breakdown' 
+                      ? (isLight() ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'bg-indigo-600 text-white shadow-xs font-bold') 
+                      : (isLight() ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200')"
+                    class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
+                    <i class="pi pi-list"></i>
+                    <span>All Questions ({{ sessionStats().questionResults.length }})</span>
+                  </button>
+                  <button
+                    type="button"
+                    (click)="setOverviewTab('spotlight')"
+                    [ngClass]="overviewTab() === 'spotlight' 
+                      ? (isLight() ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'bg-indigo-600 text-white shadow-xs font-bold') 
+                      : (isLight() ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200')"
+                    class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
+                    <i class="pi pi-search"></i>
+                    <span>Spotlight Focus</span>
+                  </button>
+                  <button
+                    type="button"
+                    (click)="setOverviewTab('insights')"
+                    [ngClass]="overviewTab() === 'insights' 
+                      ? (isLight() ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'bg-indigo-600 text-white shadow-xs font-bold') 
+                      : (isLight() ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200')"
+                    class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
+                    <i class="pi pi-chart-pie"></i>
+                    <span>Key Insights</span>
+                  </button>
+                </div>
+
+                @if (isOverviewMode() && room()?.status !== 'completed') {
+                  <button
+                    type="button"
+                    (click)="toggleOverviewMode()"
+                    class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                    <i class="pi pi-arrow-left"></i>
+                    <span>Live Poll</span>
+                  </button>
+                }
+              </div>
             </div>
 
-            <!-- Grand KPI Summary Cards (4 Cards) -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 lg:gap-4 shrink-0 max-w-4xl lg:max-w-5xl mx-auto w-full">
+            <!-- 2. Grand 4-KPI Overview Metric Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 my-3 shrink-0 w-full">
               <!-- Total Questions -->
-              <div class="p-3 sm:p-4 lg:p-5 rounded-2xl border shadow-xs text-center space-y-1 transition-colors"
+              <div class="p-3 sm:p-3.5 rounded-2xl border shadow-xs text-center space-y-0.5 transition-colors"
                 [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-100' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-2xl sm:text-3xl lg:text-4xl font-black font-mono leading-tight"
+                <div class="text-xl sm:text-2xl lg:text-3xl font-black font-mono leading-tight"
                   [ngClass]="isLight() ? 'text-slate-900' : 'text-slate-100'">
                   {{ totalQuestionsCount() }}
                 </div>
                 <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
                   [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                  Total Questions
+                  Questions Polled
                 </div>
               </div>
 
               <!-- Audience Votes Cast -->
-              <div class="p-3 sm:p-4 lg:p-5 rounded-2xl border shadow-xs text-center space-y-1 transition-colors"
+              <div class="p-3 sm:p-3.5 rounded-2xl border shadow-xs text-center space-y-0.5 transition-colors"
                 [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-100' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-2xl sm:text-3xl lg:text-4xl font-black font-mono leading-tight text-indigo-600 dark:text-indigo-400">
+                <div class="text-xl sm:text-2xl lg:text-3xl font-black font-mono leading-tight text-indigo-600 dark:text-indigo-400">
                   {{ totalVotesCount() }}
                 </div>
                 <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
                   [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                  Total Votes Cast
+                  Total Submissions
                 </div>
               </div>
 
               <!-- Overall Accuracy or Top Consensus -->
-              <div class="p-3 sm:p-4 lg:p-5 rounded-2xl border shadow-xs text-center space-y-1 transition-colors"
+              <div class="p-3 sm:p-3.5 rounded-2xl border shadow-xs text-center space-y-0.5 transition-colors"
                 [ngClass]="sessionStats().hasScoredQuestions 
                   ? (isLight() ? 'bg-emerald-50/70 border-emerald-300' : 'border-emerald-500/40 bg-emerald-950/20') 
                   : (isLight() ? 'bg-amber-50/70 border-amber-300' : 'border-amber-500/40 bg-amber-950/20')">
-                <div class="text-2xl sm:text-3xl lg:text-4xl font-black font-mono leading-tight"
+                <div class="text-xl sm:text-2xl lg:text-3xl font-black font-mono leading-tight"
                   [ngClass]="sessionStats().hasScoredQuestions 
                     ? (isLight() ? 'text-emerald-700' : 'text-emerald-400') 
                     : (isLight() ? 'text-amber-700' : 'text-amber-400')">
@@ -92,34 +154,366 @@ import QRCode from 'qrcode';
                   [ngClass]="sessionStats().hasScoredQuestions 
                     ? (isLight() ? 'text-emerald-800' : 'text-emerald-300') 
                     : (isLight() ? 'text-amber-800' : 'text-amber-300')">
-                  {{ sessionStats().hasScoredQuestions ? 'Overall Accuracy' : 'Top Consensus' }}
+                  {{ sessionStats().hasScoredQuestions ? 'Overall Quiz Accuracy' : 'Average Consensus' }}
                 </div>
               </div>
 
-              <!-- Status -->
-              <div class="p-3 sm:p-4 lg:p-5 rounded-2xl border shadow-xs text-center space-y-1 transition-colors"
+              <!-- Completion Status -->
+              <div class="p-3 sm:p-3.5 rounded-2xl border shadow-xs text-center space-y-0.5 transition-colors"
                 [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-100' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-600 dark:text-emerald-400 font-mono leading-tight">
+                <div class="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono leading-tight">
                   100%
                 </div>
                 <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
                   [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                  Completed
+                  Audience Completed
                 </div>
               </div>
             </div>
 
-            <!-- Congratulatory audience banner -->
-            <div class="p-3 sm:p-4 lg:p-5 rounded-2xl border text-center max-w-3xl mx-auto w-full transition-colors space-y-1"
-              [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/70 border-slate-800'">
-              <div class="text-xl sm:text-2xl">👏</div>
-              <h2 class="text-base sm:text-lg lg:text-xl font-bold" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
-                សូមអរគុណសម្រាប់ការចូលរួមយ៉ាងសកម្ម!
-              </h2>
-              <p class="text-xs sm:text-sm max-w-xl mx-auto" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                Thank you for participating! All audience votes and feedback have been collected and securely recorded for Room <span class="font-mono font-bold" [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">{{ roomCode() }}</span>.
-              </p>
+            <!-- 3. Dynamic Tab Content: Scrollable & Responsive View -->
+            <div class="flex-1 min-h-0 overflow-y-auto pr-1">
+              
+              <!-- TAB 1: ALL QUESTIONS BREAKDOWN -->
+              @if (overviewTab() === 'breakdown') {
+                <div class="space-y-3.5 pb-6">
+                  
+                  <!-- Quick question filter chips -->
+                  <div class="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none shrink-0">
+                    <button
+                      type="button"
+                      (click)="overviewFilter.set('all')"
+                      [ngClass]="overviewFilter() === 'all' 
+                        ? 'bg-indigo-600 text-white shadow-xs font-black' 
+                        : (isLight() ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800')"
+                      class="px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer shrink-0">
+                      All ({{ sessionStats().questionResults.length }})
+                    </button>
+                    @for (q of sessionStats().questionResults; track q.pollId; let idx = $index) {
+                      <button
+                        type="button"
+                        (click)="overviewFilter.set(q.pollId)"
+                        [ngClass]="overviewFilter() === q.pollId 
+                          ? 'bg-indigo-600 text-white shadow-xs font-black' 
+                          : (isLight() ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800')"
+                        class="px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer shrink-0 flex items-center gap-1">
+                        <span>Q{{ q.order || (idx + 1) }}</span>
+                        @if (q.correctOptionId !== undefined) {
+                          <span class="text-[10px]" [ngClass]="q.correctPercentage >= 50 ? 'text-emerald-400' : 'text-amber-400'">{{ q.correctPercentage }}%</span>
+                        }
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Questions Grid (2 columns on large displays, 1 column on smaller) -->
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+                    @for (q of filteredQuestionResults(); track q.pollId; let qIdx = $index) {
+                      <div class="p-4 sm:p-5 rounded-2xl border shadow-xs space-y-3 transition-colors text-left"
+                        [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900/80 border-slate-800'">
+                        
+                        <!-- Question Header -->
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="flex items-start gap-2.5 min-w-0">
+                            <span class="px-2.5 py-1 rounded-xl text-xs font-black font-mono shrink-0 shadow-2xs"
+                              [ngClass]="isLight() ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-indigo-950 text-indigo-300 border border-indigo-800'">
+                              Q{{ q.order || (qIdx + 1) }}
+                            </span>
+                            <h3 class="text-sm sm:text-base font-bold leading-snug break-words"
+                              [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                              {{ q.question }}
+                            </h3>
+                          </div>
+                          
+                          <div class="shrink-0 flex items-center gap-1.5">
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full border"
+                              [ngClass]="isLight() ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'">
+                              👥 {{ q.totalVotes }} votes
+                            </span>
+                          </div>
+                        </div>
+
+                        <!-- Result Highlight Pill -->
+                        <div class="flex items-center gap-2 flex-wrap text-xs">
+                          @if (q.correctOptionId !== undefined) {
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold border"
+                              [ngClass]="isLight() ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-950/40 text-emerald-300 border-emerald-800'">
+                              <i class="pi pi-check-circle text-xs text-emerald-600 dark:text-emerald-400"></i>
+                              <span>Correct: <strong>{{ q.correctOptionText }}</strong></span>
+                              <span class="font-mono ml-1">({{ q.correctPercentage }}% accuracy)</span>
+                            </span>
+                          } @else {
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold border"
+                              [ngClass]="isLight() ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-amber-950/40 text-amber-300 border-amber-800'">
+                              <i class="pi pi-star text-xs text-amber-500"></i>
+                              <span>Top Choice: <strong>{{ q.winningOptionText }}</strong></span>
+                              <span class="font-mono ml-1">({{ q.winningPercentage }}% consensus)</span>
+                            </span>
+                          }
+                        </div>
+
+                        <!-- Option Distribution Bars -->
+                        <div class="space-y-2 pt-1">
+                          @for (opt of q.options; track opt.id; let optIdx = $index) {
+                            <div class="p-2.5 rounded-xl border transition-colors space-y-1.5"
+                              [ngClass]="{
+                                'border-emerald-500/60 bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-500/40': opt.isCorrect,
+                                'border-indigo-400/50 bg-indigo-50/30 dark:bg-indigo-950/20': !opt.isCorrect && opt.id === q.winningOptionId && q.correctOptionId === undefined,
+                                'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50': !opt.isCorrect && (opt.id !== q.winningOptionId || q.correctOptionId !== undefined)
+                              }">
+                              <div class="flex items-center justify-between text-xs font-semibold gap-2">
+                                <div class="flex items-center gap-2 min-w-0">
+                                  <span class="w-5 h-5 rounded-md flex items-center justify-center font-bold text-[11px] shrink-0"
+                                    [ngClass]="opt.isCorrect 
+                                      ? 'bg-emerald-600 text-white' 
+                                      : (isLight() ? 'bg-slate-200 text-slate-800' : 'bg-slate-800 text-slate-200')">
+                                    {{ getOptionLetter(optIdx) }}
+                                  </span>
+                                  <span class="truncate" [ngClass]="opt.isCorrect ? 'font-bold text-emerald-950 dark:text-emerald-200' : (isLight() ? 'text-slate-800' : 'text-slate-200')">
+                                    {{ opt.text }}
+                                  </span>
+                                  @if (opt.isCorrect) {
+                                    <span class="text-[10px] uppercase font-black px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
+                                      Correct
+                                    </span>
+                                  }
+                                </div>
+                                <div class="shrink-0 flex items-center gap-2 font-mono">
+                                  <span class="text-xs font-bold" [ngClass]="opt.isCorrect ? 'text-emerald-600 dark:text-emerald-400' : (isLight() ? 'text-slate-900' : 'text-white')">
+                                    {{ opt.percentage }}%
+                                  </span>
+                                  <span class="text-[10px] text-slate-400">
+                                    ({{ opt.votes }})
+                                  </span>
+                                </div>
+                              </div>
+
+                              <!-- Progress Bar Fill -->
+                              <div class="w-full h-2 rounded-full overflow-hidden" [ngClass]="isLight() ? 'bg-slate-200/80' : 'bg-slate-800'">
+                                <div class="h-full rounded-full transition-all duration-500"
+                                  [style.width.%]="opt.percentage"
+                                  [ngClass]="opt.isCorrect 
+                                    ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+                                    : (opt.id === q.winningOptionId ? 'bg-indigo-600' : 'bg-slate-400')">
+                                </div>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- TAB 2: SPOTLIGHT FOCUS (SINGLE QUESTION TV MAGNIFICATION) -->
+              @if (overviewTab() === 'spotlight') {
+                @if (currentSpotlightQuestion(); as spotQ) {
+                  <div class="max-w-4xl mx-auto py-2 space-y-4">
+                    <!-- Navigation Controller for Spotlight -->
+                    <div class="flex items-center justify-between p-3 rounded-2xl border shadow-xs"
+                      [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'">
+                      <button
+                        type="button"
+                        (click)="prevSpotlight()"
+                        [disabled]="spotlightIndex() <= 0"
+                        class="px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        [ngClass]="isLight() ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'">
+                        <i class="pi pi-arrow-left"></i>
+                        <span>Previous Question</span>
+                      </button>
+
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Spotlight:</span>
+                        <span class="font-mono font-black text-sm px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                          Q{{ spotQ.order }} of {{ sessionStats().questionResults.length }}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        (click)="nextSpotlight()"
+                        [disabled]="spotlightIndex() >= sessionStats().questionResults.length - 1"
+                        class="px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        [ngClass]="isLight() ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700' : 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-500'">
+                        <span>Next Question</span>
+                        <i class="pi pi-arrow-right"></i>
+                      </button>
+                    </div>
+
+                    <!-- Magnified Question Presentation Card -->
+                    <div class="p-6 sm:p-8 rounded-3xl border shadow-xl space-y-5 text-left"
+                      [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-200/50' : 'bg-slate-900/90 border-slate-800 shadow-slate-950'">
+                      
+                      <div class="flex items-center justify-between gap-3">
+                        <span class="px-3 py-1 rounded-xl text-sm font-black font-mono shadow-xs"
+                          [ngClass]="isLight() ? 'bg-indigo-100 text-indigo-800' : 'bg-indigo-900 text-indigo-200'">
+                          Question #{{ spotQ.order }}
+                        </span>
+                        <span class="text-sm font-bold px-3 py-1 rounded-full border"
+                          [ngClass]="isLight() ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'">
+                          👥 {{ spotQ.totalVotes }} Total Audience Votes
+                        </span>
+                      </div>
+
+                      <h2 class="text-xl sm:text-2xl md:text-3xl font-black leading-snug"
+                        [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                        {{ spotQ.question }}
+                      </h2>
+
+                      <!-- Huge Animated Option Bars -->
+                      <div class="space-y-3.5 pt-2">
+                        @for (opt of spotQ.options; track opt.id; let optIdx = $index) {
+                          <div class="p-4 rounded-2xl border-2 transition-all space-y-2"
+                            [ngClass]="opt.isCorrect 
+                              ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30 ring-2 ring-emerald-500/30' 
+                              : (opt.id === spotQ.winningOptionId && spotQ.correctOptionId === undefined
+                                ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30'
+                                : (isLight() ? 'border-slate-200 bg-slate-50/70' : 'border-slate-800 bg-slate-800/40'))">
+                            
+                            <div class="flex items-center justify-between">
+                              <div class="flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm shrink-0"
+                                  [ngClass]="opt.isCorrect ? 'bg-emerald-600 text-white' : (isLight() ? 'bg-slate-200 text-slate-800' : 'bg-slate-700 text-white')">
+                                  {{ getOptionLetter(optIdx) }}
+                                </span>
+                                <span class="text-base sm:text-lg font-bold"
+                                  [ngClass]="opt.isCorrect ? 'text-emerald-950 dark:text-emerald-200' : (isLight() ? 'text-slate-900' : 'text-white')">
+                                  {{ opt.text }}
+                                </span>
+                                @if (opt.isCorrect) {
+                                  <span class="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 flex items-center gap-1">
+                                    <i class="pi pi-check"></i> Correct Answer
+                                  </span>
+                                }
+                              </div>
+
+                              <div class="flex items-baseline gap-2 font-mono">
+                                <span class="text-xl sm:text-2xl font-black"
+                                  [ngClass]="opt.isCorrect ? 'text-emerald-600 dark:text-emerald-400' : (isLight() ? 'text-slate-900' : 'text-white')">
+                                  {{ opt.percentage }}%
+                                </span>
+                                <span class="text-xs text-slate-400">
+                                  ({{ opt.votes }} votes)
+                                </span>
+                              </div>
+                            </div>
+
+                            <div class="w-full h-3 rounded-full overflow-hidden" [ngClass]="isLight() ? 'bg-slate-200' : 'bg-slate-700'">
+                              <div class="h-full rounded-full transition-all duration-700"
+                                [style.width.%]="opt.percentage"
+                                [ngClass]="opt.isCorrect 
+                                  ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)]' 
+                                  : (opt.id === spotQ.winningOptionId ? 'bg-indigo-600' : 'bg-slate-400')">
+                              </div>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
+
+              <!-- TAB 3: KEY INSIGHTS & STATISTICAL HIGHLIGHTS -->
+              @if (overviewTab() === 'insights') {
+                <div class="max-w-4xl mx-auto py-2 space-y-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- Highest Consensus Question -->
+                    @if (highestConsensusQuestion(); as hc) {
+                      <div class="p-5 rounded-2xl border shadow-xs space-y-2 text-left"
+                        [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'">
+                        <div class="flex items-center gap-2">
+                          <span class="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-sm">
+                            ⭐
+                          </span>
+                          <div>
+                            <div class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Highest Consensus</div>
+                            <div class="text-xs text-slate-400 font-mono">Q{{ hc.order }} • {{ hc.winningPercentage }}% agreement</div>
+                          </div>
+                        </div>
+                        <h4 class="text-sm font-bold" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                          {{ hc.question }}
+                        </h4>
+                        <div class="text-xs p-2.5 rounded-xl border"
+                          [ngClass]="isLight() ? 'bg-amber-50/70 border-amber-200 text-amber-900' : 'bg-amber-950/30 border-amber-800 text-amber-200'">
+                          Top response: <strong>{{ hc.winningOptionText }}</strong> with {{ hc.winningPercentage }}% of votes
+                        </div>
+                      </div>
+                    }
+
+                    <!-- Top Accuracy Question (if Quiz) -->
+                    @if (highestAccuracyQuestion(); as ha) {
+                      <div class="p-5 rounded-2xl border shadow-xs space-y-2 text-left"
+                        [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'">
+                        <div class="flex items-center gap-2">
+                          <span class="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+                            🎯
+                          </span>
+                          <div>
+                            <div class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Easiest Question</div>
+                            <div class="text-xs text-slate-400 font-mono">Q{{ ha.order }} • {{ ha.correctPercentage }}% correct</div>
+                          </div>
+                        </div>
+                        <h4 class="text-sm font-bold" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                          {{ ha.question }}
+                        </h4>
+                        <div class="text-xs p-2.5 rounded-xl border"
+                          [ngClass]="isLight() ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-emerald-950/30 border-emerald-800 text-emerald-200'">
+                          Correct answer: <strong>{{ ha.correctOptionText }}</strong>
+                        </div>
+                      </div>
+                    }
+
+                    <!-- Toughest Question (if Quiz) -->
+                    @if (toughestQuestion(); as tq) {
+                      <div class="p-5 rounded-2xl border shadow-xs space-y-2 text-left"
+                        [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'">
+                        <div class="flex items-center gap-2">
+                          <span class="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-sm">
+                            🧠
+                          </span>
+                          <div>
+                            <div class="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Most Challenging Question</div>
+                            <div class="text-xs text-slate-400 font-mono">Q{{ tq.order }} • {{ tq.correctPercentage }}% correct</div>
+                          </div>
+                        </div>
+                        <h4 class="text-sm font-bold" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                          {{ tq.question }}
+                        </h4>
+                        <div class="text-xs p-2.5 rounded-xl border"
+                          [ngClass]="isLight() ? 'bg-red-50/70 border-red-200 text-red-900' : 'bg-red-950/30 border-red-800 text-red-200'">
+                          Audience struggled most with this question (only {{ tq.correctPercentage }}% selected "{{ tq.correctOptionText }}")
+                        </div>
+                      </div>
+                    }
+
+                    <!-- Audience Engagement Summary -->
+                    <div class="p-5 rounded-2xl border shadow-xs space-y-2 text-left"
+                      [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'">
+                      <div class="flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
+                          📈
+                        </span>
+                        <div>
+                          <div class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Engagement Score</div>
+                          <div class="text-xs text-slate-400 font-mono">Room {{ roomCode() }}</div>
+                        </div>
+                      </div>
+                      <h4 class="text-sm font-bold" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                        Active Audience Participation
+                      </h4>
+                      <p class="text-xs text-slate-500 dark:text-slate-400">
+                        Average of <strong>{{ sessionStats().totalQuestions > 0 ? (sessionStats().totalVotes / sessionStats().totalQuestions | number:'1.0-1') : 0 }}</strong> votes per question across {{ totalQuestionsCount() }} questions.
+                      </p>
+                    </div>
+
+                  </div>
+                </div>
+              }
+
             </div>
+
           </div>
         } @else {
           <!-- Split Stage Layout: Flexible QR Station on Left + Question & Results on Right -->
@@ -336,6 +730,22 @@ import QRCode from 'qrcode';
           </div>
         }
       </main>
+
+      <!-- Floating Overview Toggle Pill (Available anytime for presenter) -->
+      <div class="absolute bottom-3 right-4 z-50 flex items-center gap-2">
+        @if (room()?.status !== 'completed') {
+          <button
+            type="button"
+            (click)="toggleOverviewMode()"
+            class="px-3.5 py-1.5 rounded-full text-xs font-bold shadow-lg border backdrop-blur-md transition-all cursor-pointer flex items-center gap-1.5"
+            [ngClass]="isOverviewMode() 
+              ? (isLight() ? 'bg-indigo-600 text-white border-indigo-700 shadow-indigo-200' : 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-950')
+              : (isLight() ? 'bg-white/95 text-slate-700 border-slate-200 hover:bg-slate-100 shadow-slate-200' : 'bg-slate-900/95 text-slate-300 border-slate-700 hover:bg-slate-800 shadow-slate-950')">
+            <i class="pi" [ngClass]="isOverviewMode() ? 'pi-desktop' : 'pi-chart-bar'"></i>
+            <span>{{ isOverviewMode() ? 'Live Stage' : 'Overview Results' }}</span>
+          </button>
+        }
+      </div>
     </div>
   `
 })
@@ -376,6 +786,44 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Projector / TV Theme: light vs dark
   isLight = computed(() => this.currentTheme() === 'light');
+
+  // Overview Results mode and navigation state
+  isOverviewMode = signal<boolean>(false);
+  overviewTab = signal<'breakdown' | 'spotlight' | 'insights'>('breakdown');
+  spotlightIndex = signal<number>(0);
+  overviewFilter = signal<string>('all');
+
+  currentSpotlightQuestion = computed(() => {
+    const list = this.sessionStats().questionResults;
+    if (!list || list.length === 0) return null;
+    const idx = Math.max(0, Math.min(this.spotlightIndex(), list.length - 1));
+    return list[idx];
+  });
+
+  filteredQuestionResults = computed(() => {
+    const list = this.sessionStats().questionResults;
+    const filter = this.overviewFilter();
+    if (filter === 'all') return list;
+    return list.filter(q => q.pollId === filter || q.order.toString() === filter);
+  });
+
+  highestConsensusQuestion = computed(() => {
+    const list = this.sessionStats().questionResults;
+    if (!list || list.length === 0) return null;
+    return [...list].sort((a, b) => b.winningPercentage - a.winningPercentage)[0];
+  });
+
+  highestAccuracyQuestion = computed(() => {
+    const list = this.sessionStats().questionResults.filter(q => q.correctOptionId !== undefined);
+    if (!list || list.length === 0) return null;
+    return [...list].sort((a, b) => b.correctPercentage - a.correctPercentage)[0];
+  });
+
+  toughestQuestion = computed(() => {
+    const list = this.sessionStats().questionResults.filter(q => q.correctOptionId !== undefined && q.totalVotes > 0);
+    if (!list || list.length === 0) return null;
+    return [...list].sort((a, b) => a.correctPercentage - b.correctPercentage)[0];
+  });
 
   // Total question and vote counts for completed stage
   totalQuestionsCount = computed(() => Math.max(this.polls().length, this.sessionStats().totalQuestions));
@@ -419,6 +867,13 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
       } else {
         const currentBroadcast = this.pollService.getActiveBroadcastRoom();
         this.switchActiveRoom(currentBroadcast, false);
+      }
+    });
+
+    this.route.queryParamMap.subscribe(qp => {
+      if (qp.get('view') === 'overview' || qp.get('overview') === 'true') {
+        this.isOverviewMode.set(true);
+        this.fetchSessionSummary(this.roomCode());
       }
     });
 
@@ -691,5 +1146,41 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (maxVotes === 0) return false;
     return (stats.votesPerOption[optionId] || 0) === maxVotes;
+  }
+
+  toggleOverviewMode() {
+    this.isOverviewMode.update(v => !v);
+    if (this.isOverviewMode()) {
+      this.fetchSessionSummary(this.roomCode());
+    }
+  }
+
+  setOverviewTab(tab: 'breakdown' | 'spotlight' | 'insights') {
+    this.overviewTab.set(tab);
+    this.fetchSessionSummary(this.roomCode());
+  }
+
+  setSpotlightIndex(index: number) {
+    const total = this.sessionStats().questionResults.length;
+    if (total === 0) return;
+    this.spotlightIndex.set(Math.max(0, Math.min(index, total - 1)));
+  }
+
+  nextSpotlight() {
+    const total = this.sessionStats().questionResults.length;
+    if (total === 0) return;
+    if (this.spotlightIndex() < total - 1) {
+      this.spotlightIndex.update(i => i + 1);
+    }
+  }
+
+  prevSpotlight() {
+    if (this.spotlightIndex() > 0) {
+      this.spotlightIndex.update(i => i - 1);
+    }
+  }
+
+  getOptionLetter(idx: number): string {
+    return String.fromCharCode(65 + (idx % 26));
   }
 }

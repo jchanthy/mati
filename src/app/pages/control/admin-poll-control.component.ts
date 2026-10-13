@@ -14,7 +14,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { MatiPollService } from '../../services/mati-poll.service';
 import { AuthService } from '../../services/auth.service';
-import { Poll, PollStats, Room } from '../../models/poll.model';
+import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
 
 @Component({
   selector: 'app-admin-poll-control',
@@ -109,6 +109,16 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
             title="Pick which questions are included in voting">
             <i class="pi pi-check-square text-xs"></i>
             <span>Pick Questions ({{ selectedQuestionCount() || allRawPolls().length }}/{{ allRawPolls().length }})</span>
+          </button>
+
+          <!-- Overview Results Action -->
+          <button 
+            type="button" 
+            (click)="openOverviewResultsDialog()" 
+            class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            title="Inspect full session overview results & analytics">
+            <i class="pi pi-chart-bar text-xs"></i>
+            <span>Overview Results</span>
           </button>
 
           <!-- External Stage & Voter links -->
@@ -225,8 +235,89 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         <!-- LEFT COLUMN (Col 7 / 12): Active Question Remote & Live Tally -->
         <div class="lg:col-span-7 space-y-4">
-          <!-- Active Question Hero Card -->
-          <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-4">
+          @if (room()?.status === 'completed') {
+            <!-- Session Completed Hero Card: Overview Results Dashboard -->
+            <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-purple-200 dark:border-purple-800 shadow-xs space-y-4 animate-fadein">
+              <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center text-base font-bold shadow-2xs">
+                    🎉
+                  </span>
+                  <div>
+                    <h3 class="text-sm font-black text-gray-900 dark:text-white">Session Completed &amp; Overview Ready</h3>
+                    <p class="text-[11px] text-gray-500">Stage TV and voter phones are projecting the finale results.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  (click)="restartSession()"
+                  class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs">
+                  <i class="pi pi-replay text-xs"></i>
+                  <span>Restart (Q1)</span>
+                </button>
+              </div>
+
+              <!-- 3 Grand KPI Cards -->
+              <div class="grid grid-cols-3 gap-2.5">
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 text-center">
+                  <div class="text-xl font-black font-mono text-gray-900 dark:text-white">{{ polls().length }}</div>
+                  <div class="text-[10px] uppercase font-bold text-gray-400">Questions</div>
+                </div>
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 text-center">
+                  <div class="text-xl font-black font-mono text-indigo-600 dark:text-indigo-400">{{ sessionSummary()?.totalVotes || 0 }}</div>
+                  <div class="text-[10px] uppercase font-bold text-gray-400">Total Votes</div>
+                </div>
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 text-center">
+                  <div class="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                    {{ sessionSummary()?.hasScoredQuestions ? (sessionSummary()?.overallAccuracy + '%') : (sessionSummary()?.topConsensusPercentage + '%') }}
+                  </div>
+                  <div class="text-[10px] uppercase font-bold text-gray-400">
+                    {{ sessionSummary()?.hasScoredQuestions ? 'Accuracy' : 'Consensus' }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Questions Breakdown in Hero Card -->
+              <div class="space-y-2.5">
+                <div class="flex items-center justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
+                  <span>Questions Performance Breakdown</span>
+                  <button
+                    type="button"
+                    (click)="openOverviewResultsDialog()"
+                    class="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+                    View Full Table →
+                  </button>
+                </div>
+
+                <div class="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                  @for (q of sessionSummary()?.questionResults; track q.pollId; let idx = $index) {
+                    <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 space-y-1.5 text-xs">
+                      <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400 shrink-0">#{{ q.order || (idx + 1) }}</span>
+                          <span class="font-bold text-gray-900 dark:text-white truncate">{{ q.question }}</span>
+                        </div>
+                        <span class="text-[10px] font-mono font-bold text-gray-400 shrink-0">{{ q.totalVotes }} votes</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[11px]">
+                        @if (q.correctOptionId !== undefined) {
+                          <span class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                            <i class="pi pi-check text-[10px]"></i> Correct: {{ q.correctOptionText }} ({{ q.correctPercentage }}%)
+                          </span>
+                        } @else {
+                          <span class="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                            <i class="pi pi-star text-[10px]"></i> Top: {{ q.winningOptionText }} ({{ q.winningPercentage }}%)
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          } @else {
+            <!-- Active Question Hero Card -->
+            <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-4">
             <!-- Question Top Nav Bar -->
             <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800 gap-2">
               <div class="flex items-center gap-2">
@@ -336,7 +427,8 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
               </div>
             </div>
           </div>
-        </div>
+        }
+      </div>
 
         <!-- RIGHT COLUMN (Col 5 / 12): Question Playlist Deck -->
         <div class="lg:col-span-5 space-y-4">
@@ -601,6 +693,120 @@ import { Poll, PollStats, Room } from '../../models/poll.model';
           <button pButton label="Create Room" icon="pi pi-check" class="p-button-primary" [disabled]="!newRoomTitle.trim()" (click)="createNewRoom()"></button>
         </ng-template>
       </p-dialog>
+
+      <!-- Overview Results Dialog -->
+      <p-dialog 
+        header="Session Overview Results & Performance Analytics" 
+        [visible]="showOverviewResultsDialog()" 
+        (visibleChange)="showOverviewResultsDialog.set($event)" 
+        [modal]="true" 
+        [style]="{width: '92vw', maxWidth: '850px'}" 
+        class="p-fluid">
+        <div class="space-y-4 pt-2">
+          <!-- Room Summary Badge & Title -->
+          <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+            <div>
+              <span class="text-xs font-bold text-gray-500 uppercase">Room:</span>
+              <span class="font-mono font-bold text-amber-600 dark:text-amber-400 ml-1.5">{{ roomCode() }}</span>
+              <span class="text-xs text-gray-400 ml-2">({{ room()?.title || 'Session' }})</span>
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider"
+              [ngClass]="sessionSummary()?.hasScoredQuestions ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'">
+              {{ sessionSummary()?.hasScoredQuestions ? '🎯 Quiz Mode' : '📋 Survey Mode' }}
+            </span>
+          </div>
+
+          <!-- 4 Summary KPI Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div class="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-center">
+              <div class="text-2xl font-black font-mono text-gray-900 dark:text-white">{{ polls().length }}</div>
+              <div class="text-[10px] uppercase font-bold text-gray-400">Questions</div>
+            </div>
+            <div class="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-center">
+              <div class="text-2xl font-black font-mono text-indigo-600 dark:text-indigo-400">{{ sessionSummary()?.totalVotes || 0 }}</div>
+              <div class="text-[10px] uppercase font-bold text-gray-400">Total Votes</div>
+            </div>
+            <div class="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-center">
+              <div class="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                {{ sessionSummary()?.hasScoredQuestions ? (sessionSummary()?.overallAccuracy + '%') : (sessionSummary()?.topConsensusPercentage + '%') }}
+              </div>
+              <div class="text-[10px] uppercase font-bold text-gray-400">
+                {{ sessionSummary()?.hasScoredQuestions ? 'Accuracy' : 'Consensus' }}
+              </div>
+            </div>
+            <div class="p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-center">
+              <div class="text-2xl font-black font-mono text-purple-600 dark:text-purple-400">
+                {{ room()?.status === 'completed' ? '100%' : 'Active' }}
+              </div>
+              <div class="text-[10px] uppercase font-bold text-gray-400">Status</div>
+            </div>
+          </div>
+
+          <!-- Question-by-Question Detailed Results List -->
+          <div class="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+            @for (q of sessionSummary()?.questionResults; track q.pollId; let idx = $index) {
+              <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 space-y-2.5">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-start gap-2 min-w-0">
+                    <span class="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 shrink-0">
+                      Q{{ q.order || (idx + 1) }}
+                    </span>
+                    <h4 class="text-sm font-bold text-gray-900 dark:text-white leading-snug">{{ q.question }}</h4>
+                  </div>
+                  <span class="text-xs font-bold text-gray-400 font-mono shrink-0">{{ q.totalVotes }} votes</span>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs">
+                  @if (q.correctOptionId !== undefined) {
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
+                      ✓ Correct: {{ q.correctOptionText }} ({{ q.correctPercentage }}% correct)
+                    </span>
+                  } @else {
+                    <span class="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold border border-amber-200 dark:border-amber-800">
+                      ⭐ Top Choice: {{ q.winningOptionText }} ({{ q.winningPercentage }}% consensus)
+                    </span>
+                  }
+                </div>
+
+                <!-- Option Breakdown Bars -->
+                <div class="space-y-1.5 pt-1">
+                  @for (opt of q.options; track opt.id) {
+                    <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 text-xs space-y-1">
+                      <div class="flex items-center justify-between">
+                        <span class="text-gray-800 dark:text-gray-200 flex items-center gap-1.5" [ngClass]="opt.isCorrect ? 'font-bold text-emerald-700 dark:text-emerald-300' : ''">
+                          <span>{{ opt.id }}.</span>
+                          <span>{{ opt.text }}</span>
+                          @if (opt.isCorrect) {
+                            <i class="pi pi-check text-emerald-500 text-[10px]"></i>
+                          }
+                        </span>
+                        <span class="font-mono font-bold" [ngClass]="opt.isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'">
+                          {{ opt.percentage }}% ({{ opt.votes }})
+                        </span>
+                      </div>
+                      <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-300"
+                          [style.width.%]="opt.percentage"
+                          [ngClass]="opt.isCorrect ? 'bg-emerald-500' : (opt.id === q.winningOptionId ? 'bg-indigo-600' : 'bg-gray-400')">
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+        <ng-template pTemplate="footer">
+          <div class="flex items-center justify-between w-full">
+            <a [routerLink]="['/stage', roomCode()]" [queryParams]="{ view: 'overview' }" target="_blank" class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center gap-1 hover:bg-indigo-100 transition-colors">
+              <i class="pi pi-desktop text-xs"></i>
+              <span>Launch on TV Stage</span>
+            </a>
+            <button pButton label="Close" icon="pi pi-times" class="p-button-text" (click)="showOverviewResultsDialog.set(false)"></button>
+          </div>
+        </ng-template>
+      </p-dialog>
     </div>
   `
 })
@@ -615,6 +821,8 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   isAdmin = this.authService.isAdmin;
 
   showSettingsPanel = signal<boolean>(false);
+  showOverviewResultsDialog = signal<boolean>(false);
+  sessionSummary = signal<DetailedSessionSummary | null>(null);
   showNewRoomDialog = false;
   newRoomTitle = '';
   newRoomCode = '';
@@ -737,6 +945,9 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
     this.roomSub = this.pollService.listenToRoom(code).subscribe(roomData => {
       this.room.set(roomData);
+      if (roomData?.status === 'completed') {
+        this.refreshSessionSummary();
+      }
     });
 
     this.pollSub = this.pollService.listenToActivePoll(code).subscribe(pollStats => {
@@ -1011,11 +1222,26 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.autoAdvanceEnabled = false;
     this.stopTimer();
     await this.pollService.completeSession(this.roomCode());
+    await this.refreshSessionSummary();
     this.messageService.add({
       severity: 'success',
       summary: 'Session Completed! 🎉',
       detail: 'Presenter Stage (TV) and voter phones now display the Celebration & Results Finale!'
     });
+  }
+
+  async refreshSessionSummary() {
+    try {
+      const summary = await this.pollService.getSessionSummary(this.roomCode());
+      this.sessionSummary.set(summary);
+    } catch (e) {
+      console.warn('[Controller] Could not fetch session summary:', e);
+    }
+  }
+
+  async openOverviewResultsDialog() {
+    await this.refreshSessionSummary();
+    this.showOverviewResultsDialog.set(true);
   }
 
   async restartSession() {
