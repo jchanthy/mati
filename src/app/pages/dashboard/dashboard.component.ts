@@ -177,22 +177,17 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               <!-- Status column -->
               <div class="w-40 sm:w-56 text-left hidden sm:flex items-center gap-2 text-xs font-medium text-gray-600">
                 @if (!isRoomActive(r)) {
-                  <span class="inline-flex items-center gap-1.5 text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-md border border-gray-200">
-                    <i class="pi pi-clock text-[10px] text-gray-400"></i>
-                    <span>{{ formatRoomDates(r) ? formatRoomDates(r) + ' (Inactive)' : 'Inactive' }}</span>
-                  </span>
-                } @else if (formatRoomDates(r)) {
-                  <span class="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#087A38] animate-pulse"></span>
-                    <span>{{ formatRoomDates(r) }}</span>
+                  <span class="inline-flex items-center gap-1.5 text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200 font-medium">
+                    <i class="pi pi-pause-circle text-xs text-gray-400"></i>
+                    <span>Inactive</span>
                   </span>
                 } @else if (r.mode === 'survey') {
-                  <span class="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                  <span class="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 font-medium">
                     <i class="pi pi-list text-xs"></i>
                     <span>Survey</span>
                   </span>
                 } @else {
-                  <span class="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  <span class="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-semibold">
                     <span class="w-1.5 h-1.5 rounded-full bg-[#087A38] animate-pulse"></span>
                     <span>Active &amp; upcoming</span>
                   </span>
@@ -1056,6 +1051,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   formatRoomDate(r: Room): string {
+    if (r.startDate && r.endDate) {
+      return this.formatRoomDates(r);
+    }
     if (r.createdAt) {
       try {
         const d = (r.createdAt as any).toDate ? (r.createdAt as any).toDate() : new Date(r.createdAt as any);
@@ -1064,7 +1062,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         return 'Recent session';
       }
     }
-    return 'Jul 15 – 17, 2025';
+    return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
   toggleSelectAllRooms(event: Event) {
