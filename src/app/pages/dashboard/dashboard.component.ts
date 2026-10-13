@@ -238,14 +238,6 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                       (click)="$event.stopPropagation()"
                       class="absolute right-0 top-full mt-2 w-80 sm:w-[330px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-[100] text-left overflow-hidden animate-fadein">
                       
-                      <!-- Top Upgrade Banner (Mati Indigo Gradient) -->
-                      <div class="bg-gradient-to-r from-indigo-700 to-indigo-900 px-4 py-2.5 flex items-center gap-2.5 text-white text-xs font-semibold select-none">
-                        <div class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                          <i class="pi pi-crown text-[10px] text-white"></i>
-                        </div>
-                        <span class="truncate">Mati Pro • Advanced Polling & Analytics</span>
-                      </div>
-
                       <div class="p-4 space-y-3.5">
                         <!-- Room Header: Title, dates, owner, and status badge -->
                         <div class="flex items-start justify-between gap-3">

@@ -10,7 +10,7 @@ import { MatiPollService } from '../services/mati-poll.service';
   imports: [CommonModule, RouterModule],
   template: `
     <header class="topbar-container flex justify-between items-center px-4 sm:px-6 bg-white border-b border-gray-200/90 sticky top-0 z-50">
-      <!-- Left: Slido Logo + Org Name + Upgrade Pill Button -->
+      <!-- Left: Mati Logo + Org Name -->
       <div class="flex items-center gap-3 sm:gap-6">
         <!-- Mati Brand Logo -->
         <a routerLink="/dashboard" class="flex items-center gap-1.5 no-underline select-none">
@@ -26,12 +26,6 @@ import { MatiPollService } from '../services/mati-poll.service';
             {{ currentUser()?.role === 'admin' ? 'Administrator' : 'Owner' }}
           </span>
         </div>
-
-        <!-- Mati Pro Badge / Button -->
-        <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold border border-indigo-200 text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 transition-all cursor-pointer shadow-2xs">
-          <i class="pi pi-crown text-indigo-600 text-xs"></i>
-          <span>Upgrade</span>
-        </button>
       </div>
 
       <!-- Right: Quick Stage / Controller / What's new / User Avatar -->

@@ -21,7 +21,7 @@ import QRCode from 'qrcode';
 
       <!-- 1. Slido-Style Top Navigation Header -->
       <header class="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center justify-between shrink-0 z-20">
-        <!-- Left: Back Button, Room Title, Upgrade pill, Date, Code -->
+        <!-- Left: Back Button, Room Title, Date, Code -->
         <div class="flex items-center gap-3 sm:gap-4 min-w-0">
           <!-- Back arrow -->
           <a 
@@ -39,14 +39,6 @@ import QRCode from 'qrcode';
               {{ room()?.title || ('Room #' + roomCode()) }}
             </h1>
           }
-
-          <!-- Upgrade Button with Crown -->
-          <button 
-            type="button" 
-            class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-400 bg-amber-50/70 text-amber-800 text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer shrink-0">
-            <i class="pi pi-crown text-amber-600 text-xs"></i>
-            <span>Upgrade</span>
-          </button>
 
           <!-- Calendar Icon -->
           <div class="hidden md:flex items-center text-gray-400 shrink-0">
