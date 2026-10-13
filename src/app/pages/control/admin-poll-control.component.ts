@@ -111,15 +111,14 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
             <span>Pick Questions ({{ selectedQuestionCount() || allRawPolls().length }}/{{ allRawPolls().length }})</span>
           </button>
 
-          <!-- Overview Results Action -->
-          <button 
-            type="button" 
-            (click)="openOverviewResultsDialog()" 
-            class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-            title="Inspect full session overview results & analytics">
+          <!-- Overview Results Action (Slido-Style Analytics) -->
+          <a 
+            [routerLink]="['/overview', roomCode()]" 
+            class="px-3 py-1.5 bg-[#087A38] hover:bg-[#06652e] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs no-underline"
+            title="Inspect Slido-style session overview results & analytics">
             <i class="pi pi-chart-bar text-xs"></i>
             <span>Overview Results</span>
-          </button>
+          </a>
 
           <!-- External Stage & Voter links -->
           <a [routerLink]="['/stage', roomCode()]" target="_blank" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1 transition-all" title="Open Stage on TV">
@@ -281,12 +280,11 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
               <div class="space-y-2.5">
                 <div class="flex items-center justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
                   <span>Questions Performance Breakdown</span>
-                  <button
-                    type="button"
-                    (click)="openOverviewResultsDialog()"
-                    class="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
-                    View Full Table →
-                  </button>
+                  <a
+                    [routerLink]="['/overview', roomCode()]"
+                    class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer">
+                    View Slido Overview →
+                  </a>
                 </div>
 
                 <div class="space-y-2 max-h-[380px] overflow-y-auto pr-1">
@@ -799,10 +797,16 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
         </div>
         <ng-template pTemplate="footer">
           <div class="flex items-center justify-between w-full">
-            <a [routerLink]="['/stage', roomCode()]" [queryParams]="{ view: 'overview' }" target="_blank" class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center gap-1 hover:bg-indigo-100 transition-colors">
-              <i class="pi pi-desktop text-xs"></i>
-              <span>Launch on TV Stage</span>
-            </a>
+            <div class="flex items-center gap-2">
+              <a [routerLink]="['/overview', roomCode()]" class="px-3 py-1.5 rounded-xl bg-[#087A38] hover:bg-[#06652e] text-white font-bold text-xs flex items-center gap-1 transition-colors no-underline">
+                <i class="pi pi-chart-bar text-xs"></i>
+                <span>Open Slido Analytics</span>
+              </a>
+              <a [routerLink]="['/stage', roomCode()]" [queryParams]="{ view: 'overview' }" target="_blank" class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center gap-1 hover:bg-indigo-100 transition-colors">
+                <i class="pi pi-desktop text-xs"></i>
+                <span>TV Stage</span>
+              </a>
+            </div>
             <button pButton label="Close" icon="pi pi-times" class="p-button-text" (click)="showOverviewResultsDialog.set(false)"></button>
           </div>
         </ng-template>

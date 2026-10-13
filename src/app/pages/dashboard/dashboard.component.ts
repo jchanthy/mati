@@ -312,9 +312,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                           <div class="grid grid-cols-2 gap-2.5">
                             <!-- View results -->
                             <a 
-                              [routerLink]="['/stage', r.code]" 
-                              [queryParams]="{ view: 'overview' }"
-                              target="_blank"
+                              [routerLink]="['/overview', r.code]" 
                               (click)="activeMenuRoom.set(null)"
                               class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs no-underline">
                               <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-emerald-100/60 flex items-center justify-center text-gray-700 group-hover:text-[#087A38] mb-1.5 transition-colors">
@@ -359,21 +357,28 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                           </div>
                         </div>
 
-                        <!-- Quick Session Actions (Manage & Pick) -->
-                        <div class="flex items-center gap-2 pt-1 text-xs">
+                        <!-- Quick Session Actions (Overview, Manage & Pick) -->
+                        <div class="grid grid-cols-3 gap-1.5 pt-1 text-xs">
+                          <a 
+                            [routerLink]="['/overview', r.code]" 
+                            (click)="activeMenuRoom.set(null)"
+                            class="py-1 px-2 rounded-md border border-gray-200 hover:border-[#087A38] text-gray-700 hover:text-[#087A38] hover:bg-emerald-50/30 font-medium flex items-center justify-center gap-1 cursor-pointer no-underline text-center">
+                            <i class="pi pi-chart-bar text-[10px] text-[#087A38]"></i>
+                            <span>Overview</span>
+                          </a>
                           <button 
                             type="button" 
                             (click)="switchRoom(r.code); activeMenuRoom.set(null)"
-                            class="flex-1 py-1 px-2 rounded-md border border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium flex items-center justify-center gap-1 cursor-pointer">
+                            class="py-1 px-2 rounded-md border border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium flex items-center justify-center gap-1 cursor-pointer">
                             <i class="pi pi-folder-open text-[10px] text-gray-500"></i>
-                            <span>Manage Questions</span>
+                            <span>Manage</span>
                           </button>
                           <button 
                             type="button" 
                             (click)="switchRoom(r.code); openPickQuestionsDialog(); activeMenuRoom.set(null)"
-                            class="flex-1 py-1 px-2 rounded-md border border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium flex items-center justify-center gap-1 cursor-pointer">
+                            class="py-1 px-2 rounded-md border border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium flex items-center justify-center gap-1 cursor-pointer">
                             <i class="pi pi-check-square text-[10px] text-gray-500"></i>
-                            <span>Pick Questions</span>
+                            <span>Pick</span>
                           </button>
                         </div>
 

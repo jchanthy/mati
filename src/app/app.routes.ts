@@ -37,8 +37,30 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () =>
           import('./pages/admin/user-management.component').then(m => m.UserManagementComponent)
+      },
+      {
+        path: 'overview/:roomCode',
+        redirectTo: ({ params }) => `overview/${params['roomCode']}`
+      },
+      {
+        path: 'overview',
+        redirectTo: 'overview'
       }
     ]
+  },
+
+  // Event Overview & Analytics (Slido-Style)
+  {
+    path: 'overview/:roomCode',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/overview/room-overview.component').then(m => m.RoomOverviewComponent)
+  },
+  {
+    path: 'overview',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/overview/room-overview.component').then(m => m.RoomOverviewComponent)
   },
 
   // Presenter Stage (Blank shell for Projector/TV) - Public
