@@ -11,6 +11,7 @@ export interface Poll {
   order: number;
   isLocked: boolean;
   showResults: boolean;
+  showCorrectAnswer?: boolean;
   options: PollOption[];
   correctOptionId?: number;
 }

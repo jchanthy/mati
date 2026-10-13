@@ -360,6 +360,7 @@ export class MatiPollService {
       order,
       isLocked: false,
       showResults: true,
+      showCorrectAnswer: false,
       options: optionTexts.map((text, idx) => ({ 
         id: idx + 1, 
         text,
@@ -443,6 +444,7 @@ export class MatiPollService {
             options: activePoll.options,
             isLocked: activePoll.isLocked ?? false,
             showResults: activePoll.showResults ?? true,
+            showCorrectAnswer: false,
             order: activePoll.order ?? 1,
             ...(activePoll.correctOptionId !== undefined ? { correctOptionId: activePoll.correctOptionId } : {})
           } : null,
@@ -458,6 +460,9 @@ export class MatiPollService {
     const rooms = this.mockRooms$.getValue();
     const room = rooms.get(code);
     if (room) {
+      if (activePoll) {
+        activePoll = { ...activePoll, showCorrectAnswer: false };
+      }
       room.activePollId = pollId;
       room.activePoll = activePoll;
       room.status = 'active';
@@ -526,6 +531,44 @@ export class MatiPollService {
       if (this.currentPoll()?.id === pollId) {
         this.currentPoll.set({ ...poll });
       }
+    }
+  }
+
+  /**
+   * Toggles reveal of correct answer on stage, controller and participant screens.
+   */
+  async toggleShowCorrectAnswer(roomCode: string, pollId: string, show: boolean): Promise<void> {
+    const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      try {
+        const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
+        await updateDoc(pollRef, { showCorrectAnswer: show });
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, { 'activePoll.showCorrectAnswer': show });
+      } catch (err) {
+        console.warn('[Mati] Firebase toggleShowCorrectAnswer error:', err);
+      }
+    }
+
+    const pollsMap = this.mockPolls$.getValue();
+    const list = pollsMap.get(code) || [];
+    const poll = list.find(p => p.id === pollId);
+    if (poll) {
+      poll.showCorrectAnswer = show;
+      pollsMap.set(code, [...list]);
+      this.mockPolls$.next(new Map(pollsMap));
+      if (this.currentPoll()?.id === pollId) {
+        this.currentPoll.set({ ...poll });
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room && room.activePoll && room.activePoll.id === pollId) {
+      room.activePoll.showCorrectAnswer = show;
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
     }
   }
 

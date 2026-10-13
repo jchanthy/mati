@@ -589,6 +589,25 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 Selected choice: <span class="text-indigo-600 dark:text-indigo-400 font-bold">#{{ selectedOptionId() }}</span>
               </div>
 
+              <!-- Correct Answer Result Banner (Live Quiz Mode) -->
+              @if (stats.poll.showCorrectAnswer && stats.poll.correctOptionId !== undefined) {
+                <div class="p-3.5 rounded-2xl border text-center space-y-1 animate-fadein shadow-xs"
+                  [ngClass]="selectedOptionId() === stats.poll.correctOptionId 
+                    ? 'bg-emerald-100 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200' 
+                    : 'bg-red-100 dark:bg-red-950/70 border-red-300 dark:border-red-700 text-red-900 dark:text-red-200'">
+                  <div class="text-sm font-black flex items-center justify-center gap-1.5">
+                    @if (selectedOptionId() === stats.poll.correctOptionId) {
+                      <span>🎉 Correct Answer!</span>
+                    } @else {
+                      <span>❌ Incorrect</span>
+                    }
+                  </div>
+                  <p class="text-xs opacity-90">
+                    Correct choice: <span class="font-bold underline">#{{ stats.poll.correctOptionId }}</span>
+                  </p>
+                </div>
+              }
+
               @if (!stats.poll.isLocked && !isTimeUp()) {
                 <button type="button" (click)="changeVote()" class="text-xs text-slate-500 hover:text-indigo-600 underline font-medium">
                   Change my answer
@@ -604,15 +623,26 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 @for (opt of stats.poll.options; track opt.id) {
                   <div class="space-y-1">
                     <div class="flex justify-between text-xs font-semibold">
-                      <span [ngClass]="selectedOptionId() === opt.id ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-700 dark:text-slate-300'">
-                        {{ opt.text }} {{ selectedOptionId() === opt.id ? '✓ (Your Vote)' : '' }}
+                      <span class="flex items-center gap-1.5"
+                        [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                          ? 'text-emerald-700 dark:text-emerald-300 font-bold'
+                          : (selectedOptionId() === opt.id ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-700 dark:text-slate-300')">
+                        <span>{{ opt.text }}</span>
+                        @if (selectedOptionId() === opt.id) {
+                          <span class="text-[9px] uppercase px-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold">You</span>
+                        }
+                        @if (stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id) {
+                          <span class="text-[9px] uppercase px-1.5 py-0.2 rounded bg-emerald-600 text-white font-black">✓ Correct</span>
+                        }
                       </span>
                       <span class="font-mono text-slate-500">{{ stats.percentages[opt.id] || 0 }}%</span>
                     </div>
                     <div class="h-2 w-full bg-slate-200/80 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div class="h-full rounded-full transition-all duration-500"
                         [style.width.%]="stats.percentages[opt.id] || 0"
-                        [ngClass]="selectedOptionId() === opt.id ? 'bg-indigo-600' : 'bg-slate-400 dark:bg-slate-600'">
+                        [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                          ? 'bg-emerald-500'
+                          : (selectedOptionId() === opt.id ? 'bg-indigo-600' : 'bg-slate-400 dark:bg-slate-600')">
                       </div>
                     </div>
                   </div>

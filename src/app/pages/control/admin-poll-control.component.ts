@@ -288,7 +288,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   }
                 </div>
 
-                <!-- Prev / Next Big Buttons -->
+                <!-- Prev / Next Big Buttons & Show Answer -->
                 <div class="flex items-center gap-2">
                   <button 
                     type="button"
@@ -297,6 +297,20 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer">
                     <i class="pi pi-arrow-left text-[10px]"></i> Prev
                   </button>
+
+                  @if (currentPoll()?.correctOptionId !== undefined) {
+                    <button 
+                      type="button" 
+                      (click)="toggleCorrectAnswer()" 
+                      [ngClass]="showCorrectAnswer 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/20' 
+                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700'"
+                      class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                      <i class="pi" [ngClass]="showCorrectAnswer ? 'pi-check-circle' : 'pi-eye'"></i>
+                      <span>{{ showCorrectAnswer ? 'Answer Shown' : 'Show Answer' }}</span>
+                    </button>
+                  }
+
                   <button 
                     type="button"
                     (click)="nextQuestion()" 
@@ -318,25 +332,41 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
               <div class="space-y-2.5">
                 @if (currentPoll()) {
                   @for (opt of currentPoll()!.options; track opt.id) {
-                    <div class="p-3 rounded-xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-1.5 transition-all">
+                    <div 
+                      class="p-3 rounded-xl border space-y-1.5 transition-all"
+                      [ngClass]="showCorrectAnswer && currentPoll()?.correctOptionId === opt.id 
+                        ? 'bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-500 dark:border-emerald-600 ring-2 ring-emerald-500/30' 
+                        : 'bg-gray-50/70 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800'">
                       <div class="flex justify-between items-center text-xs font-semibold">
                         <span class="text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                          <span class="w-5 h-5 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[11px] font-bold flex items-center justify-center border border-gray-200 dark:border-gray-600 shadow-2xs">
+                          <span 
+                            class="w-5 h-5 rounded-md text-[11px] font-bold flex items-center justify-center border shadow-2xs"
+                            [ngClass]="showCorrectAnswer && currentPoll()?.correctOptionId === opt.id
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600'">
                             {{ opt.id }}
                           </span>
-                          <span>{{ opt.text }}</span>
+                          <span [ngClass]="showCorrectAnswer && currentPoll()?.correctOptionId === opt.id ? 'font-bold text-emerald-900 dark:text-emerald-100' : ''">
+                            {{ opt.text }}
+                          </span>
                           @if (currentPoll()?.correctOptionId === opt.id) {
-                            <i class="pi pi-check-circle text-emerald-600 dark:text-emerald-400 text-xs" title="Correct Option"></i>
+                            @if (showCorrectAnswer) {
+                              <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white flex items-center gap-1 shadow-2xs">
+                                <i class="pi pi-check text-[9px]"></i> Correct Answer
+                              </span>
+                            } @else {
+                              <i class="pi pi-check-circle text-emerald-600 dark:text-emerald-400 text-xs" title="Correct Option (Hidden from audience)"></i>
+                            }
                           }
                         </span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-bold font-mono">
+                        <span class="font-bold font-mono" [ngClass]="showCorrectAnswer && currentPoll()?.correctOptionId === opt.id ? 'text-emerald-700 dark:text-emerald-300' : 'text-indigo-600 dark:text-indigo-400'">
                           {{ stats()?.votesPerOption?.[opt.id] || 0 }} ({{ stats()?.percentages?.[opt.id] || 0 }}%)
                         </span>
                       </div>
                       <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
                         <div 
                           class="h-2 rounded-full transition-all duration-500" 
-                          [ngClass]="currentPoll()?.correctOptionId === opt.id ? 'bg-emerald-500' : 'bg-indigo-600'"
+                          [ngClass]="(showCorrectAnswer && currentPoll()?.correctOptionId === opt.id) || currentPoll()?.correctOptionId === opt.id ? 'bg-emerald-500' : 'bg-indigo-600'"
                           [style.width.%]="stats()?.percentages?.[opt.id] || 0">
                         </div>
                       </div>
@@ -371,6 +401,20 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     <i class="pi" [ngClass]="showResults ? 'pi-chart-bar text-indigo-600 dark:text-indigo-400' : 'pi-eye-slash text-gray-500'"></i>
                     <span>{{ showResults ? 'Results Visible' : 'Hide Results' }}</span>
                   </button>
+
+                  <!-- Show / Hide Correct Answer (Presenter Action) -->
+                  @if (currentPoll()?.correctOptionId !== undefined) {
+                    <button 
+                      type="button" 
+                      (click)="toggleCorrectAnswer()"
+                      [ngClass]="showCorrectAnswer 
+                        ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 font-bold' 
+                        : 'bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50'"
+                      class="px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
+                      <i class="pi" [ngClass]="showCorrectAnswer ? 'pi-check-circle text-emerald-600' : 'pi-eye text-emerald-600'"></i>
+                      <span>{{ showCorrectAnswer ? 'Answer Revealed' : 'Reveal Answer' }}</span>
+                    </button>
+                  }
                 </div>
 
                 <!-- Compact Broadcast Timer -->
@@ -829,6 +873,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   isLocked = false;
   showResults = true;
+  showCorrectAnswer = false;
 
   autoAdvanceEnabled = false;
   timerDuration = 20;
@@ -896,6 +941,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       if (pollStats?.poll) {
         this.isLocked = pollStats.poll.isLocked;
         this.showResults = pollStats.poll.showResults;
+        this.showCorrectAnswer = pollStats.poll.showCorrectAnswer ?? false;
       }
     });
   }
@@ -1222,6 +1268,20 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     });
   }
 
+  async toggleCorrectAnswer() {
+    const poll = this.currentPoll();
+    if (!poll) return;
+    this.showCorrectAnswer = !this.showCorrectAnswer;
+    await this.pollService.toggleShowCorrectAnswer(this.roomCode(), poll.id, this.showCorrectAnswer);
+    this.messageService.add({
+      severity: this.showCorrectAnswer ? 'success' : 'info',
+      summary: this.showCorrectAnswer ? 'Correct Answer Revealed! 🎯' : 'Answer Hidden',
+      detail: this.showCorrectAnswer 
+        ? 'TV Stage and audience screens now highlight the correct answer.' 
+        : 'Correct answer highlight turned off.'
+    });
+  }
+
   isFirstQuestion(): boolean {
     const list = this.polls();
     if (list.length === 0) return true;
@@ -1250,6 +1310,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   async onSelectQuestion(pollId: string) {
     if (!pollId) return;
+    this.showCorrectAnswer = false;
     const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
     await this.pollService.setActivePoll(this.roomCode(), pollId, timerSec);
     if (this.autoAdvanceEnabled) {
@@ -1268,6 +1329,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     const activeId = this.room()?.activePollId || this.currentPoll()?.id;
     const idx = list.findIndex(p => p.id === activeId);
     if (idx > 0) {
+      this.showCorrectAnswer = false;
       const prevPoll = list[idx - 1];
       const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
       await this.pollService.setActivePoll(this.roomCode(), prevPoll.id, timerSec);
@@ -1283,6 +1345,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     const activeId = this.room()?.activePollId || this.currentPoll()?.id;
     const idx = list.findIndex(p => p.id === activeId);
     if (idx >= 0 && idx < list.length - 1) {
+      this.showCorrectAnswer = false;
       const nextPoll = list[idx + 1];
       const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
       await this.pollService.setActivePoll(this.roomCode(), nextPoll.id, timerSec);
@@ -1290,6 +1353,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
         this.resetTimer();
       }
     } else if (idx === -1 && list.length > 0) {
+      this.showCorrectAnswer = false;
       const nextPoll = list[0];
       const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
       await this.pollService.setActivePoll(this.roomCode(), nextPoll.id, timerSec);

@@ -612,6 +612,12 @@ import QRCode from 'qrcode';
                         <i class="pi pi-lock text-[10px]"></i> Voting Locked
                       </span>
                     }
+
+                    @if (stats.poll.showCorrectAnswer && stats.poll.correctOptionId !== undefined) {
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-sm shadow-emerald-600/30">
+                        <i class="pi pi-check-circle text-xs"></i> Answer Revealed
+                      </span>
+                    }
                   </div>
 
                   <h1 class="text-base sm:text-lg md:text-xl lg:text-2xl font-bold tracking-normal leading-snug max-w-3xl mx-auto px-2 break-words"
@@ -663,31 +669,45 @@ import QRCode from 'qrcode';
                     @for (opt of stats.poll.options; track opt.id; let last = $last) {
                       <div class="p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl border relative overflow-hidden transition-all duration-300 shadow-2xs flex items-center justify-between gap-2.5 min-h-[2.75rem] sm:min-h-[3rem]"
                         [class.sm:col-span-2]="stats.poll.options.length % 2 !== 0 && last"
-                        [ngClass]="isLeadingOption(stats, opt.id) && stats.totalVotes > 0
-                          ? (isLight() ? 'border-amber-400/90 ring-1 ring-amber-400/30 bg-amber-50/20' : 'border-amber-400/60 ring-1 ring-amber-400/30 bg-slate-900/95') 
-                          : (isLight() ? 'bg-white border-slate-200/90 shadow-slate-100' : 'bg-slate-900/90 border-slate-800')">
+                        [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                          ? (isLight() ? 'border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-50/90 shadow-emerald-500/10' : 'border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-950/70 shadow-emerald-500/20')
+                          : (stats.poll.showCorrectAnswer && stats.poll.correctOptionId !== undefined && stats.poll.correctOptionId !== opt.id
+                            ? (isLight() ? 'bg-white/60 border-slate-200/60 opacity-60' : 'bg-slate-900/60 border-slate-800/60 opacity-50')
+                            : (isLeadingOption(stats, opt.id) && stats.totalVotes > 0
+                              ? (isLight() ? 'border-amber-400/90 ring-1 ring-amber-400/30 bg-amber-50/20' : 'border-amber-400/60 ring-1 ring-amber-400/30 bg-slate-900/95') 
+                              : (isLight() ? 'bg-white border-slate-200/90 shadow-slate-100' : 'bg-slate-900/90 border-slate-800')))">
                         <!-- Animated Progress bar background -->
                         <div 
                           class="absolute top-0 bottom-0 left-0 transition-all duration-700 ease-out" 
                           [style.width.%]="stats.percentages[opt.id] || 0"
-                          [ngClass]="isLeadingOption(stats, opt.id) && stats.totalVotes > 0
-                            ? (isLight() ? 'bg-amber-300/35' : 'bg-gradient-to-r from-amber-500/35 via-amber-400/25 to-yellow-500/15') 
-                            : (isLight() ? 'bg-indigo-100/70' : 'bg-gradient-to-r from-indigo-600/30 via-indigo-500/20 to-blue-500/15')">
+                          [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                            ? (isLight() ? 'bg-emerald-300/40' : 'bg-gradient-to-r from-emerald-500/45 via-emerald-400/30 to-green-500/20')
+                            : (isLeadingOption(stats, opt.id) && stats.totalVotes > 0
+                              ? (isLight() ? 'bg-amber-300/35' : 'bg-gradient-to-r from-amber-500/35 via-amber-400/25 to-yellow-500/15') 
+                              : (isLight() ? 'bg-indigo-100/70' : 'bg-gradient-to-r from-indigo-600/30 via-indigo-500/20 to-blue-500/15'))">
                         </div>
 
                         <!-- Option Number & Text -->
                         <div class="relative z-10 flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
                           <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border shadow-2xs"
-                            [ngClass]="isLeadingOption(stats, opt.id) && stats.totalVotes > 0
-                              ? (isLight() ? 'bg-amber-500 text-white border-amber-600' : 'bg-amber-400/30 text-amber-200 border-amber-400/40') 
-                              : (isLight() ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700')">
+                            [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                              : (isLeadingOption(stats, opt.id) && stats.totalVotes > 0
+                                ? (isLight() ? 'bg-amber-500 text-white border-amber-600' : 'bg-amber-400/30 text-amber-200 border-amber-400/40') 
+                                : (isLight() ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'))">
                             {{ opt.id }}
                           </div>
                           <div class="text-xs sm:text-sm font-semibold leading-snug break-words flex-1"
-                            [ngClass]="isLight() ? 'text-slate-800' : 'text-slate-100'">
+                            [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                              ? (isLight() ? 'text-emerald-950 font-bold' : 'text-emerald-100 font-bold')
+                              : (isLight() ? 'text-slate-800' : 'text-slate-100')">
                             {{ opt.text }}
                           </div>
-                          @if (isLeadingOption(stats, opt.id) && stats.totalVotes > 0) {
+                          @if (stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id) {
+                            <span class="px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1 shrink-0 bg-emerald-600 text-white shadow-2xs">
+                              <i class="pi pi-check text-[10px]"></i> Correct
+                            </span>
+                          } @else if (isLeadingOption(stats, opt.id) && stats.totalVotes > 0) {
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 shrink-0 shadow-2xs"
                               [ngClass]="isLight() ? 'bg-amber-100 border border-amber-300 text-amber-800' : 'bg-amber-400/20 border border-amber-400/40 text-amber-300'">
                               🏆
@@ -698,12 +718,17 @@ import QRCode from 'qrcode';
                         <!-- Percentage & Votes count -->
                         <div class="relative z-10 text-right shrink-0 pl-2 flex flex-col items-end justify-center">
                           <div class="text-base sm:text-lg md:text-xl font-bold font-mono leading-none"
-                            [ngClass]="isLeadingOption(stats, opt.id) && stats.totalVotes > 0
-                              ? (isLight() ? 'text-amber-700' : 'text-amber-300') 
-                              : (isLight() ? 'text-slate-900' : 'text-white')">
+                            [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                              ? (isLight() ? 'text-emerald-800 font-black' : 'text-emerald-300 font-black')
+                              : (isLeadingOption(stats, opt.id) && stats.totalVotes > 0
+                                ? (isLight() ? 'text-amber-700' : 'text-amber-300') 
+                                : (isLight() ? 'text-slate-900' : 'text-white'))">
                             {{ stats.percentages[opt.id] || 0 }}%
                           </div>
-                          <div class="text-[10px] sm:text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">
+                          <div class="text-[10px] sm:text-[11px] font-medium mt-0.5"
+                            [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                              ? (isLight() ? 'text-emerald-700 font-semibold' : 'text-emerald-400 font-semibold')
+                              : 'text-slate-400 dark:text-slate-500'">
                             {{ stats.votesPerOption[opt.id] || 0 }} votes
                           </div>
                         </div>
