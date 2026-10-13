@@ -12,14 +12,14 @@ import { MatiPollService } from '../services/mati-poll.service';
     <aside class="sidebar-wrapper w-56 sm:w-60 bg-white border-r border-gray-200/90 py-5 px-3 flex flex-col justify-between h-[calc(100vh-4rem)] select-none">
       <!-- Main Nav Items -->
       <nav class="flex flex-col gap-1.5">
-        <!-- My slidos (Active Item) -->
+        <!-- My matis (Active Item) -->
         <a 
           routerLink="/dashboard" 
           routerLinkActive="bg-[#E8F5E9] text-[#087A38] font-bold" 
           [routerLinkActiveOptions]="{exact: true}" 
           class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
           <i class="pi pi-chart-bar text-base text-[#087A38]"></i>
-          <span>My slidos</span>
+          <span>My matis</span>
         </a>
 
         <!-- Team -->

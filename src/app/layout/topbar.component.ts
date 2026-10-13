@@ -12,9 +12,9 @@ import { MatiPollService } from '../services/mati-poll.service';
     <header class="topbar-container flex justify-between items-center px-4 sm:px-6 bg-white border-b border-gray-200/90 sticky top-0 z-50">
       <!-- Left: Slido Logo + Org Name + Upgrade Pill Button -->
       <div class="flex items-center gap-3 sm:gap-6">
-        <!-- Slido Brand Logo -->
+        <!-- Mati Brand Logo -->
         <a routerLink="/dashboard" class="flex items-center gap-1.5 no-underline select-none">
-          <span class="text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#087A38] font-sans lowercase">slido</span>
+          <span class="text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#087A38] font-sans lowercase">mati</span>
         </a>
 
         <!-- Organization / Workspace info -->
@@ -76,7 +76,7 @@ import { MatiPollService } from '../services/mati-poll.service';
                   </span>
                 </div>
                 <a routerLink="/dashboard" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
-                  <i class="pi pi-chart-bar text-xs text-[#087A38]"></i> My slidos
+                  <i class="pi pi-chart-bar text-xs text-[#087A38]"></i> My matis
                 </a>
                 <a [routerLink]="['/dashboard/control', activeRoomCode()]" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
                   <i class="pi pi-sliders-h text-xs text-gray-400"></i> Live Controller

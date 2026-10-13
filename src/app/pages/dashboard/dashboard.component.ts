@@ -49,7 +49,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             <span>All</span>
             <span class="px-2 py-0.5 rounded-full text-xs font-bold"
               [ngClass]="activeTab() === 'all' ? 'bg-[#087A38] text-white' : 'bg-gray-100 text-gray-600'">
-              {{ allSlidosCount() }}
+              {{ allMatisCount() }}
             </span>
           </button>
 
@@ -64,7 +64,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             <span>Active &amp; upcoming</span>
             <span class="px-2 py-0.5 rounded-full text-xs font-bold"
               [ngClass]="activeTab() === 'active' ? 'bg-[#087A38] text-white' : 'bg-gray-100 text-gray-600'">
-              {{ activeSlidosCount() }}
+              {{ activeMatisCount() }}
             </span>
           </button>
 
@@ -79,22 +79,22 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             <span>Past</span>
             <span class="px-2 py-0.5 rounded-full text-xs font-bold"
               [ngClass]="activeTab() === 'past' ? 'bg-[#087A38] text-white' : 'bg-gray-100 text-gray-600'">
-              {{ pastSlidosCount() }}
+              {{ pastMatisCount() }}
             </span>
           </button>
         </div>
 
-        <!-- + Create slido Primary Button (Slido signature forest green) -->
+        <!-- + Create mati Primary Button -->
         <button 
           type="button" 
           (click)="openNewRoomDialog()" 
           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-[#087A38] hover:bg-[#06652e] text-white shadow-xs transition-all cursor-pointer select-none">
           <i class="pi pi-plus text-xs"></i>
-          <span>Create slido</span>
+          <span>Create mati</span>
         </button>
       </div>
 
-      <!-- Slido Filter & Search Bar -->
+      <!-- Mati Filter & Search Bar -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <!-- Search Input with Magnifying Glass -->
         <div class="relative w-full sm:w-80">
@@ -107,14 +107,14 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
           <i class="pi pi-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
         </div>
 
-        <!-- Dropdown Filter matching Slido "All slidos v" -->
+        <!-- Dropdown Filter -->
         <div class="relative">
           <select 
-            [ngModel]="slidoDropdownFilter()"
-            (ngModelChange)="slidoDropdownFilter.set($event)"
+            [ngModel]="matiDropdownFilter()"
+            (ngModelChange)="matiDropdownFilter.set($event)"
             class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-[#087A38] cursor-pointer">
-            <option value="all">All slidos</option>
-            <option value="mine">My slidos</option>
+            <option value="all">All matis</option>
+            <option value="mine">My matis</option>
             <option value="survey">Surveys</option>
           </select>
           <i class="pi pi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
@@ -131,7 +131,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               (change)="toggleSelectAllRooms($event)"
               class="w-4 h-4 rounded text-[#087A38] focus:ring-[#087A38] cursor-pointer border-gray-300" />
           </div>
-          <div class="flex-1 min-w-0">Slido details</div>
+          <div class="flex-1 min-w-0">Mati details</div>
           <div class="w-40 sm:w-56 text-left hidden sm:block">Status</div>
           <div class="w-40 sm:w-48 text-right">More actions</div>
         </div>
@@ -253,7 +253,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                       <div class="border-t border-gray-100 my-1"></div>
                       @if (canManageRoom(r)) {
                         <button type="button" (click)="deleteRoom(r.code); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer">
-                          <i class="pi pi-trash text-xs"></i> Delete Slido
+                          <i class="pi pi-trash text-xs"></i> Delete Mati
                         </button>
                       }
                     </div>
@@ -264,7 +264,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
           } @empty {
             <div class="text-center py-12 px-4 text-gray-500 text-sm">
               <i class="pi pi-inbox text-3xl text-gray-300 mb-2 block"></i>
-              No slidos found in this view. Click <button type="button" (click)="openNewRoomDialog()" class="font-bold text-[#087A38] hover:underline cursor-pointer">+ Create slido</button> to add your first session!
+              No matis found in this view. Click <button type="button" (click)="openNewRoomDialog()" class="font-bold text-[#087A38] hover:underline cursor-pointer">+ Create mati</button> to add your first session!
             </div>
           }
         </div>
@@ -409,7 +409,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             <div class="text-center py-10 px-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 space-y-3">
               <i class="pi pi-question-circle text-2xl text-gray-400"></i>
               <div class="text-xs text-gray-500">
-                No questions in Slido <strong>#{{ selectedRoomCode() }}</strong> yet.
+                No questions in Mati <strong>#{{ selectedRoomCode() }}</strong> yet.
               </div>
               <div class="flex items-center justify-center gap-2 pt-1">
                 <button 
@@ -430,7 +430,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
         </div>
       </div>
 
-      <!-- Create Slido Dialog (Pixel-perfect match to Slido modal) -->
+      <!-- Create Mati Dialog -->
       <p-dialog 
         [(visible)]="showNewRoomDialog" 
         [modal]="true" 
@@ -442,19 +442,19 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
         <div class="bg-white p-6 sm:p-7 rounded-2xl space-y-5 border border-gray-100 shadow-2xl">
           <!-- Dialog Title -->
           <div class="text-xl font-bold text-gray-900 tracking-tight">
-            Create your slido
+            Create your mati
           </div>
 
-          <!-- Slido Name Field -->
+          <!-- Mati Name Field -->
           <div>
             <label class="block text-sm font-semibold text-gray-800 mb-1.5">
-              Give your slido a name
+              Give your mati a name
             </label>
             <input 
               type="text" 
               [(ngModel)]="newRoomTitle" 
               (keydown.enter)="createNewRoom()"
-              placeholder="Slido name" 
+              placeholder="Mati name" 
               class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-colors" />
           </div>
 
@@ -510,7 +510,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             } @else {
               <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-1.5">
                 <div class="flex items-center justify-between">
-                  <label class="block text-xs font-semibold text-gray-700">Slido Code (PIN)</label>
+                  <label class="block text-xs font-semibold text-gray-700">Mati Code (PIN)</label>
                   <button type="button" (click)="showCustomCodeInput = false; newRoomCode = ''" class="text-[11px] text-gray-400 hover:text-gray-600">Auto-generate</button>
                 </div>
                 <input 
@@ -543,7 +543,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 (click)="createNewRoom()"
                 [disabled]="!newRoomTitle.trim()"
                 class="px-5 py-2 text-sm font-semibold text-white bg-[#087A38] hover:bg-[#06652E] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-2xs transition-colors cursor-pointer">
-                Create slido
+                Create mati
               </button>
             </div>
           </div>
@@ -840,16 +840,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   allRawPolls = signal<Poll[]>([]);
   currentRoom = this.pollService.currentRoom;
 
-  // Slido Dashboard State
+  // Mati Dashboard State
   searchQuery = signal<string>('');
   activeTab = signal<'all' | 'active' | 'past'>('all');
-  slidoDropdownFilter = signal<'all' | 'mine' | 'survey'>('all');
+  matiDropdownFilter = signal<'all' | 'mine' | 'survey'>('all');
   selectedRoomCodes = signal<string[]>([]);
   activeMenuRoom = signal<string | null>(null);
 
-  allSlidosCount = computed(() => this.rooms().length);
-  activeSlidosCount = computed(() => this.rooms().filter(r => r.status !== 'completed').length);
-  pastSlidosCount = computed(() => this.rooms().filter(r => r.status === 'completed').length);
+  allMatisCount = computed(() => this.rooms().length);
+  activeMatisCount = computed(() => this.rooms().filter(r => r.status !== 'completed').length);
+  pastMatisCount = computed(() => this.rooms().filter(r => r.status === 'completed').length);
 
   // Selected active questions subset
   polls = computed(() => {
@@ -867,13 +867,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return sel && sel.length > 0 ? sel.length : 0;
   });
 
-  // Filtered rooms matching Slido tabs, search, and dropdown
+  // Filtered rooms matching tabs, search, and dropdown
   filteredRooms = computed(() => {
     let list = this.rooms();
     const user = this.currentUser();
     const query = this.searchQuery().trim().toLowerCase();
     const tab = this.activeTab();
-    const drop = this.slidoDropdownFilter();
+    const drop = this.matiDropdownFilter();
 
     // 1. Tab filter
     if (tab === 'active') {
@@ -1190,8 +1190,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.switchRoom(code);
     this.messageService.add({
       severity: 'success',
-      summary: 'Slido Created! 🎉',
-      detail: `Slido "${createdTitle}" (${code}) is ready!`
+      summary: 'Mati Created! 🎉',
+      detail: `Mati "${createdTitle}" (${code}) is ready!`
     });
   }
 
