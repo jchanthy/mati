@@ -990,9 +990,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   selectedRoomCodes = signal<string[]>([]);
   activeMenuRoom = signal<string | null>(null);
 
-  allMatisCount = computed(() => this.rooms().length);
-  activeMatisCount = computed(() => this.rooms().filter(r => this.isRoomActive(r)).length);
-  pastMatisCount = computed(() => this.rooms().filter(r => !this.isRoomActive(r)).length);
+  allMatisCount = computed(() => this.rooms().filter(r => r.code && !r.code.startsWith('_')).length);
+  activeMatisCount = computed(() => this.rooms().filter(r => r.code && !r.code.startsWith('_') && this.isRoomActive(r)).length);
+  pastMatisCount = computed(() => this.rooms().filter(r => r.code && !r.code.startsWith('_') && !this.isRoomActive(r)).length);
 
   // Selected active questions subset
   polls = computed(() => {
@@ -1012,7 +1012,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Filtered rooms matching tabs, search, and dropdown
   filteredRooms = computed(() => {
-    let list = this.rooms();
+    let list = this.rooms().filter(r => r.code && !r.code.startsWith('_'));
     const user = this.currentUser();
     const query = this.searchQuery().trim().toLowerCase();
     const tab = this.activeTab();
@@ -1284,9 +1284,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.roomsSub = this.pollService.listenToRooms().subscribe(list => {
-      this.rooms.set(list);
+      const validRooms = list.filter(r => r.code && !r.code.startsWith('_'));
+      this.rooms.set(validRooms);
       const visible = this.filteredRooms();
-      if (visible.length > 0 && !visible.some(r => r.code === this.selectedRoomCode())) {
+      if (visible.length > 0 && (!this.selectedRoomCode() || this.selectedRoomCode().startsWith('_') || !visible.some(r => r.code === this.selectedRoomCode()))) {
         this.switchRoom(visible[0].code);
       }
     });
@@ -1305,6 +1306,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   switchRoom(code: string) {
+    if (!code || code.startsWith('_')) return;
     this.selectedRoomCode.set(code);
     this.targetRoomForNewPoll.set(code);
     this.targetRoomForImport.set(code);

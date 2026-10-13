@@ -246,6 +246,7 @@ export class MatiPollService {
    * Update room status (active, completed, closed, inactive)
    */
   async setRoomStatus(roomCode: string, status: 'active' | 'completed' | 'draft' | 'closed' | 'inactive'): Promise<void> {
+    if (!roomCode || roomCode.startsWith('_')) return;
     const code = roomCode.toUpperCase();
     if (this.firestore) {
       try {
@@ -647,6 +648,7 @@ export class MatiPollService {
    * Synchronously retrieves in-memory or persisted cached room
    */
   getCachedRoom(roomCode: string): Room | null {
+    if (!roomCode || roomCode.startsWith('_')) return null;
     const code = (roomCode || 'MATI01').toUpperCase();
     let room = this.mockRooms$.getValue().get(code) || null;
     if (!room && this.isBrowser) {
@@ -1118,6 +1120,9 @@ export class MatiPollService {
    * Listen to room metadata
    */
   listenToRoom(roomCode: string): Observable<Room | null> {
+    if (!roomCode || roomCode.startsWith('_')) {
+      return of(null);
+    }
     const code = roomCode.toUpperCase();
     if (this.firestore) {
       return new Observable<Room | null>((subscriber) => {
@@ -1239,6 +1244,7 @@ export class MatiPollService {
   }
 
   async getRoom(roomCode: string): Promise<Room | null> {
+    if (!roomCode || roomCode.startsWith('_')) return null;
     const code = roomCode.toUpperCase();
     if (this.firestore) {
       try {
@@ -1272,21 +1278,25 @@ export class MatiPollService {
   }
 
   /**
-   * Real-time observable of all rooms in Firestore and local store
+   * Real-time observable of all rooms in Firestore and local store (excluding internal system documents)
    */
   listenToRooms(): Observable<Room[]> {
     if (this.firestore) {
       return new Observable<Room[]>((subscriber) => {
         // Emit in-memory fallback first for immediate responsiveness
-        const initialMock = Array.from(this.mockRooms$.getValue().values());
+        const initialMock = Array.from(this.mockRooms$.getValue().values())
+          .filter(r => r.code && !r.code.startsWith('_'));
         if (initialMock.length > 0) {
           subscriber.next(initialMock);
         }
 
         const roomsCol = collection(this.firestore!, 'rooms');
         const unsub = onSnapshot(roomsCol, (snapshot) => {
-          const firestoreRooms = snapshot.docs.map(d => ({ code: d.id, ...d.data() } as Room));
-          const localRooms = Array.from(this.mockRooms$.getValue().values());
+          const firestoreRooms = snapshot.docs
+            .filter(d => !d.id.startsWith('_'))
+            .map(d => ({ code: d.id, ...d.data() } as Room));
+          const localRooms = Array.from(this.mockRooms$.getValue().values())
+            .filter(r => r.code && !r.code.startsWith('_'));
 
           const map = new Map<string, Room>();
           for (const r of localRooms) map.set(r.code, r);
@@ -1296,7 +1306,7 @@ export class MatiPollService {
           subscriber.next(merged);
         }, (err) => {
           console.warn('[Mati] Firestore rooms listener error, fallback to local store:', err);
-          subscriber.next(Array.from(this.mockRooms$.getValue().values()));
+          subscriber.next(Array.from(this.mockRooms$.getValue().values()).filter(r => r.code && !r.code.startsWith('_')));
         });
 
         return () => unsub();
@@ -1304,17 +1314,19 @@ export class MatiPollService {
     }
 
     return this.mockRooms$.pipe(
-      map(m => Array.from(m.values()))
+      map(m => Array.from(m.values()).filter(r => r.code && !r.code.startsWith('_')))
     );
   }
 
   async listRooms(): Promise<Room[]> {
-    const local = Array.from(this.mockRooms$.getValue().values());
+    const local = Array.from(this.mockRooms$.getValue().values()).filter(r => r.code && !r.code.startsWith('_'));
     if (this.firestore) {
       try {
         const snap = await getDocs(collection(this.firestore, 'rooms'));
         if (!snap.empty) {
-          const firestoreRooms = snap.docs.map(d => ({ code: d.id, ...d.data() } as Room));
+          const firestoreRooms = snap.docs
+            .filter(d => !d.id.startsWith('_'))
+            .map(d => ({ code: d.id, ...d.data() } as Room));
           const map = new Map<string, Room>();
           for (const r of local) map.set(r.code, r);
           for (const r of firestoreRooms) map.set(r.code, r);
