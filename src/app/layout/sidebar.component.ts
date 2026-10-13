@@ -9,73 +9,89 @@ import { MatiPollService } from '../services/mati-poll.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <aside class="sidebar-wrapper w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-4 flex flex-col justify-between h-[calc(100vh-4rem)]">
-      <nav class="flex flex-col gap-1">
-        <div class="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-          Mati Studio
+    <aside class="sidebar-wrapper w-56 sm:w-60 bg-white border-r border-gray-200/90 py-5 px-3 flex flex-col justify-between h-[calc(100vh-4rem)] select-none">
+      <!-- Main Nav Items -->
+      <nav class="flex flex-col gap-1.5">
+        <!-- My slidos (Active Item) -->
+        <a 
+          routerLink="/dashboard" 
+          routerLinkActive="bg-[#E8F5E9] text-[#087A38] font-bold" 
+          [routerLinkActiveOptions]="{exact: true}" 
+          class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
+          <i class="pi pi-chart-bar text-base text-[#087A38]"></i>
+          <span>My slidos</span>
+        </a>
+
+        <!-- Team -->
+        <a 
+          [routerLink]="isAdmin() ? '/dashboard/users' : '/dashboard'" 
+          routerLinkActive="bg-[#E8F5E9] text-[#087A38] font-bold" 
+          class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
+          <i class="pi pi-users text-base text-gray-500"></i>
+          <span>Team</span>
+        </a>
+
+        <!-- Organization analytics -->
+        <a 
+          routerLink="/dashboard" 
+          class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
+          <i class="pi pi-chart-line text-base text-gray-500"></i>
+          <span>Organization analytics</span>
+        </a>
+
+        <!-- Tutorials -->
+        <a 
+          routerLink="/dashboard" 
+          class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
+          <i class="pi pi-graduation-cap text-base text-gray-500"></i>
+          <span>Tutorials</span>
+        </a>
+
+        <!-- Integrations Header -->
+        <div class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 font-medium">
+          <i class="pi pi-th-large text-base text-gray-500"></i>
+          <span>Integrations</span>
         </div>
 
-        <a routerLink="/dashboard" routerLinkActive="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold" [routerLinkActiveOptions]="{exact: true}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <i class="pi pi-home text-base"></i>
-          <span>Overview</span>
-        </a>
-
-        <a [routerLink]="['/dashboard/control', activeRoomCode()]" routerLinkActive="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <i class="pi pi-sliders-h text-base text-purple-600 dark:text-purple-400"></i>
-          <span>Live Controller</span>
-          <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 ml-auto">{{ activeRoomCode() }}</span>
-        </a>
-
-        @if (isAdmin()) {
-          <a routerLink="/dashboard/users" routerLinkActive="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400 font-semibold" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <i class="pi pi-users text-base text-purple-500"></i>
-            <span>User Management</span>
+        <!-- Sub-integrations list (matching Slido screenshot) -->
+        <div class="pl-7 flex flex-col gap-1 text-xs text-gray-600">
+          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
+            <span class="w-4 h-4 rounded-sm bg-orange-600 text-white font-bold text-[9px] flex items-center justify-center shrink-0">P</span>
+            <span>PowerPoint</span>
           </a>
-        }
-
-        <div class="my-2">
-          <a routerLink="/dashboard" class="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer">
-            <i class="pi pi-plus"></i>
-            <span>Create New Room</span>
+          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
+            <span class="w-4 h-4 rounded-sm bg-amber-500 text-white font-bold text-[9px] flex items-center justify-center shrink-0">S</span>
+            <span>Google Slides</span>
+          </a>
+          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
+            <span class="w-4 h-4 rounded-sm bg-indigo-600 text-white font-bold text-[9px] flex items-center justify-center shrink-0">T</span>
+            <span>Microsoft Teams</span>
+          </a>
+          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
+            <span class="w-4 h-4 rounded-sm bg-cyan-600 text-white font-bold text-[9px] flex items-center justify-center shrink-0">W</span>
+            <span>Webex</span>
+          </a>
+          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
+            <span class="w-4 h-4 rounded-sm bg-blue-500 text-white font-bold text-[9px] flex items-center justify-center shrink-0">Z</span>
+            <span>Zoom</span>
           </a>
         </div>
-
-        <div class="mt-4 px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-          Audience Stages
-        </div>
-
-        <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <i class="pi pi-window-maximize text-base text-indigo-500"></i>
-          <span>Projector Stage</span>
-          <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 ml-1">{{ activeRoomCode() }}</span>
-          <i class="pi pi-external-link text-xs ml-auto text-gray-400"></i>
-        </a>
-
-        <a [routerLink]="['/join', activeRoomCode()]" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <i class="pi pi-mobile text-base text-emerald-500"></i>
-          <span>Participant Mobile</span>
-          <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 ml-1">{{ activeRoomCode() }}</span>
-          <i class="pi pi-external-link text-xs ml-auto text-gray-400"></i>
-        </a>
       </nav>
 
-      <div class="p-3 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="text-xs font-bold text-gray-900 dark:text-white">Firestore Live</span>
-        </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          Active Room: <strong class="text-indigo-600 dark:text-indigo-400 font-mono">{{ activeRoomCode() }}</strong>
-        </p>
-        <div class="text-[11px] font-mono bg-white dark:bg-gray-900 px-2 py-1 rounded text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 truncate">
-          {{ currentUser()?.email || 'Authenticated' }}
-        </div>
+      <!-- Bottom: Help (?) circle icon matching Slido screenshot -->
+      <div class="pt-4 border-t border-gray-100">
+        <button 
+          type="button" 
+          title="Help &amp; Support"
+          class="w-8 h-8 rounded-full border border-gray-300 text-gray-700 font-bold text-sm flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer">
+          ?
+        </button>
       </div>
     </aside>
   `,
   styles: [`
     .sidebar-wrapper {
-      min-width: 16rem;
+      min-width: 14rem;
     }
   `]
 })

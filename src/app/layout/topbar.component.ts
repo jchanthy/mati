@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
@@ -9,84 +9,91 @@ import { MatiPollService } from '../services/mati-poll.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <header class="topbar-container flex justify-between items-center px-4 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50 shadow-xs">
-      <div class="flex items-center gap-3">
-        <button type="button" class="sidebar-toggle p-2 text-gray-600 hover:text-indigo-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" (click)="toggleSidebar()">
-          <i class="pi pi-bars text-xl"></i>
-        </button>
-        <div class="flex items-center gap-2">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-700 to-indigo-500 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20">
-            ម
-          </div>
-          <div>
-            <span class="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white">Mati</span>
-            <span class="text-xs font-semibold px-1.5 py-0.5 ml-1.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 rounded-md uppercase">Studio</span>
-          </div>
+    <header class="topbar-container flex justify-between items-center px-4 sm:px-6 bg-white border-b border-gray-200/90 sticky top-0 z-50">
+      <!-- Left: Slido Logo + Org Name + Upgrade Pill Button -->
+      <div class="flex items-center gap-3 sm:gap-6">
+        <!-- Slido Brand Logo -->
+        <a routerLink="/dashboard" class="flex items-center gap-1.5 no-underline select-none">
+          <span class="text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#087A38] font-sans lowercase">slido</span>
+        </a>
+
+        <!-- Organization / Workspace info -->
+        <div class="hidden sm:flex flex-col text-left border-l border-gray-200 pl-4 sm:pl-5">
+          <span class="text-xs sm:text-sm font-bold text-gray-900 leading-tight truncate max-w-[200px]">
+            {{ getOrgName() }}
+          </span>
+          <span class="text-[11px] text-gray-500 font-medium">
+            {{ currentUser()?.role === 'admin' ? 'Administrator' : 'Owner' }}
+          </span>
         </div>
+
+        <!-- Slido Upgrade Button -->
+        <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold border border-amber-500/80 text-amber-800 bg-amber-50/60 hover:bg-amber-100/70 transition-all cursor-pointer shadow-2xs">
+          <i class="pi pi-crown text-amber-600 text-xs"></i>
+          <span>Upgrade</span>
+        </button>
       </div>
 
-      <div class="flex items-center gap-2.5 sm:gap-3">
-        <a [routerLink]="['/dashboard/control', activeRoomCode()]" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 transition-all shadow-xs cursor-pointer" title="Live Controller">
-          <i class="pi pi-sliders-h text-xs"></i>
+      <!-- Right: Quick Stage / Controller / What's new / User Avatar -->
+      <div class="flex items-center gap-2.5 sm:gap-4">
+        <!-- Controller Shortcut -->
+        <a [routerLink]="['/dashboard/control', activeRoomCode()]" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer" title="Live Controller">
+          <i class="pi pi-sliders-h text-xs text-[#087A38]"></i>
           <span>Controller</span>
         </a>
-        <a routerLink="/dashboard" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xs">
-          <i class="pi pi-plus text-xs"></i>
-          <span class="hidden sm:inline">Create Room</span>
-        </a>
-        <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 transition-all border border-indigo-200 dark:border-indigo-800">
-          <i class="pi pi-desktop text-sm"></i>
-          <span>Launch Stage</span>
-          <span class="text-[10px] font-mono font-bold px-1 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">{{ activeRoomCode() }}</span>
-        </a>
-        <a [routerLink]="['/join', activeRoomCode()]" target="_blank" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 transition-all border border-emerald-200 dark:border-emerald-800">
-          <i class="pi pi-mobile text-sm"></i>
-          <span>Join Preview</span>
-        </a>
-        
-        <div class="h-6 w-px bg-gray-200 dark:bg-gray-800 mx-1"></div>
 
-        <!-- Authenticated User Profile & Sign Out -->
+        <!-- Present Stage Shortcut -->
+        <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors" title="Launch Presenter Stage">
+          <i class="pi pi-desktop text-xs text-[#087A38]"></i>
+          <span>Present</span>
+          <span class="text-[10px] font-mono font-bold px-1 rounded bg-emerald-50 text-[#087A38] border border-emerald-200">{{ activeRoomCode() }}</span>
+        </a>
+
+        <!-- What's new link -->
+        <span class="text-xs font-medium text-gray-600 hover:text-gray-900 hidden sm:inline-block cursor-pointer">
+          What's new
+        </span>
+
+        <!-- Slido User Profile Avatar (Green circular border with initials) -->
         @if (currentUser(); as user) {
-          <div class="flex items-center gap-2">
-            <!-- User Avatar & Info -->
-            <div class="flex items-center gap-2 pl-1">
-              @if (user.photoURL && !avatarError()) {
-                <img 
-                  [src]="user.photoURL" 
-                  referrerpolicy="no-referrer"
-                  (error)="avatarError.set(true)"
-                  class="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" 
-                  alt="">
-              } @else {
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                  {{ (user.displayName || user.email || 'U').charAt(0).toUpperCase() }}
-                </div>
-              }
-              <div class="hidden lg:flex flex-col text-left">
-                <span class="text-xs font-bold text-gray-900 dark:text-white truncate max-w-[120px]">
-                  {{ user.displayName || user.email }}
-                </span>
-                <span class="text-[10px] uppercase font-bold tracking-wider"
-                  [ngClass]="user.role === 'admin' ? 'text-purple-600 dark:text-purple-400' : 'text-sky-600 dark:text-sky-400'">
-                  {{ user.role === 'admin' ? 'Administrator' : 'Presenter' }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Sign Out Button -->
-            <button
-              type="button"
-              (click)="logout()"
-              title="Sign Out"
-              class="p-2 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
-              <i class="pi pi-sign-out text-sm"></i>
+          <div class="relative">
+            <button 
+              type="button" 
+              (click)="showUserMenu.set(!showUserMenu())"
+              title="User profile"
+              class="w-9 h-9 rounded-full border-2 border-[#087A38] text-[#087A38] font-bold text-xs flex items-center justify-center bg-white hover:bg-emerald-50 transition-colors cursor-pointer select-none">
+              {{ getUserInitials() }}
             </button>
+
+            <!-- User Menu Dropdown -->
+            @if (showUserMenu()) {
+              <div class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50 animate-fadein">
+                <div class="px-4 py-2 border-b border-gray-100">
+                  <div class="text-xs font-bold text-gray-900 truncate">{{ user.displayName || user.email }}</div>
+                  <div class="text-[11px] text-gray-500 truncate">{{ user.email }}</div>
+                  <span class="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-[#087A38]">
+                    {{ user.role === 'admin' ? 'Administrator' : 'Owner' }}
+                  </span>
+                </div>
+                <a routerLink="/dashboard" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
+                  <i class="pi pi-chart-bar text-xs text-[#087A38]"></i> My slidos
+                </a>
+                <a [routerLink]="['/dashboard/control', activeRoomCode()]" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
+                  <i class="pi pi-sliders-h text-xs text-gray-400"></i> Live Controller
+                </a>
+                <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
+                  <i class="pi pi-desktop text-xs text-gray-400"></i> Presenter Stage
+                </a>
+                <div class="border-t border-gray-100 my-1"></div>
+                <button type="button" (click)="logout()" class="w-full text-left flex items-center gap-2 px-4 py-2 text-xs text-red-600 hover:bg-red-50 cursor-pointer">
+                  <i class="pi pi-sign-out text-xs"></i> Sign Out
+                </button>
+              </div>
+            }
           </div>
         } @else {
-          <a routerLink="/login" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200">
-            <i class="pi pi-user text-xs"></i>
-            <span>Sign In</span>
+          <a routerLink="/login" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#087A38] border border-[#087A38] hover:bg-emerald-50 transition-colors">
+            Sign In
           </a>
         }
       </div>
@@ -102,10 +109,9 @@ export class TopbarComponent {
   private authService = inject(AuthService);
   private pollService = inject(MatiPollService);
 
-  sidebarVisible = signal(true);
   currentUser = this.authService.currentUser;
-  avatarError = signal(false);
   activeRoomCode = signal<string>('MATI01');
+  showUserMenu = signal(false);
 
   constructor() {
     this.pollService.listenToActiveBroadcastRoom().subscribe(code => {
@@ -113,11 +119,26 @@ export class TopbarComponent {
     });
   }
 
-  toggleSidebar() {
-    this.sidebarVisible.update(v => !v);
+  getUserInitials(): string {
+    const user = this.currentUser();
+    if (!user) return 'JC';
+    const name = user.displayName || user.email || 'JC';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
+
+  getOrgName(): string {
+    const user = this.currentUser();
+    if (!user) return "John's organization";
+    const name = user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'John';
+    return `${name}'s organization`;
   }
 
   logout() {
+    this.showUserMenu.set(false);
     this.authService.logout();
   }
 }

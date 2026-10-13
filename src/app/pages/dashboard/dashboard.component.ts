@@ -31,333 +31,337 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
   ],
   providers: [MessageService],
   template: `
-    <div class="space-y-6">
+    <div class="space-y-6" (click)="closeRoomMenu()">
       <p-toast></p-toast>
 
-      <!-- Welcome Banner -->
-      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-blue-900 text-white p-8 shadow-xl">
-        <div class="relative z-10 max-w-3xl">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/30 backdrop-blur-md border border-indigo-400/30 text-indigo-200 text-xs font-semibold mb-4">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Mati Live Audience Engine</span>
-            <span>•</span>
-            <span class="capitalize">{{ isAdmin() ? 'Administrator' : 'Presenter' }}: {{ currentUser()?.displayName || currentUser()?.email }}</span>
-          </div>
-          <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            Mati (មតិ) Studio Dashboard
-          </h1>
-          <p class="mt-2 text-indigo-100 text-sm sm:text-base leading-relaxed">
-            Create real-time audience polls, display live projection charts, and control interactive classroom sessions effortlessly.
-          </p>
-          <div class="mt-6 flex flex-wrap gap-3">
-            <button 
-              type="button" 
-              (click)="showNewRoomDialog = true" 
-              class="banner-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all border border-indigo-500 active:scale-95 cursor-pointer">
-              <i class="pi pi-plus"></i>
-              <span>Create New Room</span>
-            </button>
+      <!-- Slido Top Header: Tabs on Left + "+ Create slido" Button on Right -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <!-- Tabs matching Slido screenshot: All [N], Active & upcoming [N], Past [N] -->
+        <div class="flex items-center gap-2">
+          <!-- All Tab -->
+          <button 
+            type="button" 
+            (click)="setTab('all')" 
+            [ngClass]="activeTab() === 'all' 
+              ? 'border-2 border-[#087A38] bg-white text-gray-900 font-bold shadow-2xs' 
+              : 'border border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium'"
+            class="px-3.5 py-2 rounded-lg text-sm flex items-center gap-2 transition-all cursor-pointer">
+            <span>All</span>
+            <span class="px-2 py-0.5 rounded-full text-xs font-bold"
+              [ngClass]="activeTab() === 'all' ? 'bg-[#087A38] text-white' : 'bg-gray-100 text-gray-600'">
+              {{ allSlidosCount() }}
+            </span>
+          </button>
 
-            <button 
-              type="button" 
-              (click)="showNewPollDialog = true" 
-              class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white border border-white/30 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer">
-              <i class="pi pi-question-circle"></i>
-              <span>Add Question</span>
-            </button>
+          <!-- Active & upcoming Tab -->
+          <button 
+            type="button" 
+            (click)="setTab('active')" 
+            [ngClass]="activeTab() === 'active' 
+              ? 'border-2 border-[#087A38] bg-white text-gray-900 font-bold shadow-2xs' 
+              : 'border border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium'"
+            class="px-3.5 py-2 rounded-lg text-sm flex items-center gap-2 transition-all cursor-pointer">
+            <span>Active &amp; upcoming</span>
+            <span class="px-2 py-0.5 rounded-full text-xs font-bold"
+              [ngClass]="activeTab() === 'active' ? 'bg-[#087A38] text-white' : 'bg-gray-100 text-gray-600'">
+              {{ activeSlidosCount() }}
+            </span>
+          </button>
 
-            <button 
-              type="button" 
-              (click)="showImportDialog = true" 
-              class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white border border-white/30 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer">
-              <i class="pi pi-file-import"></i>
-              <span>Import Questions (CSV / XML)</span>
-            </button>
-
-            <a 
-              routerLink="/dashboard/control" 
-              class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white border border-white/30 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer">
-              <i class="pi pi-sliders-h"></i>
-              <span>Open Live Controller</span>
-            </a>
-
-            @if (isAdmin()) {
-              <a 
-                routerLink="/dashboard/users" 
-                class="banner-ghost-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-purple-200 bg-purple-900/40 border border-purple-400/40 backdrop-blur-md shadow-sm transition-all active:scale-95 cursor-pointer hover:bg-purple-900/60">
-                <i class="pi pi-users"></i>
-                <span>Manage Users</span>
-              </a>
-            }
-          </div>
+          <!-- Past Tab -->
+          <button 
+            type="button" 
+            (click)="setTab('past')" 
+            [ngClass]="activeTab() === 'past' 
+              ? 'border-2 border-[#087A38] bg-white text-gray-900 font-bold shadow-2xs' 
+              : 'border border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium'"
+            class="px-3.5 py-2 rounded-lg text-sm flex items-center gap-2 transition-all cursor-pointer">
+            <span>Past</span>
+            <span class="px-2 py-0.5 rounded-full text-xs font-bold"
+              [ngClass]="activeTab() === 'past' ? 'bg-[#087A38] text-white' : 'bg-gray-100 text-gray-600'">
+              {{ pastSlidosCount() }}
+            </span>
+          </button>
         </div>
-        <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- + Create slido Primary Button (Slido signature forest green) -->
+        <button 
+          type="button" 
+          (click)="showNewRoomDialog = true" 
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-[#087A38] hover:bg-[#06652e] text-white shadow-xs transition-all cursor-pointer select-none">
+          <i class="pi pi-plus text-xs"></i>
+          <span>Create slido</span>
+        </button>
       </div>
 
-      <!-- Quick Metrics Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex items-center gap-4">
-          <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl shrink-0">
-            <i class="pi pi-desktop"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-xs font-bold uppercase tracking-wider text-gray-400">Managing Room</div>
-            <div class="flex items-center gap-2 mt-0.5">
-              <span class="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">{{ selectedRoomCode() }}</span>
-              <span class="text-xs text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">Live</span>
-            </div>
-            <div class="text-xs text-gray-500 truncate">{{ getSelectedRoomTitle() }}</div>
-          </div>
+      <!-- Slido Filter & Search Bar -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+        <!-- Search Input with Magnifying Glass -->
+        <div class="relative w-full sm:w-80">
+          <input 
+            type="text" 
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+            placeholder="Search by name, owner, code" 
+            class="w-full pl-3.5 pr-9 py-2 rounded-lg border border-gray-300 text-sm placeholder-gray-400 focus:outline-none focus:border-[#087A38] focus:ring-1 focus:ring-[#087A38] bg-white transition-all" />
+          <i class="pi pi-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
         </div>
 
-        <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex items-center gap-4">
-          <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl shrink-0">
-            <i class="pi pi-chart-bar"></i>
-          </div>
-          <div>
-            <div class="text-xs font-bold uppercase tracking-wider text-gray-400">Total Polls</div>
-            <div class="text-2xl font-extrabold text-gray-900 dark:text-white">{{ polls().length }}</div>
-            <div class="text-xs text-gray-500">In {{ selectedRoomCode() }} session</div>
-          </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex items-center gap-4">
-          <div class="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl shrink-0">
-            <i class="pi pi-users"></i>
-          </div>
-          <div>
-            <div class="text-xs font-bold uppercase tracking-wider text-gray-400">Audience Links</div>
-            <div class="flex items-center gap-2 mt-1">
-              <a [routerLink]="['/stage', selectedRoomCode()]" target="_blank" class="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1">
-                <i class="pi pi-external-link text-[10px]"></i> Stage View
-              </a>
-              <span class="text-gray-300">•</span>
-              <a [routerLink]="['/join', selectedRoomCode()]" target="_blank" class="text-xs font-semibold text-emerald-600 hover:underline flex items-center gap-1">
-                <i class="pi pi-external-link text-[10px]"></i> Mobile View
-              </a>
-            </div>
-            <div class="text-[11px] text-gray-400 mt-1">Click to launch in new tab</div>
-          </div>
+        <!-- Dropdown Filter matching Slido "All slidos v" -->
+        <div class="relative">
+          <select 
+            [ngModel]="slidoDropdownFilter()"
+            (ngModelChange)="slidoDropdownFilter.set($event)"
+            class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-[#087A38] cursor-pointer">
+            <option value="all">All slidos</option>
+            <option value="mine">My slidos</option>
+            <option value="survey">Surveys</option>
+          </select>
+          <i class="pi pi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
         </div>
       </div>
 
-      <!-- Rooms in System (Managed by User) -->
-      <div class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
-          <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base">
-              <i class="pi pi-building"></i>
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h2 class="text-lg font-black text-gray-900 dark:text-white">
-                  Rooms in Your System
-                </h2>
-                <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold font-mono">
-                  {{ filteredRooms().length }} Visible
-                </span>
-              </div>
-              <p class="text-xs text-gray-500">
-                Click any room to select and manage its polls or launch its presentation stage.
-              </p>
-            </div>
+      <!-- Slido Details Table (matching Slido screenshot) -->
+      <div class="border border-gray-200/90 rounded-xl overflow-hidden bg-white shadow-2xs">
+        <!-- Table Header -->
+        <div class="bg-gray-50/60 border-b border-gray-200 px-4 sm:px-6 py-3.5 flex items-center text-xs font-semibold text-gray-600">
+          <div class="w-8 shrink-0">
+            <input 
+              type="checkbox" 
+              (change)="toggleSelectAllRooms($event)"
+              class="w-4 h-4 rounded text-[#087A38] focus:ring-[#087A38] cursor-pointer border-gray-300" />
           </div>
-
-          <div class="flex items-center gap-2 flex-wrap">
-            @if (isAdmin()) {
-              <div class="flex items-center p-0.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700">
-                <button
-                  type="button"
-                  (click)="roomFilter.set('all')"
-                  [ngClass]="roomFilter() === 'all' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
-                  class="px-3 py-1.5 rounded-lg transition-all cursor-pointer">
-                  All Rooms ({{ rooms().length }})
-                </button>
-                <button
-                  type="button"
-                  (click)="roomFilter.set('mine')"
-                  [ngClass]="roomFilter() === 'mine' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'"
-                  class="px-3 py-1.5 rounded-lg transition-all cursor-pointer">
-                  My Rooms ({{ myRoomsCount() }})
-                </button>
-              </div>
-            }
-
-            <button 
-              type="button" 
-              (click)="showNewRoomDialog = true" 
-              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer">
-              <i class="pi pi-plus"></i>
-              <span>Create New Room</span>
-            </button>
-          </div>
+          <div class="flex-1 min-w-0">Slido details</div>
+          <div class="w-40 sm:w-56 text-left hidden sm:block">Status</div>
+          <div class="w-40 sm:w-48 text-right">More actions</div>
         </div>
 
-        <!-- Rooms Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Table Rows -->
+        <div class="divide-y divide-gray-100">
           @for (r of filteredRooms(); track r.code) {
             <div 
-              class="p-4 rounded-2xl border transition-all flex flex-col justify-between gap-4 relative group"
+              (click)="switchRoom(r.code)"
+              class="px-4 sm:px-6 py-4 flex items-center transition-colors group cursor-pointer"
               [ngClass]="selectedRoomCode() === r.code 
-                ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/30 ring-2 ring-indigo-400/50 shadow-md' 
-                : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40 hover:border-gray-300 dark:hover:border-gray-700'">
+                ? 'bg-emerald-50/25 border-l-4 border-l-[#087A38]' 
+                : 'hover:bg-gray-50/80'">
               
-              <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="px-2.5 py-1 rounded-xl bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-mono font-black text-xs border border-gray-200 dark:border-gray-700 shadow-2xs">
-                    PIN: {{ r.code }}
-                  </span>
-                  <div class="flex items-center gap-1">
-                    @if (r.mode === 'survey') {
-                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                        Survey
-                      </span>
-                    }
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider"
-                      [ngClass]="r.status === 'completed' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'">
-                      {{ r.status || 'Active' }}
-                    </span>
+              <!-- Checkbox -->
+              <div class="w-8 shrink-0" (click)="$event.stopPropagation()">
+                <input 
+                  type="checkbox" 
+                  [checked]="isRoomChecked(r.code)"
+                  (change)="toggleRoomCheck(r.code, $event)"
+                  class="w-4 h-4 rounded text-[#087A38] focus:ring-[#087A38] cursor-pointer border-gray-300" />
+              </div>
 
-                    @if (canManageRoom(r)) {
-                      <button
-                        type="button"
-                        (click)="deleteRoom(r.code)"
-                        title="Delete Room"
-                        class="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all cursor-pointer">
-                        <i class="pi pi-trash text-xs"></i>
-                      </button>
-                    }
-                  </div>
-                </div>
-
-                <div>
-                  <h3 class="text-sm font-bold text-gray-900 dark:text-white leading-snug line-clamp-2">
+              <!-- Slido details: Title (#code) and date range -->
+              <div class="flex-1 min-w-0 pr-4">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-gray-900 group-hover:text-[#087A38] transition-colors truncate">
                     {{ r.title || ('Room ' + r.code) }}
-                  </h3>
-                  <div class="text-[11px] text-gray-500 mt-1 flex items-center justify-between">
-                    <span>{{ selectedRoomCode() === r.code ? polls().length + ' polls loaded' : 'Room ready' }}</span>
-                    <span class="text-[10px] font-medium text-slate-400 truncate max-w-[130px]">
-                      {{ r.ownerEmail === currentUser()?.email ? 'Owner: You' : (r.ownerEmail ? 'Owner: ' + r.ownerEmail : 'Public') }}
-                    </span>
-                  </div>
+                  </span>
+                  <span class="text-xs font-mono font-semibold text-gray-500">
+                    (#{{ r.code }})
+                  </span>
+                </div>
+                <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                  <span>{{ formatRoomDate(r) }}</span>
+                  <span>•</span>
+                  <span>{{ selectedRoomCode() === r.code ? polls().length + ' polls' : 'Session ready' }}</span>
                 </div>
               </div>
 
-              <!-- Action buttons -->
-              <div class="pt-3 border-t border-gray-200/80 dark:border-gray-800 space-y-2">
-                <!-- Direct Add Question & Import for this specific room -->
-                <div class="flex items-center gap-1.5 w-full">
+              <!-- Status column -->
+              <div class="w-40 sm:w-56 text-left hidden sm:flex items-center gap-2 text-xs font-medium text-gray-600">
+                @if (r.status === 'completed') {
+                  <span class="inline-flex items-center gap-1.5 text-gray-500">
+                    <i class="pi pi-clock text-xs"></i>
+                    <span>Last year</span>
+                  </span>
+                } @else if (r.mode === 'survey') {
+                  <span class="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                    <i class="pi pi-list text-xs"></i>
+                    <span>Survey</span>
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#087A38] animate-pulse"></span>
+                    <span>Active &amp; upcoming</span>
+                  </span>
+                }
+              </div>
+
+              <!-- More actions column -->
+              <div class="w-40 sm:w-48 text-right flex items-center justify-end gap-1.5" (click)="$event.stopPropagation()">
+                <!-- Quick Add question icon [+] -->
+                <button 
+                  type="button" 
+                  (click)="openAddQuestionForRoom(r.code)"
+                  title="Add Question" 
+                  class="p-1.5 rounded-lg text-gray-500 hover:text-[#087A38] hover:bg-emerald-50 transition-colors cursor-pointer">
+                  <i class="pi pi-plus-circle text-base"></i>
+                </button>
+
+                <!-- Present Stage [TV] -->
+                <a 
+                  [routerLink]="['/stage', r.code]" 
+                  target="_blank" 
+                  title="Launch Presenter Stage" 
+                  class="p-1.5 rounded-lg text-gray-500 hover:text-[#087A38] hover:bg-emerald-50 transition-colors cursor-pointer">
+                  <i class="pi pi-desktop text-sm"></i>
+                </a>
+
+                <!-- Controller [Sliders] -->
+                <a 
+                  [routerLink]="['/dashboard/control', r.code]" 
+                  title="Remote Controller" 
+                  class="p-1.5 rounded-lg text-gray-500 hover:text-[#087A38] hover:bg-emerald-50 transition-colors cursor-pointer">
+                  <i class="pi pi-sliders-h text-sm"></i>
+                </a>
+
+                <!-- More menu [...] -->
+                <div class="relative">
                   <button 
                     type="button" 
-                    (click)="openAddQuestionForRoom(r.code)"
-                    class="flex-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                    title="Add question directly to {{ r.code }}">
-                    <i class="pi pi-plus text-[10px]"></i>
-                    <span>+ Add Question</span>
+                    (click)="toggleRoomMenu(r.code, $event)"
+                    title="More actions" 
+                    class="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer">
+                    <i class="pi pi-ellipsis-h text-sm"></i>
                   </button>
 
-                  <button 
-                    type="button" 
-                    (click)="openImportForRoom(r.code)"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 transition-all flex items-center gap-1 cursor-pointer"
-                    title="Import CSV or XML questions into {{ r.code }}">
-                    <i class="pi pi-file-import text-[10px]"></i>
-                    <span>Import</span>
-                  </button>
-                </div>
-
-                <div class="flex items-center justify-between gap-1.5 flex-wrap">
-                  <button 
-                    type="button" 
-                    (click)="switchRoom(r.code)"
-                    [ngClass]="selectedRoomCode() === r.code ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100'"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer">
-                    <i class="pi pi-check text-[10px]"></i>
-                    <span>{{ selectedRoomCode() === r.code ? 'Selected' : 'Manage' }}</span>
-                  </button>
-
-                  <a 
-                    [routerLink]="['/dashboard/control', r.code]" 
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all flex items-center gap-1">
-                    <i class="pi pi-sliders-h text-[10px]"></i> Controller
-                  </a>
-
-                  <div class="flex items-center gap-1 ml-auto">
-                    <a 
-                      [routerLink]="['/stage', r.code]" 
-                      target="_blank" 
-                      class="p-1.5 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" 
-                      title="Open Projector Stage (TV)">
-                      <i class="pi pi-desktop text-sm"></i>
-                    </a>
-
-                    <a 
-                      [routerLink]="['/join', r.code]" 
-                      target="_blank" 
-                      class="p-1.5 rounded-xl text-gray-500 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all" 
-                      title="Open Voter Phone View">
-                      <i class="pi pi-mobile text-sm"></i>
-                    </a>
-                  </div>
+                  <!-- Row Dropdown Menu -->
+                  @if (activeMenuRoom() === r.code) {
+                    <div class="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-40 text-left animate-fadein">
+                      <button type="button" (click)="switchRoom(r.code); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
+                        <i class="pi pi-folder-open text-xs text-gray-400"></i> Manage Questions
+                      </button>
+                      <button type="button" (click)="openAddQuestionForRoom(r.code); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
+                        <i class="pi pi-plus text-xs text-gray-400"></i> Add Question
+                      </button>
+                      <button type="button" (click)="openImportForRoom(r.code); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
+                        <i class="pi pi-file-import text-xs text-gray-400"></i> Import (CSV/XML)
+                      </button>
+                      <button type="button" (click)="switchRoom(r.code); openPickQuestionsDialog(); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
+                        <i class="pi pi-check-square text-xs text-gray-400"></i> Pick Questions
+                      </button>
+                      <div class="border-t border-gray-100 my-1"></div>
+                      @if (canManageRoom(r)) {
+                        <button type="button" (click)="deleteRoom(r.code); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer">
+                          <i class="pi pi-trash text-xs"></i> Delete Slido
+                        </button>
+                      }
+                    </div>
+                  }
                 </div>
               </div>
             </div>
           } @empty {
-            <div class="col-span-full text-center py-8 text-gray-400 text-xs">
-              No rooms found. Click "Create New Room" to get started!
+            <div class="text-center py-12 px-4 text-gray-500 text-sm">
+              <i class="pi pi-inbox text-3xl text-gray-300 mb-2 block"></i>
+              No slidos found in this view. Click <strong>+ Create slido</strong> to add your first session!
             </div>
           }
         </div>
+
+        <!-- Table Footer Pagination matching Slido screenshot -->
+        <div class="bg-white border-t border-gray-200 px-4 sm:px-6 py-3.5 flex items-center justify-between text-xs text-gray-500 select-none">
+          <div>Page 1</div>
+          <div class="flex items-center gap-4">
+            <span class="hover:text-gray-900 cursor-pointer flex items-center gap-1">
+              <i class="pi pi-angle-left text-[10px]"></i> Previous
+            </span>
+            <span class="hover:text-gray-900 cursor-pointer flex items-center gap-1">
+              Next <i class="pi pi-angle-right text-[10px]"></i>
+            </span>
+          </div>
+        </div>
       </div>
 
-      <!-- Polls Management List -->
-      <div class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
-        <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <!-- Slido Questions Management Workspace for the Selected Slido -->
+      <div class="bg-white rounded-xl border border-gray-200/90 p-5 sm:p-6 shadow-2xs space-y-4">
+        <!-- Slido Question Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-gray-200">
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="text-xl font-bold text-gray-900 dark:text-white">Active Room Polls:</h2>
-              <span class="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-mono font-black text-sm border border-indigo-200 dark:border-indigo-800">
-                {{ selectedRoomCode() }}
+              <h2 class="text-lg font-bold text-gray-900">
+                Questions in {{ getSelectedRoomTitle() }}
+              </h2>
+              <span class="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-[#087A38] border border-emerald-200">
+                #{{ selectedRoomCode() }}
               </span>
             </div>
-            <p class="text-xs text-gray-500 mt-1">Select which question to project live onto the presenter stage.</p>
+            <p class="text-xs text-gray-500 mt-0.5">
+              Select or activate polls live on stage, pick subsets, or import questions.
+            </p>
           </div>
+
+          <!-- Actions matching Slido green accents -->
           <div class="flex items-center gap-2 flex-wrap">
             <button 
               type="button" 
               (click)="openPickQuestionsDialog()" 
-              class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs">
-              <i class="pi pi-check-square text-xs"></i>
-              <span>Pick Questions to Vote ({{ selectedQuestionCount() || allRawPolls().length }})</span>
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors flex items-center gap-1.5 cursor-pointer">
+              <i class="pi pi-check-square text-xs text-[#087A38]"></i>
+              <span>Pick Questions ({{ selectedQuestionCount() || allRawPolls().length }})</span>
             </button>
-            <button pButton label="Import (CSV / XML)" icon="pi pi-file-import" class="p-button-outlined p-button-sm rounded-xl" (click)="openImportForRoom(selectedRoomCode())"></button>
-            <button pButton label="+ Add Question" icon="pi pi-plus" class="p-button-primary p-button-sm rounded-xl" (click)="openAddQuestionForRoom(selectedRoomCode())"></button>
+
+            <button 
+              type="button" 
+              (click)="openImportForRoom(selectedRoomCode())" 
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors flex items-center gap-1.5 cursor-pointer">
+              <i class="pi pi-file-import text-xs"></i>
+              <span>Import (CSV / XML)</span>
+            </button>
+
+            <button 
+              type="button" 
+              (click)="openAddQuestionForRoom(selectedRoomCode())" 
+              class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#087A38] hover:bg-[#06652e] text-white transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs">
+              <i class="pi pi-plus text-xs"></i>
+              <span>+ Add Question</span>
+            </button>
           </div>
         </div>
 
-        <div class="space-y-4">
+        <!-- Questions List -->
+        <div class="space-y-3">
           @for (poll of polls(); track poll.id; let idx = $index) {
-            <div class="p-5 rounded-2xl border transition-all" [ngClass]="currentRoom()?.activePollId === poll.id ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20 shadow-md ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300'">
-              <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="space-y-1">
+            <div 
+              class="p-4 rounded-xl border transition-all"
+              [ngClass]="currentRoom()?.activePollId === poll.id 
+                ? 'border-[#087A38] bg-emerald-50/20 shadow-xs ring-1 ring-[#087A38]' 
+                : 'border-gray-200 bg-white hover:border-gray-300'">
+              
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="space-y-1.5 flex-1 min-w-0">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <span class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-bold flex items-center justify-center text-gray-600 dark:text-gray-300">
+                    <span class="w-6 h-6 rounded-full bg-gray-100 text-xs font-bold flex items-center justify-center text-gray-700">
                       {{ idx + 1 }}
                     </span>
-                    <h3 class="text-base font-bold text-gray-900 dark:text-white">
+                    <h3 class="text-sm font-bold text-gray-900 leading-snug break-words">
                       {{ poll.question }}
                     </h3>
                     @if (currentRoom()?.activePollId === poll.id) {
-                      <p-tag severity="info" value="LIVE ON STAGE" icon="pi pi-broadcast"></p-tag>
+                      <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-[#087A38] border border-emerald-300 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#087A38] animate-pulse"></span>
+                        LIVE ON STAGE
+                      </span>
                     }
                     @if (poll.isLocked) {
-                      <p-tag severity="danger" value="VOTING LOCKED" icon="pi pi-lock"></p-tag>
+                      <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-200">
+                        LOCKED
+                      </span>
                     }
                   </div>
-                  <div class="flex flex-wrap gap-2 pt-2">
+
+                  <!-- Options list -->
+                  <div class="flex flex-wrap gap-1.5 pt-1">
                     @for (opt of poll.options; track opt.id) {
-                      <span class="text-xs px-2.5 py-1 rounded-lg border flex items-center gap-1.5"
-                        [ngClass]="poll.correctOptionId === opt.id ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-bold' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'">
+                      <span class="text-xs px-2.5 py-1 rounded-md border flex items-center gap-1.5"
+                        [ngClass]="poll.correctOptionId === opt.id 
+                          ? 'bg-emerald-50 text-[#087A38] border-emerald-300 font-bold' 
+                          : 'bg-gray-50 text-gray-600 border-gray-200'">
                         <span>{{ opt.id }}. {{ opt.text }}</span>
                         @if (poll.correctOptionId === opt.id) {
                           <i class="pi pi-check text-[10px]"></i>
@@ -367,48 +371,53 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2 self-end md:self-center shrink-0">
+                <!-- Action buttons -->
+                <div class="flex items-center gap-2 shrink-0 self-end md:self-center">
                   @if (currentRoom()?.activePollId !== poll.id) {
-                    <button pButton label="Make Live" icon="pi pi-play" class="p-button-sm p-button-success rounded-xl" (click)="setAsLive(poll.id)"></button>
+                    <button 
+                      type="button" 
+                      (click)="setAsLive(poll.id)" 
+                      class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#087A38] hover:bg-[#06652e] text-white flex items-center gap-1 cursor-pointer transition-colors shadow-2xs">
+                      <i class="pi pi-play text-[10px]"></i>
+                      <span>Present</span>
+                    </button>
                   } @else {
-                    <a [routerLink]="['/dashboard/control', selectedRoomCode()]" pButton label="Remote Control" icon="pi pi-sliders-h" class="p-button-sm p-button-primary rounded-xl"></a>
+                    <a 
+                      [routerLink]="['/dashboard/control', selectedRoomCode()]" 
+                      class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-900 hover:bg-black text-white flex items-center gap-1 cursor-pointer transition-colors">
+                      <i class="pi pi-sliders-h text-[10px]"></i>
+                      <span>Controller</span>
+                    </a>
                   }
 
-                  <button
-                    type="button"
-                    (click)="deletePoll(poll.id)"
+                  <button 
+                    type="button" 
+                    (click)="deletePoll(poll.id)" 
                     title="Delete Question"
-                    class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors cursor-pointer">
-                    <i class="pi pi-trash text-sm"></i>
+                    class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer">
+                    <i class="pi pi-trash text-xs"></i>
                   </button>
                 </div>
               </div>
             </div>
           } @empty {
-            <div class="text-center py-12 px-6 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 space-y-4">
-              <div class="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-2xl shadow-xs">
-                <i class="pi pi-question-circle"></i>
+            <div class="text-center py-10 px-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 space-y-3">
+              <i class="pi pi-question-circle text-2xl text-gray-400"></i>
+              <div class="text-xs text-gray-500">
+                No questions in Slido <strong>#{{ selectedRoomCode() }}</strong> yet.
               </div>
-              <div>
-                <h3 class="text-base font-bold text-gray-900 dark:text-white">No questions in room {{ selectedRoomCode() }} yet</h3>
-                <p class="text-xs text-gray-500 max-w-md mx-auto mt-1">
-                  Start adding interactive questions manually or import multiple questions at once from a CSV or Moodle XML file.
-                </p>
-              </div>
-              <div class="flex items-center justify-center gap-3 flex-wrap pt-1">
+              <div class="flex items-center justify-center gap-2 pt-1">
                 <button 
                   type="button" 
                   (click)="openAddQuestionForRoom(selectedRoomCode())" 
-                  class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-600/30 transition-all cursor-pointer">
-                  <i class="pi pi-plus"></i>
-                  <span>Add Question to {{ selectedRoomCode() }}</span>
+                  class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#087A38] text-white hover:bg-[#06652e] cursor-pointer">
+                  + Add Question
                 </button>
                 <button 
                   type="button" 
                   (click)="openImportForRoom(selectedRoomCode())" 
-                  class="px-4 py-2.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer">
-                  <i class="pi pi-file-import"></i>
-                  <span>Import Questions (CSV / XML)</span>
+                  class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  Import Questions
                 </button>
               </div>
             </div>
@@ -416,24 +425,24 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
         </div>
       </div>
 
-      <!-- Create Room Dialog -->
-      <p-dialog header="Create New Mati Room" [(visible)]="showNewRoomDialog" [modal]="true" [style]="{width: '450px'}" class="p-fluid">
+      <!-- Create Slido Dialog -->
+      <p-dialog header="Create New Slido" [(visible)]="showNewRoomDialog" [modal]="true" [style]="{width: '450px'}" class="p-fluid">
         <div class="space-y-4 pt-2">
           <div>
-            <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Room Title</label>
-            <input pInputText type="text" [(ngModel)]="newRoomTitle" placeholder="e.g. AI & Web Summit 2026" class="w-full" />
+            <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Slido Title</label>
+            <input pInputText type="text" [(ngModel)]="newRoomTitle" placeholder="e.g. AI &amp; Web Summit 2026" class="w-full" />
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Room Code (PIN)</label>
+            <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Slido Code (PIN)</label>
             <input pInputText type="text" [(ngModel)]="newRoomCode" placeholder="Leave blank for auto PIN (e.g. MATI02)" class="w-full uppercase" />
           </div>
-          <div class="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900 text-xs text-indigo-700 dark:text-indigo-300">
-            This room will be assigned to your account: <strong>{{ currentUser()?.email }}</strong>
+          <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800">
+            This Slido will be assigned to your account: <strong>{{ currentUser()?.email }}</strong>
           </div>
         </div>
         <ng-template pTemplate="footer">
           <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showNewRoomDialog = false"></button>
-          <button pButton label="Create Room" icon="pi pi-check" class="p-button-primary" (click)="createNewRoom()"></button>
+          <button pButton label="Create Slido" icon="pi pi-check" class="p-button-success" (click)="createNewRoom()"></button>
         </ng-template>
       </p-dialog>
 
@@ -727,6 +736,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   allRawPolls = signal<Poll[]>([]);
   currentRoom = this.pollService.currentRoom;
 
+  // Slido Dashboard State
+  searchQuery = signal<string>('');
+  activeTab = signal<'all' | 'active' | 'past'>('all');
+  slidoDropdownFilter = signal<'all' | 'mine' | 'survey'>('all');
+  selectedRoomCodes = signal<string[]>([]);
+  activeMenuRoom = signal<string | null>(null);
+
+  allSlidosCount = computed(() => this.rooms().length);
+  activeSlidosCount = computed(() => this.rooms().filter(r => r.status !== 'completed').length);
+  pastSlidosCount = computed(() => this.rooms().filter(r => r.status === 'completed').length);
+
   // Selected active questions subset
   polls = computed(() => {
     const raw = this.allRawPolls();
@@ -743,21 +763,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return sel && sel.length > 0 ? sel.length : 0;
   });
 
-  // Filtered rooms depending on user role and filter selection
+  // Filtered rooms matching Slido tabs, search, and dropdown
   filteredRooms = computed(() => {
-    const all = this.rooms();
+    let list = this.rooms();
     const user = this.currentUser();
-    if (!user) return all;
+    const query = this.searchQuery().trim().toLowerCase();
+    const tab = this.activeTab();
+    const drop = this.slidoDropdownFilter();
 
-    if (this.isAdmin() && this.roomFilter() === 'all') {
-      return all;
+    // 1. Tab filter
+    if (tab === 'active') {
+      list = list.filter(r => r.status !== 'completed');
+    } else if (tab === 'past') {
+      list = list.filter(r => r.status === 'completed');
     }
 
-    // Presenter mode or 'mine' filter:
-    const myRooms = all.filter(r => r.ownerEmail === user.email || r.ownerId === user.uid);
-    // If user has no created rooms yet, also show default MATI01 for usability
-    if (myRooms.length > 0) return myRooms;
-    return all;
+    // 2. Dropdown filter
+    if (drop === 'mine' && user) {
+      list = list.filter(r => r.ownerEmail === user.email || r.ownerId === user.uid);
+    } else if (drop === 'survey') {
+      list = list.filter(r => r.mode === 'survey');
+    }
+
+    // 3. Search query
+    if (query) {
+      list = list.filter(r => 
+        (r.title && r.title.toLowerCase().includes(query)) ||
+        (r.code && r.code.toLowerCase().includes(query)) ||
+        (r.ownerEmail && r.ownerEmail.toLowerCase().includes(query))
+      );
+    }
+
+    return list;
   });
 
   myRoomsCount = computed(() => {
@@ -765,6 +802,56 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!user) return 0;
     return this.rooms().filter(r => r.ownerEmail === user.email || r.ownerId === user.uid).length;
   });
+
+  setTab(tab: 'all' | 'active' | 'past') {
+    this.activeTab.set(tab);
+  }
+
+  formatRoomDate(r: Room): string {
+    if (r.createdAt) {
+      try {
+        const d = (r.createdAt as any).toDate ? (r.createdAt as any).toDate() : new Date(r.createdAt as any);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      } catch {
+        return 'Recent session';
+      }
+    }
+    return 'Jul 15 – 17, 2025';
+  }
+
+  toggleSelectAllRooms(event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) {
+      this.selectedRoomCodes.set(this.filteredRooms().map(r => r.code));
+    } else {
+      this.selectedRoomCodes.set([]);
+    }
+  }
+
+  isRoomChecked(code: string): boolean {
+    return this.selectedRoomCodes().includes(code);
+  }
+
+  toggleRoomCheck(code: string, event: Event) {
+    event.stopPropagation();
+    this.selectedRoomCodes.update(codes => 
+      codes.includes(code) ? codes.filter(c => c !== code) : [...codes, code]
+    );
+  }
+
+  toggleRoomMenu(code: string, event: Event) {
+    event.stopPropagation();
+    this.activeMenuRoom.update(cur => cur === code ? null : code);
+  }
+
+  closeRoomMenu() {
+    this.activeMenuRoom.set(null);
+  }
+
+  getSelectedRoomTitle(): string {
+    const r = this.rooms().find(rm => rm.code === this.selectedRoomCode());
+    return r?.title || `Room ${this.selectedRoomCode()}`;
+  }
 
   private roomsSub?: Subscription;
   private pollsSub?: Subscription;
@@ -904,11 +991,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.switchRoom(code);
     this.targetRoomForImport.set(code);
     this.showImportDialog = true;
-  }
-
-  getSelectedRoomTitle(): string {
-    const r = this.rooms().find(rm => rm.code === this.selectedRoomCode());
-    return r?.title || 'Interactive Session';
   }
 
   async setAsLive(pollId: string) {
