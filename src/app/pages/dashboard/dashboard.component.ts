@@ -122,7 +122,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
       </div>
 
       <!-- Mati Details Table (matching Slido screenshot) -->
-      <div class="border border-gray-200/90 rounded-xl bg-white shadow-2xs relative z-20">
+      <div class="border border-gray-200/90 rounded-xl bg-white shadow-2xs relative z-30">
         <!-- Table Header -->
         <div class="bg-gray-50/60 border-b border-gray-200 px-4 sm:px-6 py-3.5 flex items-center text-xs font-semibold text-gray-600 rounded-t-xl">
           <div class="w-8 shrink-0">
@@ -141,11 +141,12 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
           @for (r of filteredRooms(); track r.code) {
             <div 
               (click)="switchRoom(r.code)"
-              class="px-4 sm:px-6 py-4 flex items-center transition-colors group cursor-pointer"
-              [ngClass]="[
-                selectedRoomCode() === r.code ? 'bg-emerald-50/25 border-l-4 border-l-[#087A38]' : 'hover:bg-gray-50/80',
-                activeMenuRoom() === r.code ? 'z-30 relative' : 'relative'
-              ]">
+              class="px-4 sm:px-6 py-4 flex items-center transition-colors group cursor-pointer relative hover:bg-gray-50/80"
+              [class.border-l-4]="selectedRoomCode() === r.code"
+              [style.borderLeftColor]="selectedRoomCode() === r.code ? '#087A38' : 'transparent'"
+              [style.backgroundColor]="selectedRoomCode() === r.code ? 'rgba(236, 253, 245, 0.4)' : null"
+              [class.z-50]="activeMenuRoom() === r.code"
+              [class.z-0]="activeMenuRoom() !== r.code">
               
               <!-- Checkbox -->
               <div class="w-8 shrink-0" (click)="$event.stopPropagation()">
@@ -227,7 +228,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 </a>
 
                 <!-- More menu [...] -->
-                <div class="relative" [ngClass]="activeMenuRoom() === r.code ? 'z-40' : ''">
+                <div class="relative" [class.z-50]="activeMenuRoom() === r.code">
                   <button 
                     type="button" 
                     (click)="toggleRoomMenu(r.code, $event)"
@@ -240,7 +241,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   @if (activeMenuRoom() === r.code) {
                     <div 
                       (click)="$event.stopPropagation()"
-                      class="absolute right-0 top-full mt-1.5 w-80 sm:w-[330px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 text-left overflow-hidden animate-fadein">
+                      class="absolute right-0 top-full mt-2 w-80 sm:w-[330px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-[100] text-left overflow-hidden animate-fadein">
                       
                       <!-- Top Upgrade Banner -->
                       <div class="bg-gradient-to-r from-[#B45309] to-[#92400E] px-4 py-2.5 flex items-center gap-2.5 text-white text-xs font-semibold select-none">
@@ -413,7 +414,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
         </div>
 
         <!-- Table Footer Pagination matching Slido screenshot -->
-        <div class="bg-white border-t border-gray-200 px-4 sm:px-6 py-3.5 flex items-center justify-between text-xs text-gray-500 select-none rounded-b-xl">
+        <div class="bg-white border-t border-gray-200 px-4 sm:px-6 py-3.5 flex items-center justify-between text-xs text-gray-500 select-none rounded-b-xl relative z-0">
           <div>Page 1</div>
           <div class="flex items-center gap-4">
             <span class="hover:text-gray-900 cursor-pointer flex items-center gap-1">
