@@ -273,7 +273,8 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
             <div class="bg-white dark:bg-gray-900 p-5 sm:p-6 rounded-2xl border border-gray-200/90 dark:border-gray-800 shadow-2xs space-y-5">
               <!-- Top Question Navigation Bar -->
               <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800 gap-2">
-                <div class="flex items-center gap-2">
+                <!-- Left: Question Index, Voting Status, and Show Answer -->
+                <div class="flex items-center gap-2 flex-wrap">
                   <span class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 font-mono font-bold text-xs">
                     Q {{ getCurrentQuestionIndex() }} / {{ polls().length }}
                   </span>
@@ -286,18 +287,8 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                       <i class="pi pi-check text-[10px]"></i> Voting open
                     </span>
                   }
-                </div>
 
-                <!-- Prev / Next Big Buttons & Show Answer -->
-                <div class="flex items-center gap-2">
-                  <button 
-                    type="button"
-                    (click)="prevQuestion()" 
-                    [disabled]="isFirstQuestion()"
-                    class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer">
-                    <i class="pi pi-arrow-left text-[10px]"></i> Prev
-                  </button>
-
+                  <!-- Show Answer Button (Placed with status on left so Prev/Next stay contiguous) -->
                   @if (currentPoll()?.correctOptionId !== undefined) {
                     <button 
                       type="button" 
@@ -305,11 +296,22 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                       [ngClass]="showCorrectAnswer 
                         ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/20' 
                         : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700'"
-                      class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
                       <i class="pi" [ngClass]="showCorrectAnswer ? 'pi-check-circle' : 'pi-eye'"></i>
                       <span>{{ showCorrectAnswer ? 'Answer Shown' : 'Show Answer' }}</span>
                     </button>
                   }
+                </div>
+
+                <!-- Right: Dedicated Prev / Next Navigation Controls (Always adjacent and stable) -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button 
+                    type="button"
+                    (click)="prevQuestion()" 
+                    [disabled]="isFirstQuestion()"
+                    class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer">
+                    <i class="pi pi-arrow-left text-[10px]"></i> Prev
+                  </button>
 
                   <button 
                     type="button"
@@ -417,14 +419,28 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   }
                 </div>
 
-                <!-- Compact Broadcast Timer -->
-                <div class="flex items-center gap-1 text-xs">
-                  <span class="text-gray-400 font-medium text-[11px]">Timer:</span>
-                  <button type="button" (click)="triggerQuestionTimer(30)" class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors cursor-pointer text-xs">30s</button>
-                  <button type="button" (click)="triggerQuestionTimer(60)" class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors cursor-pointer text-xs">60s</button>
-                  @if (autoAdvanceEnabled || countdownSeconds) {
-                    <button type="button" (click)="clearQuestionTimer()" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold transition-colors cursor-pointer text-xs">Stop</button>
-                  }
+                <div class="flex items-center gap-2">
+                  <!-- Compact Broadcast Timer -->
+                  <div class="flex items-center gap-1 text-xs">
+                    <span class="text-gray-400 font-medium text-[11px]">Timer:</span>
+                    <button type="button" (click)="triggerQuestionTimer(30)" class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors cursor-pointer text-xs">30s</button>
+                    <button type="button" (click)="triggerQuestionTimer(60)" class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors cursor-pointer text-xs">60s</button>
+                    @if (autoAdvanceEnabled || countdownSeconds) {
+                      <button type="button" (click)="clearQuestionTimer()" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold transition-colors cursor-pointer text-xs">Stop</button>
+                    }
+                  </div>
+
+                  <span class="h-4 w-px bg-gray-200 dark:bg-gray-700"></span>
+
+                  <!-- Quick Next Button in footer for effortless advancement -->
+                  <button 
+                    type="button" 
+                    (click)="nextQuestion()" 
+                    [disabled]="isLastQuestion()"
+                    class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 shadow-sm shadow-indigo-600/20 cursor-pointer">
+                    <span>Next</span>
+                    <i class="pi pi-arrow-right text-[10px]"></i>
+                  </button>
                 </div>
               </div>
             </div>
