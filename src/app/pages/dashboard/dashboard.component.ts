@@ -123,18 +123,92 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
 
       <!-- Mati Details Table (matching Slido screenshot) -->
       <div class="border border-gray-200/90 rounded-xl bg-white shadow-2xs relative z-30">
-        <!-- Table Header -->
-        <div class="bg-gray-50/60 border-b border-gray-200 px-4 sm:px-6 py-3.5 flex items-center text-xs font-semibold text-gray-600 rounded-t-xl">
-          <div class="w-8 shrink-0">
-            <input 
-              type="checkbox" 
-              (change)="toggleSelectAllRooms($event)"
-              class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer border-gray-300" />
+        <!-- Table Header (Default vs Batch Action Bar) -->
+        @if (selectedRoomCodes().length === 0) {
+          <div class="bg-gray-50/60 border-b border-gray-200 px-4 sm:px-6 py-3.5 flex items-center text-xs font-semibold text-gray-600 rounded-t-xl">
+            <div class="w-8 shrink-0">
+              <input 
+                type="checkbox" 
+                [checked]="isAllSelected()"
+                (change)="toggleSelectAllRooms($event)"
+                title="Select all"
+                class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer border-gray-300" />
+            </div>
+            <div class="flex-1 min-w-0">Mati details</div>
+            <div class="w-40 sm:w-56 text-left hidden sm:block">Status</div>
+            <div class="w-40 sm:w-48 text-right">More actions</div>
           </div>
-          <div class="flex-1 min-w-0">Mati details</div>
-          <div class="w-40 sm:w-56 text-left hidden sm:block">Status</div>
-          <div class="w-40 sm:w-48 text-right">More actions</div>
-        </div>
+        } @else {
+          <!-- Batch Actions Toolbar when 1+ matis selected -->
+          <div class="bg-indigo-50 border-b border-indigo-200 px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs rounded-t-xl animate-fadein">
+            <!-- Left: Checkbox + Selected count + Deselect -->
+            <div class="flex items-center gap-3">
+              <div class="w-8 shrink-0">
+                <input 
+                  type="checkbox" 
+                  [checked]="isAllSelected()"
+                  (change)="toggleSelectAllRooms($event)"
+                  title="Deselect all or select all"
+                  class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer border-gray-300" />
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-indigo-950 text-sm">
+                  {{ selectedRoomCodes().length }} {{ selectedRoomCodes().length === 1 ? 'mati' : 'matis' }} selected
+                </span>
+                <span class="text-indigo-300">•</span>
+                <button 
+                  type="button" 
+                  (click)="clearSelection()" 
+                  class="text-indigo-700 hover:text-indigo-900 font-semibold hover:underline cursor-pointer">
+                  Deselect all
+                </button>
+              </div>
+            </div>
+
+            <!-- Right: Action Buttons -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Set Inactive -->
+              <button 
+                type="button" 
+                (click)="bulkSetStatus('inactive')" 
+                title="Mark selected matis as Inactive"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer">
+                <i class="pi pi-pause-circle text-xs text-gray-500"></i>
+                <span class="hidden sm:inline">Set Inactive</span>
+              </button>
+
+              <!-- Set Active -->
+              <button 
+                type="button" 
+                (click)="bulkSetStatus('active')" 
+                title="Mark selected matis as Active"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer">
+                <i class="pi pi-check-circle text-xs text-emerald-600"></i>
+                <span class="hidden sm:inline">Set Active</span>
+              </button>
+
+              <!-- Duplicate -->
+              <button 
+                type="button" 
+                (click)="bulkDuplicate()" 
+                title="Duplicate selected matis"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer">
+                <i class="pi pi-clone text-xs text-indigo-600"></i>
+                <span class="hidden sm:inline">Duplicate</span>
+              </button>
+
+              <!-- Delete -->
+              <button 
+                type="button" 
+                (click)="bulkDelete()" 
+                title="Delete selected matis"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer">
+                <i class="pi pi-trash text-xs"></i>
+                <span>Delete ({{ selectedRoomCodes().length }})</span>
+              </button>
+            </div>
+          </div>
+        }
 
         <!-- Table Rows -->
         <div class="divide-y divide-gray-100">
@@ -960,6 +1034,57 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
           <button pButton [label]="'Apply (' + tempSelectedPollIds().length + ' Questions)'" icon="pi pi-check" class="p-button-primary" (click)="savePickedQuestions()"></button>
         </ng-template>
       </p-dialog>
+
+      <!-- Floating Batch Action Bar (Always accessible when scrolling) -->
+      @if (selectedRoomCodes().length > 0) {
+        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-gray-700 flex items-center gap-2.5 sm:gap-4 animate-fadein">
+          <div class="flex items-center gap-2 pr-2 border-r border-gray-700 text-xs shrink-0">
+            <span class="w-6 h-6 rounded-full bg-indigo-600 font-bold flex items-center justify-center text-white text-xs">
+              {{ selectedRoomCodes().length }}
+            </span>
+            <span class="font-medium hidden sm:inline text-gray-200">selected</span>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <button 
+              type="button" 
+              (click)="bulkSetStatus('inactive')" 
+              class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-200 flex items-center gap-1.5 transition-colors cursor-pointer">
+              <i class="pi pi-pause-circle text-xs"></i>
+              <span class="hidden md:inline">Set Inactive</span>
+            </button>
+            <button 
+              type="button" 
+              (click)="bulkSetStatus('active')" 
+              class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-200 flex items-center gap-1.5 transition-colors cursor-pointer">
+              <i class="pi pi-check-circle text-xs text-emerald-400"></i>
+              <span class="hidden md:inline">Set Active</span>
+            </button>
+            <button 
+              type="button" 
+              (click)="bulkDuplicate()" 
+              class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-200 flex items-center gap-1.5 transition-colors cursor-pointer">
+              <i class="pi pi-clone text-xs text-indigo-400"></i>
+              <span class="hidden md:inline">Duplicate</span>
+            </button>
+            <button 
+              type="button" 
+              (click)="bulkDelete()" 
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer">
+              <i class="pi pi-trash text-xs"></i>
+              <span>Delete ({{ selectedRoomCodes().length }})</span>
+            </button>
+          </div>
+
+          <button 
+            type="button" 
+            (click)="clearSelection()" 
+            class="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors cursor-pointer ml-1" 
+            title="Clear selection">
+            <i class="pi pi-times text-xs"></i>
+          </button>
+        </div>
+      }
     </div>
   `
 })
@@ -1044,6 +1169,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.rooms().filter(r => r.ownerEmail === user.email || r.ownerId === user.uid).length;
   });
 
+  isAllSelected = computed(() => {
+    const filtered = this.filteredRooms();
+    const selected = this.selectedRoomCodes();
+    return filtered.length > 0 && filtered.every(r => selected.includes(r.code));
+  });
+
   setTab(tab: 'all' | 'active' | 'past') {
     this.activeTab.set(tab);
   }
@@ -1063,12 +1194,98 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  toggleSelectAllRooms(event: Event) {
-    const checked = (event.target as HTMLInputElement).checked;
-    if (checked) {
-      this.selectedRoomCodes.set(this.filteredRooms().map(r => r.code));
+  toggleSelectAllRooms(event?: Event) {
+    if (event) {
+      const checked = (event.target as HTMLInputElement).checked;
+      if (checked) {
+        this.selectedRoomCodes.set(this.filteredRooms().map(r => r.code));
+      } else {
+        this.selectedRoomCodes.set([]);
+      }
     } else {
-      this.selectedRoomCodes.set([]);
+      if (this.isAllSelected()) {
+        this.selectedRoomCodes.set([]);
+      } else {
+        this.selectedRoomCodes.set(this.filteredRooms().map(r => r.code));
+      }
+    }
+  }
+
+  clearSelection() {
+    this.selectedRoomCodes.set([]);
+  }
+
+  async bulkSetStatus(newStatus: 'active' | 'inactive') {
+    const codes = [...this.selectedRoomCodes()];
+    if (codes.length === 0) return;
+
+    // 1. Instantly update the local rooms signal so UI changes immediately
+    this.rooms.update(list => list.map(item => codes.includes(item.code) ? { ...item, status: newStatus } : item));
+
+    // 2. Persist in parallel
+    await Promise.all(codes.map(code => this.pollService.setRoomStatus(code, newStatus)));
+
+    this.messageService.add({
+      severity: 'success',
+      summary: newStatus === 'active' ? 'Matis Activated! 🟢' : 'Matis Marked Inactive ⏸️',
+      detail: `${codes.length} mati session${codes.length > 1 ? 's' : ''} set to ${newStatus}.`
+    });
+    this.clearSelection();
+  }
+
+  async bulkDuplicate() {
+    const codes = [...this.selectedRoomCodes()];
+    if (codes.length === 0) return;
+
+    const user = this.currentUser();
+    try {
+      const newCodes: string[] = [];
+      for (const code of codes) {
+        const newCode = await this.pollService.duplicateRoom(
+          code,
+          undefined,
+          user?.uid,
+          user?.email || undefined
+        );
+        newCodes.push(newCode);
+      }
+      if (newCodes.length > 0) {
+        this.switchRoom(newCodes[0]);
+      }
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Matis Duplicated! 🎉',
+        detail: `${newCodes.length} mati session${newCodes.length > 1 ? 's' : ''} duplicated successfully.`
+      });
+    } catch (err) {
+      console.error('Bulk duplicate failed:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Duplicate Failed',
+        detail: 'Could not duplicate selected matis.'
+      });
+    }
+    this.clearSelection();
+  }
+
+  async bulkDelete() {
+    const codes = [...this.selectedRoomCodes()];
+    if (codes.length === 0) return;
+
+    if (confirm(`Are you sure you want to delete ${codes.length} selected mati session${codes.length > 1 ? 's' : ''}? This will permanently remove all associated polls.`)) {
+      await Promise.all(codes.map(code => this.pollService.deleteRoom(code)));
+
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Matis Deleted',
+        detail: `${codes.length} mati session${codes.length > 1 ? 's' : ''} deleted.`
+      });
+
+      const remaining = this.filteredRooms().filter(r => !codes.includes(r.code));
+      if (remaining.length > 0) {
+        this.switchRoom(remaining[0].code);
+      }
+      this.clearSelection();
     }
   }
 
