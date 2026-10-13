@@ -175,15 +175,15 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
 
               <!-- Status column -->
               <div class="w-40 sm:w-56 text-left hidden sm:flex items-center gap-2 text-xs font-medium text-gray-600">
-                @if (formatRoomDates(r)) {
-                  <span class="inline-flex items-center gap-1.5 text-gray-600">
-                    <i class="pi pi-calendar text-xs text-gray-400"></i>
-                    <span>{{ formatRoomDates(r) }}</span>
+                @if (!isRoomActive(r)) {
+                  <span class="inline-flex items-center gap-1.5 text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-md border border-gray-200">
+                    <i class="pi pi-clock text-[10px] text-gray-400"></i>
+                    <span>{{ formatRoomDates(r) ? formatRoomDates(r) + ' (Inactive)' : 'Inactive' }}</span>
                   </span>
-                } @else if (r.status === 'completed') {
-                  <span class="inline-flex items-center gap-1.5 text-gray-500">
-                    <i class="pi pi-clock text-xs"></i>
-                    <span>Last year</span>
+                } @else if (formatRoomDates(r)) {
+                  <span class="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#087A38] animate-pulse"></span>
+                    <span>{{ formatRoomDates(r) }}</span>
                   </span>
                 } @else if (r.mode === 'survey') {
                   <span class="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
@@ -991,8 +991,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   activeMenuRoom = signal<string | null>(null);
 
   allMatisCount = computed(() => this.rooms().length);
-  activeMatisCount = computed(() => this.rooms().filter(r => r.status !== 'completed').length);
-  pastMatisCount = computed(() => this.rooms().filter(r => r.status === 'completed').length);
+  activeMatisCount = computed(() => this.rooms().filter(r => this.isRoomActive(r)).length);
+  pastMatisCount = computed(() => this.rooms().filter(r => !this.isRoomActive(r)).length);
 
   // Selected active questions subset
   polls = computed(() => {
@@ -1020,9 +1020,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // 1. Tab filter
     if (tab === 'active') {
-      list = list.filter(r => r.status !== 'completed');
+      list = list.filter(r => this.isRoomActive(r));
     } else if (tab === 'past') {
-      list = list.filter(r => r.status === 'completed');
+      list = list.filter(r => !this.isRoomActive(r));
     }
 
     // 2. Dropdown filter
@@ -1182,7 +1182,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   isRoomActive(r: Room): boolean {
-    return r.status !== 'completed' && r.status !== 'closed';
+    return r.status !== 'inactive' && r.status !== 'completed' && r.status !== 'closed';
   }
 
   getOwnerDisplayName(r: Room): string {
@@ -1255,12 +1255,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async toggleRoomActiveStatus(r: Room) {
-    const newStatus = this.isRoomActive(r) ? 'completed' : 'active';
+    const isCurrentlyActive = this.isRoomActive(r);
+    const newStatus: 'active' | 'inactive' = isCurrentlyActive ? 'inactive' : 'active';
+
+    // 1. Instantly update the local rooms signal so UI changes immediately
+    this.rooms.update(list => list.map(item => item.code === r.code ? { ...item, status: newStatus } : item));
+
+    // 2. Persist to Firestore and service
     await this.pollService.setRoomStatus(r.code, newStatus);
+
     this.messageService.add({
       severity: 'success',
-      summary: newStatus === 'active' ? 'Mati Activated' : 'Mati Inactive',
-      detail: `Room #${r.code} is now ${newStatus === 'active' ? 'Active now' : 'Inactive'}.`
+      summary: newStatus === 'active' ? 'Mati Activated! 🟢' : 'Mati Marked Inactive ⏸️',
+      detail: `Room #${r.code} is now ${newStatus === 'active' ? 'Active now' : 'Inactive (Moved to Past)'}.`
     });
   }
   newPollQuestion = '';

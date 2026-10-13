@@ -243,14 +243,14 @@ export class MatiPollService {
   }
 
   /**
-   * Update room status (active, completed, closed)
+   * Update room status (active, completed, closed, inactive)
    */
-  async setRoomStatus(roomCode: string, status: 'active' | 'completed' | 'draft' | 'closed'): Promise<void> {
+  async setRoomStatus(roomCode: string, status: 'active' | 'completed' | 'draft' | 'closed' | 'inactive'): Promise<void> {
     const code = roomCode.toUpperCase();
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
-        await updateDoc(roomRef, { status });
+        await setDoc(roomRef, { status }, { merge: true });
       } catch (err) {
         console.warn('[Mati] Firebase setRoomStatus error:', err);
       }
@@ -260,8 +260,16 @@ export class MatiPollService {
     const r = rooms.get(code);
     if (r) {
       rooms.set(code, { ...r, status });
-      this.mockRooms$.next(new Map(rooms));
+    } else {
+      rooms.set(code, { 
+        code, 
+        title: code, 
+        status, 
+        createdAt: new Date().toISOString(), 
+        activePollId: null 
+      });
     }
+    this.mockRooms$.next(new Map(rooms));
   }
 
   /**

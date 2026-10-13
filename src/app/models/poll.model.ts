@@ -20,7 +20,7 @@ export interface Room {
   title: string;
   activePollId: string | null;
   activePoll?: Poll | null;
-  status: 'draft' | 'active' | 'closed' | 'completed';
+  status: 'draft' | 'active' | 'closed' | 'completed' | 'inactive';
   mode?: 'live' | 'survey';
   theme?: 'dark' | 'light';
   createdAt: any;
