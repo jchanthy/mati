@@ -14,7 +14,7 @@ import { MatiPollService } from '../services/mati-poll.service';
       <div class="flex items-center gap-3 sm:gap-6">
         <!-- Mati Brand Logo -->
         <a routerLink="/dashboard" class="flex items-center gap-1.5 no-underline select-none">
-          <span class="text-2xl sm:text-[28px] font-extrabold tracking-tight text-[#087A38] font-sans lowercase">mati</span>
+          <span class="text-2xl sm:text-[28px] font-black tracking-tight text-indigo-600 font-sans lowercase">mati</span>
         </a>
 
         <!-- Organization / Workspace info -->
@@ -27,9 +27,9 @@ import { MatiPollService } from '../services/mati-poll.service';
           </span>
         </div>
 
-        <!-- Slido Upgrade Button -->
-        <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold border border-amber-500/80 text-amber-800 bg-amber-50/60 hover:bg-amber-100/70 transition-all cursor-pointer shadow-2xs">
-          <i class="pi pi-crown text-amber-600 text-xs"></i>
+        <!-- Mati Pro Badge / Button -->
+        <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold border border-indigo-200 text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 transition-all cursor-pointer shadow-2xs">
+          <i class="pi pi-crown text-indigo-600 text-xs"></i>
           <span>Upgrade</span>
         </button>
       </div>
@@ -37,16 +37,16 @@ import { MatiPollService } from '../services/mati-poll.service';
       <!-- Right: Quick Stage / Controller / What's new / User Avatar -->
       <div class="flex items-center gap-2.5 sm:gap-4">
         <!-- Controller Shortcut -->
-        <a [routerLink]="['/dashboard/control', activeRoomCode()]" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer" title="Live Controller">
-          <i class="pi pi-sliders-h text-xs text-[#087A38]"></i>
+        <a [routerLink]="['/dashboard/control', activeRoomCode()]" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors cursor-pointer" title="Live Controller">
+          <i class="pi pi-sliders-h text-xs text-indigo-600"></i>
           <span>Controller</span>
         </a>
 
         <!-- Present Stage Shortcut -->
-        <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors" title="Launch Presenter Stage">
-          <i class="pi pi-desktop text-xs text-[#087A38]"></i>
+        <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors" title="Launch Presenter Stage">
+          <i class="pi pi-desktop text-xs text-indigo-600"></i>
           <span>Present</span>
-          <span class="text-[10px] font-mono font-bold px-1 rounded bg-emerald-50 text-[#087A38] border border-emerald-200">{{ activeRoomCode() }}</span>
+          <span class="text-[10px] font-mono font-bold px-1 rounded bg-indigo-50 text-indigo-600 border border-indigo-200">{{ activeRoomCode() }}</span>
         </a>
 
         <!-- What's new link -->
@@ -54,14 +54,14 @@ import { MatiPollService } from '../services/mati-poll.service';
           What's new
         </span>
 
-        <!-- Slido User Profile Avatar (Green circular border with initials) -->
+        <!-- User Profile Avatar (Indigo circular border with initials) -->
         @if (currentUser(); as user) {
           <div class="relative">
             <button 
               type="button" 
               (click)="showUserMenu.set(!showUserMenu())"
               title="User profile"
-              class="w-9 h-9 rounded-full border-2 border-[#087A38] text-[#087A38] font-bold text-xs flex items-center justify-center bg-white hover:bg-emerald-50 transition-colors cursor-pointer select-none">
+              class="w-9 h-9 rounded-full border-2 border-indigo-600 text-indigo-600 font-bold text-xs flex items-center justify-center bg-white hover:bg-indigo-50 transition-colors cursor-pointer select-none">
               {{ getUserInitials() }}
             </button>
 
@@ -71,17 +71,17 @@ import { MatiPollService } from '../services/mati-poll.service';
                 <div class="px-4 py-2 border-b border-gray-100">
                   <div class="text-xs font-bold text-gray-900 truncate">{{ user.displayName || user.email }}</div>
                   <div class="text-[11px] text-gray-500 truncate">{{ user.email }}</div>
-                  <span class="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-[#087A38]">
+                  <span class="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">
                     {{ user.role === 'admin' ? 'Administrator' : 'Owner' }}
                   </span>
                 </div>
-                <a routerLink="/dashboard" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
-                  <i class="pi pi-chart-bar text-xs text-[#087A38]"></i> My matis
+                <a routerLink="/dashboard" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-indigo-50/50 hover:text-indigo-600">
+                  <i class="pi pi-chart-bar text-xs text-indigo-600"></i> My matis
                 </a>
-                <a [routerLink]="['/dashboard/control', activeRoomCode()]" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
+                <a [routerLink]="['/dashboard/control', activeRoomCode()]" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-indigo-50/50 hover:text-indigo-600">
                   <i class="pi pi-sliders-h text-xs text-gray-400"></i> Live Controller
                 </a>
-                <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50">
+                <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" (click)="showUserMenu.set(false)" class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-indigo-50/50 hover:text-indigo-600">
                   <i class="pi pi-desktop text-xs text-gray-400"></i> Presenter Stage
                 </a>
                 <div class="border-t border-gray-100 my-1"></div>
@@ -92,7 +92,7 @@ import { MatiPollService } from '../services/mati-poll.service';
             }
           </div>
         } @else {
-          <a routerLink="/login" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#087A38] border border-[#087A38] hover:bg-emerald-50 transition-colors">
+          <a routerLink="/login" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-indigo-600 border border-indigo-600 hover:bg-indigo-50 transition-colors">
             Sign In
           </a>
         }

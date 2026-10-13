@@ -74,11 +74,11 @@ import QRCode from 'qrcode';
             <span class="hidden sm:inline">Share</span>
           </button>
 
-          <!-- Present Button (Slido Green) -->
+          <!-- Present Button (Mati Brand Indigo) -->
           <a 
             [routerLink]="['/stage', roomCode()]" 
             target="_blank"
-            class="px-3.5 py-1.5 rounded-lg bg-[#087A38] hover:bg-[#06652e] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer no-underline">
+            class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer no-underline">
             <i class="pi pi-desktop text-xs"></i>
             <span>Present</span>
           </a>
@@ -104,15 +104,15 @@ import QRCode from 'qrcode';
             <a 
               [routerLink]="['/dashboard/control', roomCode()]" 
               title="Interactions & Polls"
-              class="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer no-underline">
+              class="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors cursor-pointer no-underline">
               <i class="pi pi-list text-base"></i>
             </a>
 
-            <!-- Analytics / Overview icon (ACTIVE GREEN PILL) -->
+            <!-- Analytics / Overview icon (ACTIVE BRAND PILL) -->
             <button 
               type="button" 
               title="Analytics Overview"
-              class="w-9 h-9 rounded-xl bg-[#E8F5E9] text-[#087A38] flex items-center justify-center font-bold shadow-2xs cursor-default">
+              class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shadow-2xs border border-indigo-100 cursor-default">
               <!-- Upward trend arrow matching screenshot -->
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
@@ -143,22 +143,22 @@ import QRCode from 'qrcode';
         <!-- Main Content Area: Slido Overview Page -->
         <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-5 max-w-6xl mx-auto w-full">
           
-          <!-- Page Header: "Slido overview" + Action Buttons -->
+          <!-- Page Header: "Mati Overview" + Action Buttons -->
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
             <div>
               <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                <span>Slido</span>
-                <span class="text-gray-900">overview</span>
+                <span>Mati</span>
+                <span class="text-indigo-600">Overview</span>
               </h2>
             </div>
 
-            <!-- Header Action Buttons (Slido Green) -->
+            <!-- Header Action Buttons (Mati Brand Indigo) -->
             <div class="flex items-center gap-2.5 shrink-0">
               <button 
                 type="button" 
                 (click)="showShareDialog.set(true)"
                 [disabled]="isLoading()"
-                class="px-3.5 py-2 rounded-xl bg-[#087A38] hover:bg-[#06652e] disabled:opacity-50 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer">
+                class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm shadow-indigo-600/20 transition-colors cursor-pointer">
                 <i class="pi pi-share-alt text-xs"></i>
                 <span>Share Analytics</span>
               </button>
@@ -167,7 +167,7 @@ import QRCode from 'qrcode';
                 type="button" 
                 (click)="exportResultsAsCsv()"
                 [disabled]="isLoading() || sessionStats().questionResults.length === 0"
-                class="px-3.5 py-2 rounded-xl bg-[#087A38] hover:bg-[#06652e] disabled:opacity-50 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+                class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm shadow-indigo-600/20 transition-colors cursor-pointer"
                 title="Export overview results as CSV with UTF-8 / Khmer font support">
                 <i class="pi pi-download text-xs"></i>
                 <span>Export</span>
@@ -175,9 +175,9 @@ import QRCode from 'qrcode';
             </div>
           </div>
 
-          <!-- Blue Notice Banner (Identical to Slido Screenshot) -->
-          <div class="p-3.5 rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] text-[#0369A1] text-xs sm:text-sm flex items-center gap-2.5 shadow-2xs">
-            <i class="pi pi-info-circle text-base text-[#0284C7] shrink-0"></i>
+          <!-- Notice Banner (Mati Slate & Indigo Theme) -->
+          <div class="p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/60 text-indigo-950 text-xs sm:text-sm flex items-center gap-2.5 shadow-2xs">
+            <i class="pi pi-info-circle text-base text-indigo-600 shrink-0"></i>
             <p class="leading-relaxed">
               Ideas poll results is now supported in <strong>XLS exports</strong>. <strong>PDF exports</strong> and <strong>Analytics</strong> support are on the way.
             </p>
@@ -187,7 +187,7 @@ import QRCode from 'qrcode';
           @if (isLoading()) {
             <!-- Beautiful Loading Notice Card -->
             <div class="bg-white rounded-2xl border border-gray-200 p-8 shadow-xs flex flex-col items-center justify-center text-center space-y-3.5 animate-fadein">
-              <div class="w-12 h-12 rounded-full border-4 border-emerald-100 border-t-[#087A38] animate-spin"></div>
+              <div class="w-12 h-12 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin"></div>
               <div class="space-y-1">
                 <div class="text-base font-bold text-gray-900">Loading overview data...</div>
                 <div class="text-xs text-gray-500">Calculating engagement, question responses, and metrics for room #{{ roomCode() }}</div>
@@ -238,7 +238,7 @@ import QRCode from 'qrcode';
             <div class="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden transition-all">
               <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
               
-              <!-- Column 1: Engaged participants (Magenta Ring #9D174D) -->
+              <!-- Column 1: Engaged participants (Mati Indigo #4F46E5) -->
               <div class="flex flex-col justify-between">
                 <div class="p-5 sm:p-6 space-y-4">
                   <!-- Header: Title + Subtitle + Donut Ring -->
@@ -248,15 +248,15 @@ import QRCode from 'qrcode';
                         Engaged participants
                       </h3>
                       <p class="text-xs text-gray-500 leading-snug">
-                        <strong class="text-gray-900">{{ engagedParticipantsCount() }} out of {{ totalParticipantsCount() }}</strong> Slido participants engaged with polls or Q&amp;A.
+                        <strong class="text-gray-900">{{ engagedParticipantsCount() }} out of {{ totalParticipantsCount() }}</strong> participants engaged with polls or Q&amp;A.
                       </p>
                     </div>
 
-                    <!-- Magenta Donut Ring -->
+                    <!-- Indigo Donut Ring -->
                     <div class="relative w-12 h-12 shrink-0 flex items-center justify-center">
                       <svg viewBox="0 0 36 36" class="w-12 h-12 transform -rotate-90">
-                        <path stroke="#FCE7F3" stroke-width="4.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path stroke="#9D174D" stroke-width="4.5" [attr.stroke-dasharray]="engagedScore() + ', 100'" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path stroke="#EEF2FF" stroke-width="4.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path stroke="#4F46E5" stroke-width="4.5" [attr.stroke-dasharray]="engagedScore() + ', 100'" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                       </svg>
                     </div>
                   </div>
@@ -280,19 +280,19 @@ import QRCode from 'qrcode';
                   }
                 </div>
 
-                <!-- Bottom Score Bar (Pink bar with Magenta score badge) -->
-                <div class="flex items-center justify-between bg-[#FDF2F8] border-t border-pink-100 overflow-hidden">
-                  <div class="px-5 py-3 text-xs font-bold text-[#831843] flex items-center gap-1.5 flex-1">
+                <!-- Bottom Score Bar (Indigo Tint with Indigo Score Badge) -->
+                <div class="flex items-center justify-between bg-[#EEF2FF] border-t border-indigo-100 overflow-hidden">
+                  <div class="px-5 py-3 text-xs font-bold text-indigo-900 flex items-center gap-1.5 flex-1">
                     <span>Engaged participants score</span>
-                    <i class="pi pi-info-circle text-[11px] text-[#9D174D]"></i>
+                    <i class="pi pi-info-circle text-[11px] text-indigo-600"></i>
                   </div>
-                  <div class="bg-[#9D174D] text-white px-4 py-3 text-xs font-black font-mono shrink-0">
+                  <div class="bg-[#4F46E5] text-white px-4 py-3 text-xs font-black font-mono shrink-0">
                     {{ engagedScore() }}%
                   </div>
                 </div>
               </div>
 
-              <!-- Column 2: Q&A engagement (Gold/Ochre Ring #A16207) -->
+              <!-- Column 2: Q&A engagement (Violet #7C3AED) -->
               <div class="flex flex-col justify-between">
                 <div class="p-5 sm:p-6 space-y-4">
                   <!-- Header: Title + Subtitle + Donut Ring -->
@@ -306,11 +306,11 @@ import QRCode from 'qrcode';
                       </p>
                     </div>
 
-                    <!-- Gold/Ochre Donut Ring -->
+                    <!-- Violet Donut Ring -->
                     <div class="relative w-12 h-12 shrink-0 flex items-center justify-center">
                       <svg viewBox="0 0 36 36" class="w-12 h-12 transform -rotate-90">
-                        <path stroke="#FEF3C7" stroke-width="4.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path stroke="#A16207" stroke-width="4.5" [attr.stroke-dasharray]="qaScore() + ', 100'" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path stroke="#F5F3FF" stroke-width="4.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path stroke="#7C3AED" stroke-width="4.5" [attr.stroke-dasharray]="qaScore() + ', 100'" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                       </svg>
                     </div>
                   </div>
@@ -334,19 +334,19 @@ import QRCode from 'qrcode';
                   }
                 </div>
 
-                <!-- Bottom Score Bar (Yellow bar with Gold/Ochre score badge) -->
-                <div class="flex items-center justify-between bg-[#FEFCE8] border-t border-amber-100 overflow-hidden">
-                  <div class="px-5 py-3 text-xs font-bold text-[#713F12] flex items-center gap-1.5 flex-1">
+                <!-- Bottom Score Bar (Violet Tint with Violet Score Badge) -->
+                <div class="flex items-center justify-between bg-[#F5F3FF] border-t border-violet-100 overflow-hidden">
+                  <div class="px-5 py-3 text-xs font-bold text-violet-900 flex items-center gap-1.5 flex-1">
                     <span>Q&amp;A engagement score</span>
-                    <i class="pi pi-info-circle text-[11px] text-[#854D0E]"></i>
+                    <i class="pi pi-info-circle text-[11px] text-violet-600"></i>
                   </div>
-                  <div class="bg-[#854D0E] text-white px-4 py-3 text-xs font-black font-mono shrink-0">
+                  <div class="bg-[#7C3AED] text-white px-4 py-3 text-xs font-black font-mono shrink-0">
                     {{ qaScore() }}%
                   </div>
                 </div>
               </div>
 
-              <!-- Column 3: Poll engagement (Dark Teal Ring #0F766E) -->
+              <!-- Column 3: Poll engagement (Sky Blue #0284C7) -->
               <div class="flex flex-col justify-between">
                 <div class="p-5 sm:p-6 space-y-4">
                   <!-- Header: Title + Subtitle + Donut Ring -->
@@ -356,15 +356,15 @@ import QRCode from 'qrcode';
                         Poll engagement
                       </h3>
                       <p class="text-xs text-gray-500 leading-snug">
-                        <strong class="text-gray-900">{{ pollParticipantsCount() }} out of {{ totalParticipantsCount() }}</strong> Slido participants voted in a poll.
+                        <strong class="text-gray-900">{{ pollParticipantsCount() }} out of {{ totalParticipantsCount() }}</strong> participants voted in a poll.
                       </p>
                     </div>
 
-                    <!-- Teal Donut Ring -->
+                    <!-- Sky Blue Donut Ring -->
                     <div class="relative w-12 h-12 shrink-0 flex items-center justify-center">
                       <svg viewBox="0 0 36 36" class="w-12 h-12 transform -rotate-90">
-                        <path stroke="#CCFBF1" stroke-width="4.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path stroke="#0F766E" stroke-width="4.5" [attr.stroke-dasharray]="pollScore() + ', 100'" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path stroke="#F0F9FF" stroke-width="4.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path stroke="#0284C7" stroke-width="4.5" [attr.stroke-dasharray]="pollScore() + ', 100'" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                       </svg>
                     </div>
                   </div>
@@ -388,13 +388,13 @@ import QRCode from 'qrcode';
                   }
                 </div>
 
-                <!-- Bottom Score Bar (Mint bar with Dark Teal score badge) -->
-                <div class="flex items-center justify-between bg-[#F0FDFA] border-t border-teal-100 overflow-hidden">
-                  <div class="px-5 py-3 text-xs font-bold text-[#134E4A] flex items-center gap-1.5 flex-1">
+                <!-- Bottom Score Bar (Sky Tint with Sky Score Badge) -->
+                <div class="flex items-center justify-between bg-[#F0F9FF] border-t border-sky-100 overflow-hidden">
+                  <div class="px-5 py-3 text-xs font-bold text-sky-900 flex items-center gap-1.5 flex-1">
                     <span>Poll engagement score</span>
-                    <i class="pi pi-info-circle text-[11px] text-[#0F766E]"></i>
+                    <i class="pi pi-info-circle text-[11px] text-sky-600"></i>
                   </div>
-                  <div class="bg-[#0F766E] text-white px-4 py-3 text-xs font-black font-mono shrink-0">
+                  <div class="bg-[#0284C7] text-white px-4 py-3 text-xs font-black font-mono shrink-0">
                     {{ pollScore() }}%
                   </div>
                 </div>
@@ -467,8 +467,8 @@ import QRCode from 'qrcode';
                           <span class="font-mono">({{ q.correctPercentage }}% accuracy)</span>
                         </span>
                       } @else {
-                        <span class="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-bold flex items-center gap-1">
-                          <i class="pi pi-star text-[11px] text-amber-600"></i>
+                        <span class="px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold flex items-center gap-1">
+                          <i class="pi pi-star text-[11px] text-indigo-600"></i>
                           <span>Winning response: <strong>{{ q.winningOptionText }}</strong></span>
                           <span class="font-mono">({{ q.winningPercentage }}% consensus)</span>
                         </span>
@@ -514,7 +514,7 @@ import QRCode from 'qrcode';
                             <div class="h-full rounded-full transition-all duration-500"
                               [style.width.%]="opt.percentage"
                               [ngClass]="opt.isCorrect 
-                                ? 'bg-[#087A38]' 
+                                ? 'bg-emerald-600' 
                                 : (opt.id === q.winningOptionId ? 'bg-indigo-600' : 'bg-gray-400')">
                             </div>
                           </div>

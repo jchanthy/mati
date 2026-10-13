@@ -15,17 +15,17 @@ import { MatiPollService } from '../services/mati-poll.service';
         <!-- My matis (Active Item) -->
         <a 
           routerLink="/dashboard" 
-          routerLinkActive="bg-[#E8F5E9] text-[#087A38] font-bold" 
+          routerLinkActive="bg-indigo-50 text-indigo-700 font-bold border-r-2 border-indigo-600" 
           [routerLinkActiveOptions]="{exact: true}" 
           class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
-          <i class="pi pi-chart-bar text-base text-[#087A38]"></i>
+          <i class="pi pi-chart-bar text-base text-indigo-600"></i>
           <span>My matis</span>
         </a>
 
         <!-- Team -->
         <a 
           [routerLink]="isAdmin() ? '/dashboard/users' : '/dashboard'" 
-          routerLinkActive="bg-[#E8F5E9] text-[#087A38] font-bold" 
+          routerLinkActive="bg-indigo-50 text-indigo-700 font-bold border-r-2 border-indigo-600" 
           class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
           <i class="pi pi-users text-base text-gray-500"></i>
           <span>Team</span>

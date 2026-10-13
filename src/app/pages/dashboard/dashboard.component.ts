@@ -43,12 +43,12 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             type="button" 
             (click)="setTab('all')" 
             [ngClass]="activeTab() === 'all' 
-              ? 'border-2 border-[#087A38] bg-white text-gray-900 font-bold shadow-2xs' 
+              ? 'border-2 border-indigo-600 bg-white text-gray-900 font-bold shadow-2xs' 
               : 'border border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium'"
             class="px-3.5 py-2 rounded-lg text-sm flex items-center gap-2 transition-all cursor-pointer">
             <span>All</span>
             <span class="px-2 py-0.5 rounded-full text-xs font-bold"
-              [ngClass]="activeTab() === 'all' ? 'bg-[#087A38] text-white' : 'bg-gray-100 text-gray-600'">
+              [ngClass]="activeTab() === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'">
               {{ allMatisCount() }}
             </span>
           </button>
@@ -58,12 +58,12 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             type="button" 
             (click)="setTab('active')" 
             [ngClass]="activeTab() === 'active' 
-              ? 'border-2 border-[#087A38] bg-white text-gray-900 font-bold shadow-2xs' 
+              ? 'border-2 border-indigo-600 bg-white text-gray-900 font-bold shadow-2xs' 
               : 'border border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium'"
             class="px-3.5 py-2 rounded-lg text-sm flex items-center gap-2 transition-all cursor-pointer">
             <span>Active &amp; upcoming</span>
             <span class="px-2 py-0.5 rounded-full text-xs font-bold"
-              [ngClass]="activeTab() === 'active' ? 'bg-[#087A38] text-white' : 'bg-gray-100 text-gray-600'">
+              [ngClass]="activeTab() === 'active' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'">
               {{ activeMatisCount() }}
             </span>
           </button>
@@ -73,12 +73,12 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             type="button" 
             (click)="setTab('past')" 
             [ngClass]="activeTab() === 'past' 
-              ? 'border-2 border-[#087A38] bg-white text-gray-900 font-bold shadow-2xs' 
+              ? 'border-2 border-indigo-600 bg-white text-gray-900 font-bold shadow-2xs' 
               : 'border border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium'"
             class="px-3.5 py-2 rounded-lg text-sm flex items-center gap-2 transition-all cursor-pointer">
             <span>Past</span>
             <span class="px-2 py-0.5 rounded-full text-xs font-bold"
-              [ngClass]="activeTab() === 'past' ? 'bg-[#087A38] text-white' : 'bg-gray-100 text-gray-600'">
+              [ngClass]="activeTab() === 'past' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'">
               {{ pastMatisCount() }}
             </span>
           </button>
@@ -88,7 +88,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
         <button 
           type="button" 
           (click)="openNewRoomDialog()" 
-          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-[#087A38] hover:bg-[#06652e] text-white shadow-xs transition-all cursor-pointer select-none">
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 transition-all cursor-pointer select-none">
           <i class="pi pi-plus text-xs"></i>
           <span>Create mati</span>
         </button>
@@ -103,7 +103,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             [ngModel]="searchQuery()"
             (ngModelChange)="searchQuery.set($event)"
             placeholder="Search by name, owner, code" 
-            class="w-full pl-3.5 pr-9 py-2 rounded-lg border border-gray-300 text-sm placeholder-gray-400 focus:outline-none focus:border-[#087A38] focus:ring-1 focus:ring-[#087A38] bg-white transition-all" />
+            class="w-full pl-3.5 pr-9 py-2 rounded-lg border border-gray-300 text-sm placeholder-gray-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 bg-white transition-all" />
           <i class="pi pi-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
         </div>
 
@@ -112,7 +112,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
           <select 
             [ngModel]="matiDropdownFilter()"
             (ngModelChange)="matiDropdownFilter.set($event)"
-            class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-[#087A38] cursor-pointer">
+            class="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-600 cursor-pointer">
             <option value="all">All matis</option>
             <option value="mine">My matis</option>
             <option value="survey">Surveys</option>
@@ -129,7 +129,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             <input 
               type="checkbox" 
               (change)="toggleSelectAllRooms($event)"
-              class="w-4 h-4 rounded text-[#087A38] focus:ring-[#087A38] cursor-pointer border-gray-300" />
+              class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer border-gray-300" />
           </div>
           <div class="flex-1 min-w-0">Mati details</div>
           <div class="w-40 sm:w-56 text-left hidden sm:block">Status</div>
@@ -143,8 +143,8 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               (click)="switchRoom(r.code)"
               class="px-4 sm:px-6 py-4 flex items-center transition-colors group cursor-pointer relative hover:bg-gray-50/80"
               [class.border-l-4]="selectedRoomCode() === r.code"
-              [style.borderLeftColor]="selectedRoomCode() === r.code ? '#087A38' : 'transparent'"
-              [style.backgroundColor]="selectedRoomCode() === r.code ? 'rgba(236, 253, 245, 0.4)' : null"
+              [style.borderLeftColor]="selectedRoomCode() === r.code ? '#4F46E5' : 'transparent'"
+              [style.backgroundColor]="selectedRoomCode() === r.code ? 'rgba(238, 242, 255, 0.5)' : null"
               [class.z-50]="activeMenuRoom() === r.code"
               [class.z-0]="activeMenuRoom() !== r.code">
               
@@ -154,13 +154,13 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   type="checkbox" 
                   [checked]="isRoomChecked(r.code)"
                   (change)="toggleRoomCheck(r.code, $event)"
-                  class="w-4 h-4 rounded text-[#087A38] focus:ring-[#087A38] cursor-pointer border-gray-300" />
+                  class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer border-gray-300" />
               </div>
 
               <!-- Slido details: Title (#code) and date range -->
               <div class="flex-1 min-w-0 pr-4">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-bold text-gray-900 group-hover:text-[#087A38] transition-colors truncate">
+                  <span class="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
                     {{ r.title || ('Room ' + r.code) }}
                   </span>
                   <span class="text-xs font-mono font-semibold text-gray-500">
@@ -188,7 +188,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   </span>
                 } @else {
                   <span class="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#087A38] animate-pulse"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span>Active &amp; upcoming</span>
                   </span>
                 }
@@ -201,7 +201,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   type="button" 
                   (click)="openAddQuestionForRoom(r.code)"
                   title="Add Question" 
-                  class="p-1.5 rounded-lg text-gray-500 hover:text-[#087A38] hover:bg-emerald-50 transition-colors cursor-pointer">
+                  class="p-1.5 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer">
                   <i class="pi pi-plus-circle text-base"></i>
                 </button>
 
@@ -210,7 +210,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   [routerLink]="['/stage', r.code]" 
                   target="_blank" 
                   title="Launch Presenter Stage" 
-                  class="p-1.5 rounded-lg text-gray-500 hover:text-[#087A38] hover:bg-emerald-50 transition-colors cursor-pointer">
+                  class="p-1.5 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors cursor-pointer">
                   <i class="pi pi-desktop text-sm"></i>
                 </a>
 
@@ -218,7 +218,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 <a 
                   [routerLink]="['/dashboard/control', r.code]" 
                   title="Remote Controller" 
-                  class="p-1.5 rounded-lg text-gray-500 hover:text-[#087A38] hover:bg-emerald-50 transition-colors cursor-pointer">
+                  class="p-1.5 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors cursor-pointer">
                   <i class="pi pi-sliders-h text-sm"></i>
                 </a>
 
@@ -232,18 +232,18 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                     <i class="pi pi-ellipsis-h text-sm"></i>
                   </button>
 
-                  <!-- Slido-Style Popover Menu -->
+                  <!-- Popover Menu -->
                   @if (activeMenuRoom() === r.code) {
                     <div 
                       (click)="$event.stopPropagation()"
                       class="absolute right-0 top-full mt-2 w-80 sm:w-[330px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-[100] text-left overflow-hidden animate-fadein">
                       
-                      <!-- Top Upgrade Banner -->
-                      <div class="bg-gradient-to-r from-[#B45309] to-[#92400E] px-4 py-2.5 flex items-center gap-2.5 text-white text-xs font-semibold select-none">
+                      <!-- Top Upgrade Banner (Mati Indigo Gradient) -->
+                      <div class="bg-gradient-to-r from-indigo-700 to-indigo-900 px-4 py-2.5 flex items-center gap-2.5 text-white text-xs font-semibold select-none">
                         <div class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                           <i class="pi pi-crown text-[10px] text-white"></i>
                         </div>
-                        <span class="truncate">Click here to upgrade your mati account</span>
+                        <span class="truncate">Mati Pro • Advanced Polling & Analytics</span>
                       </div>
 
                       <div class="p-4 space-y-3.5">
@@ -267,7 +267,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
 
                           <!-- Active now vs Inactive badge -->
                           @if (isRoomActive(r)) {
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-[#E8F5E9] text-[#087A38] shrink-0 border border-emerald-200">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 shrink-0 border border-emerald-200">
                               Active now
                             </span>
                           } @else {
@@ -285,11 +285,11 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                             <button 
                               type="button" 
                               (click)="copyRoomLink(r.code)"
-                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs">
-                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-emerald-100/60 flex items-center justify-center text-gray-700 group-hover:text-[#087A38] mb-1.5 transition-colors">
+                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-indigo-600 bg-white hover:bg-indigo-50/30 text-center transition-all cursor-pointer group shadow-2xs">
+                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-indigo-100 flex items-center justify-center text-gray-700 group-hover:text-indigo-600 mb-1.5 transition-colors">
                                 <i class="pi pi-mobile text-sm"></i>
                               </div>
-                              <span class="text-xs font-semibold text-gray-800 group-hover:text-[#087A38]">
+                              <span class="text-xs font-semibold text-gray-800 group-hover:text-indigo-600">
                                 Copy mati link
                               </span>
                             </button>
@@ -298,11 +298,11 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                             <button 
                               type="button" 
                               (click)="copyRoomCode(r.code)"
-                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs">
-                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-emerald-100/60 flex items-center justify-center text-gray-700 group-hover:text-[#087A38] mb-1.5 transition-colors">
+                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-indigo-600 bg-white hover:bg-indigo-50/30 text-center transition-all cursor-pointer group shadow-2xs">
+                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-indigo-100 flex items-center justify-center text-gray-700 group-hover:text-indigo-600 mb-1.5 transition-colors">
                                 <span class="font-mono font-bold text-sm">#</span>
                               </div>
-                              <span class="text-xs font-semibold text-gray-800 group-hover:text-[#087A38]">
+                              <span class="text-xs font-semibold text-gray-800 group-hover:text-indigo-600">
                                 Copy mati code
                               </span>
                             </button>
@@ -314,11 +314,11 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                             <a 
                               [routerLink]="['/overview', r.code]" 
                               (click)="activeMenuRoom.set(null)"
-                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs no-underline">
-                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-emerald-100/60 flex items-center justify-center text-gray-700 group-hover:text-[#087A38] mb-1.5 transition-colors">
+                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-indigo-600 bg-white hover:bg-indigo-50/30 text-center transition-all cursor-pointer group shadow-2xs no-underline">
+                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-indigo-100 flex items-center justify-center text-gray-700 group-hover:text-indigo-600 mb-1.5 transition-colors">
                                 <i class="pi pi-chart-bar text-sm"></i>
                               </div>
-                              <span class="text-xs font-semibold text-gray-800 group-hover:text-[#087A38]">
+                              <span class="text-xs font-semibold text-gray-800 group-hover:text-indigo-600">
                                 View results
                               </span>
                             </a>
@@ -327,28 +327,28 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                             <button 
                               type="button" 
                               (click)="duplicateRoom(r.code)"
-                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs">
-                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-emerald-100/60 flex items-center justify-center text-gray-700 group-hover:text-[#087A38] mb-1.5 transition-colors">
+                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-indigo-600 bg-white hover:bg-indigo-50/30 text-center transition-all cursor-pointer group shadow-2xs">
+                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-indigo-100 flex items-center justify-center text-gray-700 group-hover:text-indigo-600 mb-1.5 transition-colors">
                                 <i class="pi pi-clone text-sm"></i>
                               </div>
-                              <span class="text-xs font-semibold text-gray-800 group-hover:text-[#087A38]">
+                              <span class="text-xs font-semibold text-gray-800 group-hover:text-indigo-600">
                                 Duplicate
                               </span>
                             </button>
                           </div>
                         }
 
-                        <!-- Wide Duplicate Card (matching Slido screenshot) -->
+                        <!-- Wide Duplicate Card -->
                         <div 
                           (click)="duplicateRoom(r.code)"
-                          class="flex items-center rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/10 overflow-hidden cursor-pointer group transition-all shadow-2xs">
-                          <div class="w-16 self-stretch bg-[#F0FDF4] border-r border-emerald-100 flex items-center justify-center p-3 text-[#087A38]">
-                            <div class="w-8 h-8 rounded-lg border-2 border-[#087A38] flex items-center justify-center">
+                          class="flex items-center rounded-xl border border-gray-200 hover:border-indigo-600 bg-white hover:bg-indigo-50/20 overflow-hidden cursor-pointer group transition-all shadow-2xs">
+                          <div class="w-16 self-stretch bg-indigo-50 border-r border-indigo-100 flex items-center justify-center p-3 text-indigo-600">
+                            <div class="w-8 h-8 rounded-lg border-2 border-indigo-600 flex items-center justify-center">
                               <i class="pi pi-plus text-xs font-bold"></i>
                             </div>
                           </div>
                           <div class="p-3 text-left flex-1 min-w-0">
-                            <div class="text-xs font-bold text-gray-900 group-hover:text-[#087A38] transition-colors">
+                            <div class="text-xs font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
                               Duplicate
                             </div>
                             <div class="text-[11px] text-gray-500 leading-tight mt-0.5">
@@ -362,8 +362,8 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                           <a 
                             [routerLink]="['/overview', r.code]" 
                             (click)="activeMenuRoom.set(null)"
-                            class="py-1 px-2 rounded-md border border-gray-200 hover:border-[#087A38] text-gray-700 hover:text-[#087A38] hover:bg-emerald-50/30 font-medium flex items-center justify-center gap-1 cursor-pointer no-underline text-center">
-                            <i class="pi pi-chart-bar text-[10px] text-[#087A38]"></i>
+                            class="py-1 px-2 rounded-md border border-gray-200 hover:border-indigo-600 text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/40 font-medium flex items-center justify-center gap-1 cursor-pointer no-underline text-center">
+                            <i class="pi pi-chart-bar text-[10px] text-indigo-600"></i>
                             <span>Overview</span>
                           </a>
                           <button 
@@ -409,7 +409,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
           } @empty {
             <div class="text-center py-12 px-4 text-gray-500 text-sm">
               <i class="pi pi-inbox text-3xl text-gray-300 mb-2 block"></i>
-              No matis found in this view. Click <button type="button" (click)="openNewRoomDialog()" class="font-bold text-[#087A38] hover:underline cursor-pointer">+ Create mati</button> to add your first session!
+              No matis found in this view. Click <button type="button" (click)="openNewRoomDialog()" class="font-bold text-indigo-600 hover:underline cursor-pointer">+ Create mati</button> to add your first session!
             </div>
           }
         </div>
@@ -437,7 +437,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               <h2 class="text-lg font-bold text-gray-900">
                 Questions in {{ getSelectedRoomTitle() }}
               </h2>
-              <span class="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-[#087A38] border border-emerald-200">
+              <span class="text-xs font-mono font-bold px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
                 #{{ selectedRoomCode() }}
               </span>
             </div>
@@ -446,13 +446,13 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             </p>
           </div>
 
-          <!-- Actions matching Slido green accents -->
+          <!-- Actions matching Mati Indigo brand -->
           <div class="flex items-center gap-2 flex-wrap">
             <button 
               type="button" 
               (click)="openPickQuestionsDialog()" 
               class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors flex items-center gap-1.5 cursor-pointer">
-              <i class="pi pi-check-square text-xs text-[#087A38]"></i>
+              <i class="pi pi-check-square text-xs text-indigo-600"></i>
               <span>Pick Questions ({{ selectedQuestionCount() || allRawPolls().length }})</span>
             </button>
 
@@ -467,7 +467,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             <button 
               type="button" 
               (click)="openAddQuestionForRoom(selectedRoomCode())" 
-              class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#087A38] hover:bg-[#06652e] text-white transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs">
+              class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-indigo-600/20">
               <i class="pi pi-plus text-xs"></i>
               <span>+ Add Question</span>
             </button>
@@ -480,7 +480,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             <div 
               class="p-4 rounded-xl border transition-all"
               [ngClass]="currentRoom()?.activePollId === poll.id 
-                ? 'border-[#087A38] bg-emerald-50/20 shadow-xs ring-1 ring-[#087A38]' 
+                ? 'border-indigo-600 bg-indigo-50/20 shadow-xs ring-1 ring-indigo-500' 
                 : 'border-gray-200 bg-white hover:border-gray-300'">
               
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -493,8 +493,8 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                       {{ poll.question }}
                     </h3>
                     @if (currentRoom()?.activePollId === poll.id) {
-                      <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-[#087A38] border border-emerald-300 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-[#087A38] animate-pulse"></span>
+                      <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                         LIVE ON STAGE
                       </span>
                     }
@@ -510,7 +510,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                     @for (opt of poll.options; track opt.id) {
                       <span class="text-xs px-2.5 py-1 rounded-md border flex items-center gap-1.5"
                         [ngClass]="poll.correctOptionId === opt.id 
-                          ? 'bg-emerald-50 text-[#087A38] border-emerald-300 font-bold' 
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold' 
                           : 'bg-gray-50 text-gray-600 border-gray-200'">
                         <span>{{ opt.id }}. {{ opt.text }}</span>
                         @if (poll.correctOptionId === opt.id) {
@@ -527,7 +527,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                     <button 
                       type="button" 
                       (click)="setAsLive(poll.id)" 
-                      class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#087A38] hover:bg-[#06652e] text-white flex items-center gap-1 cursor-pointer transition-colors shadow-2xs">
+                      class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 cursor-pointer transition-colors shadow-sm shadow-indigo-600/20">
                       <i class="pi pi-play text-[10px]"></i>
                       <span>Present</span>
                     </button>
@@ -560,7 +560,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 <button 
                   type="button" 
                   (click)="openAddQuestionForRoom(selectedRoomCode())" 
-                  class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#087A38] text-white hover:bg-[#06652e] cursor-pointer">
+                  class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-sm shadow-indigo-600/20">
                   + Add Question
                 </button>
                 <button 
@@ -667,11 +667,11 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             }
           </div>
 
-          <!-- Dialog Footer matching Slido screenshot -->
+          <!-- Dialog Footer -->
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
             <!-- Info Pill on left -->
-            <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#F0F7FD] border border-[#D0E2F2] text-[#1E5A8A] text-xs font-normal">
-              <i class="pi pi-info-circle text-sm text-[#1E5A8A] shrink-0"></i>
+            <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50/70 border border-indigo-100 text-indigo-900 text-xs font-normal">
+              <i class="pi pi-info-circle text-sm text-indigo-600 shrink-0"></i>
               <span class="truncate">Anyone with the code or link can participate</span>
             </div>
 
@@ -687,7 +687,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 type="button" 
                 (click)="createNewRoom()"
                 [disabled]="!newRoomTitle.trim()"
-                class="px-5 py-2 text-sm font-semibold text-white bg-[#087A38] hover:bg-[#06652E] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-2xs transition-colors cursor-pointer">
+                class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm shadow-indigo-600/20 transition-colors cursor-pointer">
                 Create mati
               </button>
             </div>

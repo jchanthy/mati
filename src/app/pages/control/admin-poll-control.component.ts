@@ -111,11 +111,11 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
             <span>Pick Questions ({{ selectedQuestionCount() || allRawPolls().length }}/{{ allRawPolls().length }})</span>
           </button>
 
-          <!-- Overview Results Action (Slido-Style Analytics) -->
+          <!-- Overview Results Action (Mati Brand Analytics) -->
           <a 
             [routerLink]="['/overview', roomCode()]" 
-            class="px-3 py-1.5 bg-[#087A38] hover:bg-[#06652e] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs no-underline"
-            title="Inspect Slido-style session overview results & analytics">
+            class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-indigo-600/20 no-underline"
+            title="Inspect Mati session overview results & analytics">
             <i class="pi pi-chart-bar text-xs"></i>
             <span>Overview Results</span>
           </a>
@@ -798,9 +798,9 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
         <ng-template pTemplate="footer">
           <div class="flex items-center justify-between w-full">
             <div class="flex items-center gap-2">
-              <a [routerLink]="['/overview', roomCode()]" class="px-3 py-1.5 rounded-xl bg-[#087A38] hover:bg-[#06652e] text-white font-bold text-xs flex items-center gap-1 transition-colors no-underline">
+              <a [routerLink]="['/overview', roomCode()]" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1 transition-colors no-underline shadow-sm shadow-indigo-600/20">
                 <i class="pi pi-chart-bar text-xs"></i>
-                <span>Open Slido Analytics</span>
+                <span>Open Mati Overview</span>
               </a>
               <a [routerLink]="['/stage', roomCode()]" [queryParams]="{ view: 'overview' }" target="_blank" class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center gap-1 hover:bg-indigo-100 transition-colors">
                 <i class="pi pi-desktop text-xs"></i>
