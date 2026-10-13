@@ -32,9 +32,13 @@ import QRCode from 'qrcode';
           </a>
 
           <!-- Event / Room Title -->
-          <h1 class="text-base sm:text-lg font-black text-gray-900 truncate max-w-[140px] sm:max-w-xs md:max-w-md" [title]="room()?.title || roomCode()">
-            {{ room()?.title || 'test' }}
-          </h1>
+          @if (isLoading() && !room()?.title) {
+            <div class="h-5 w-28 bg-gray-200 rounded-md animate-pulse"></div>
+          } @else {
+            <h1 class="text-base sm:text-lg font-black text-gray-900 truncate max-w-[140px] sm:max-w-xs md:max-w-md" [title]="room()?.title || ('Room #' + roomCode())">
+              {{ room()?.title || ('Room #' + roomCode()) }}
+            </h1>
+          }
 
           <!-- Upgrade Button with Crown -->
           <button 
@@ -153,7 +157,8 @@ import QRCode from 'qrcode';
               <button 
                 type="button" 
                 (click)="showShareDialog.set(true)"
-                class="px-3.5 py-2 rounded-xl bg-[#087A38] hover:bg-[#06652e] text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer">
+                [disabled]="isLoading()"
+                class="px-3.5 py-2 rounded-xl bg-[#087A38] hover:bg-[#06652e] disabled:opacity-50 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer">
                 <i class="pi pi-share-alt text-xs"></i>
                 <span>Share Analytics</span>
               </button>
@@ -161,7 +166,9 @@ import QRCode from 'qrcode';
               <button 
                 type="button" 
                 (click)="exportResultsAsCsv()"
-                class="px-3.5 py-2 rounded-xl bg-[#087A38] hover:bg-[#06652e] text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer">
+                [disabled]="isLoading() || sessionStats().questionResults.length === 0"
+                class="px-3.5 py-2 rounded-xl bg-[#087A38] hover:bg-[#06652e] disabled:opacity-50 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+                title="Export overview results as CSV with UTF-8 / Khmer font support">
                 <i class="pi pi-download text-xs"></i>
                 <span>Export</span>
               </button>
@@ -176,9 +183,60 @@ import QRCode from 'qrcode';
             </p>
           </div>
 
-          <!-- 3-Column Engagement Hero Card (Exact Slido Structure) -->
-          <div class="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden transition-all">
-            <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+          <!-- Loading State when data is being fetched -->
+          @if (isLoading()) {
+            <!-- Beautiful Loading Notice Card -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-8 shadow-xs flex flex-col items-center justify-center text-center space-y-3.5 animate-fadein">
+              <div class="w-12 h-12 rounded-full border-4 border-emerald-100 border-t-[#087A38] animate-spin"></div>
+              <div class="space-y-1">
+                <div class="text-base font-bold text-gray-900">Loading overview data...</div>
+                <div class="text-xs text-gray-500">Calculating engagement, question responses, and metrics for room #{{ roomCode() }}</div>
+              </div>
+            </div>
+
+            <!-- Skeleton Hero Engagement Card -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden animate-pulse">
+              <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                @for (i of [1, 2, 3]; track i) {
+                  <div class="p-6 space-y-4">
+                    <div class="flex items-start justify-between">
+                      <div class="space-y-2 flex-1">
+                        <div class="h-4 bg-gray-200 rounded-md w-3/4"></div>
+                        <div class="h-3 bg-gray-100 rounded-md w-1/2"></div>
+                      </div>
+                      <div class="w-12 h-12 rounded-full bg-gray-200 shrink-0"></div>
+                    </div>
+                    <div class="space-y-2.5 pt-2">
+                      <div class="h-3 bg-gray-100 rounded-md w-full"></div>
+                      <div class="h-3 bg-gray-100 rounded-md w-5/6"></div>
+                      <div class="h-3 bg-gray-100 rounded-md w-4/6"></div>
+                    </div>
+                    <div class="h-9 bg-gray-100 rounded-lg w-full mt-4"></div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Skeleton Poll Breakdown Cards -->
+            <div class="space-y-3 animate-pulse pt-2">
+              <div class="h-5 bg-gray-200 rounded-md w-44"></div>
+              @for (j of [1, 2]; track j) {
+                <div class="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div class="h-4 bg-gray-200 rounded-md w-2/3"></div>
+                    <div class="h-3 bg-gray-100 rounded-md w-16"></div>
+                  </div>
+                  <div class="space-y-2 pt-2">
+                    <div class="h-8 bg-gray-100 rounded-xl w-full"></div>
+                    <div class="h-8 bg-gray-100 rounded-xl w-full"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <!-- 3-Column Engagement Hero Card (Exact Slido Structure) -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden transition-all">
+              <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
               
               <!-- Column 1: Engaged participants (Magenta Ring #9D174D) -->
               <div class="flex flex-col justify-between">
@@ -368,94 +426,107 @@ import QRCode from 'qrcode';
               </div>
             </div>
 
-            <!-- Question Breakdown Cards -->
-            <div class="space-y-3.5">
-              @for (q of sessionStats().questionResults; track q.pollId; let idx = $index) {
-                <div class="bg-white rounded-2xl border border-gray-200 p-5 space-y-3 shadow-2xs transition-all">
-                  
-                  <!-- Question Title & Metadata -->
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="flex items-start gap-2.5 min-w-0">
-                      <span class="w-6 h-6 rounded-lg bg-gray-100 text-gray-700 font-mono font-bold text-xs flex items-center justify-center shrink-0">
-                        {{ q.order || (idx + 1) }}
-                      </span>
-                      <h4 class="text-sm sm:text-base font-bold text-gray-900 leading-snug">
-                        {{ q.question }}
-                      </h4>
-                    </div>
-
-                    <div class="flex items-center gap-1.5 shrink-0 text-xs font-bold font-mono text-gray-500">
-                      <span>{{ q.totalVotes }} votes</span>
-                    </div>
-                  </div>
-
-                  <!-- Scored or Consensus Status Badge -->
-                  <div class="flex items-center gap-2 text-xs">
-                    @if (q.correctOptionId !== undefined) {
-                      <span class="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold flex items-center gap-1">
-                        <i class="pi pi-check text-[11px] text-emerald-600"></i>
-                        <span>Correct answer: <strong>{{ q.correctOptionText }}</strong></span>
-                        <span class="font-mono">({{ q.correctPercentage }}% accuracy)</span>
-                      </span>
-                    } @else {
-                      <span class="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-bold flex items-center gap-1">
-                        <i class="pi pi-star text-[11px] text-amber-600"></i>
-                        <span>Winning response: <strong>{{ q.winningOptionText }}</strong></span>
-                        <span class="font-mono">({{ q.winningPercentage }}% consensus)</span>
-                      </span>
-                    }
-                  </div>
-
-                  <!-- Options Distribution Bars -->
-                  <div class="space-y-2 pt-1">
-                    @for (opt of q.options; track opt.id; let optIdx = $index) {
-                      <div class="p-2.5 rounded-xl border transition-colors space-y-1.5"
-                        [ngClass]="opt.isCorrect 
-                          ? 'border-emerald-300 bg-emerald-50/40 ring-1 ring-emerald-400/40' 
-                          : 'border-gray-200 bg-gray-50/40'">
-                        
-                        <div class="flex items-center justify-between text-xs font-semibold gap-2">
-                          <div class="flex items-center gap-2 min-w-0">
-                            <span class="w-5 h-5 rounded-md flex items-center justify-center font-bold text-[11px] shrink-0"
-                              [ngClass]="opt.isCorrect ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700'">
-                              {{ getOptionLetter(optIdx) }}
-                            </span>
-                            <span class="truncate" [ngClass]="opt.isCorrect ? 'font-bold text-emerald-950' : 'text-gray-800'">
-                              {{ opt.text }}
-                            </span>
-                            @if (opt.isCorrect) {
-                              <span class="text-[9px] uppercase font-black px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800">
-                                Correct
-                              </span>
-                            }
-                          </div>
-
-                          <div class="shrink-0 flex items-center gap-2 font-mono">
-                            <span class="text-xs font-bold" [ngClass]="opt.isCorrect ? 'text-emerald-700' : 'text-gray-900'">
-                              {{ opt.percentage }}%
-                            </span>
-                            <span class="text-[10px] text-gray-400">
-                              ({{ opt.votes }})
-                            </span>
-                          </div>
-                        </div>
-
-                        <!-- Progress Bar Fill -->
-                        <div class="w-full h-2 rounded-full overflow-hidden bg-gray-200/80">
-                          <div class="h-full rounded-full transition-all duration-500"
-                            [style.width.%]="opt.percentage"
-                            [ngClass]="opt.isCorrect 
-                              ? 'bg-[#087A38]' 
-                              : (opt.id === q.winningOptionId ? 'bg-indigo-600' : 'bg-gray-400')">
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  </div>
+            <!-- Question Breakdown Cards or Empty State -->
+            @if (sessionStats().questionResults.length === 0) {
+              <div class="bg-white rounded-2xl border border-dashed border-gray-300 p-10 text-center space-y-3 shadow-2xs">
+                <div class="w-12 h-12 rounded-full bg-gray-100 text-gray-400 mx-auto flex items-center justify-center">
+                  <i class="pi pi-chart-bar text-xl"></i>
                 </div>
-              }
-            </div>
+                <div class="text-base font-bold text-gray-800">No poll responses yet</div>
+                <p class="text-xs text-gray-500 max-w-md mx-auto">
+                  When participants vote or submit responses in room <strong>#{{ roomCode() }}</strong>, their answers, percentages, and breakdowns will appear here.
+                </p>
+              </div>
+            } @else {
+              <div class="space-y-3.5">
+                @for (q of sessionStats().questionResults; track q.pollId; let idx = $index) {
+                  <div class="bg-white rounded-2xl border border-gray-200 p-5 space-y-3 shadow-2xs transition-all">
+                    
+                    <!-- Question Title & Metadata -->
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="flex items-start gap-2.5 min-w-0">
+                        <span class="w-6 h-6 rounded-lg bg-gray-100 text-gray-700 font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                          {{ q.order || (idx + 1) }}
+                        </span>
+                        <h4 class="text-sm sm:text-base font-bold text-gray-900 leading-snug">
+                          {{ q.question }}
+                        </h4>
+                      </div>
+
+                      <div class="flex items-center gap-1.5 shrink-0 text-xs font-bold font-mono text-gray-500">
+                        <span>{{ q.totalVotes }} votes</span>
+                      </div>
+                    </div>
+
+                    <!-- Scored or Consensus Status Badge -->
+                    <div class="flex items-center gap-2 text-xs">
+                      @if (q.correctOptionId !== undefined) {
+                        <span class="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold flex items-center gap-1">
+                          <i class="pi pi-check text-[11px] text-emerald-600"></i>
+                          <span>Correct answer: <strong>{{ q.correctOptionText }}</strong></span>
+                          <span class="font-mono">({{ q.correctPercentage }}% accuracy)</span>
+                        </span>
+                      } @else {
+                        <span class="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-bold flex items-center gap-1">
+                          <i class="pi pi-star text-[11px] text-amber-600"></i>
+                          <span>Winning response: <strong>{{ q.winningOptionText }}</strong></span>
+                          <span class="font-mono">({{ q.winningPercentage }}% consensus)</span>
+                        </span>
+                      }
+                    </div>
+
+                    <!-- Options Distribution Bars -->
+                    <div class="space-y-2 pt-1">
+                      @for (opt of q.options; track opt.id; let optIdx = $index) {
+                        <div class="p-2.5 rounded-xl border transition-colors space-y-1.5"
+                          [ngClass]="opt.isCorrect 
+                            ? 'border-emerald-300 bg-emerald-50/40 ring-1 ring-emerald-400/40' 
+                            : 'border-gray-200 bg-gray-50/40'">
+                          
+                          <div class="flex items-center justify-between text-xs font-semibold gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                              <span class="w-5 h-5 rounded-md flex items-center justify-center font-bold text-[11px] shrink-0"
+                                [ngClass]="opt.isCorrect ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700'">
+                                {{ getOptionLetter(optIdx) }}
+                              </span>
+                              <span class="truncate" [ngClass]="opt.isCorrect ? 'font-bold text-emerald-950' : 'text-gray-800'">
+                                {{ opt.text }}
+                              </span>
+                              @if (opt.isCorrect) {
+                                <span class="text-[9px] uppercase font-black px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800">
+                                  Correct
+                                </span>
+                              }
+                            </div>
+
+                            <div class="shrink-0 flex items-center gap-2 font-mono">
+                              <span class="text-xs font-bold" [ngClass]="opt.isCorrect ? 'text-emerald-700' : 'text-gray-900'">
+                                {{ opt.percentage }}%
+                              </span>
+                              <span class="text-[10px] text-gray-400">
+                                ({{ opt.votes }})
+                              </span>
+                            </div>
+                          </div>
+
+                          <!-- Progress Bar Fill -->
+                          <div class="w-full h-2 rounded-full overflow-hidden bg-gray-200/80">
+                            <div class="h-full rounded-full transition-all duration-500"
+                              [style.width.%]="opt.percentage"
+                              [ngClass]="opt.isCorrect 
+                                ? 'bg-[#087A38]' 
+                                : (opt.id === q.winningOptionId ? 'bg-indigo-600' : 'bg-gray-400')">
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
           </div>
+        }
 
         </main>
       </div>
@@ -521,6 +592,7 @@ export class RoomOverviewComponent implements OnInit, OnDestroy {
     questionResults: []
   });
 
+  isLoading = signal<boolean>(true);
   showDetails = signal<boolean>(true);
   showShareDialog = signal<boolean>(false);
   qrCodeDataUrl = signal<string>('');
@@ -582,6 +654,7 @@ export class RoomOverviewComponent implements OnInit, OnDestroy {
   }
 
   async loadRoomOverview(code: string) {
+    this.isLoading.set(true);
     this.roomCode.set(code);
     this.setupUrls(code);
 
@@ -592,12 +665,21 @@ export class RoomOverviewComponent implements OnInit, OnDestroy {
       this.room.set(roomData);
     });
 
-    this.pollsSub = this.pollService.listenToRoomPolls(code).subscribe(polls => {
+    let initialLoaded = false;
+    this.pollsSub = this.pollService.listenToRoomPolls(code).subscribe(async polls => {
       this.rawPolls.set(polls);
-      this.refreshSummary(code);
+      await this.refreshSummary(code);
+      if (!initialLoaded) {
+        initialLoaded = true;
+        this.isLoading.set(false);
+      }
     });
 
-    await this.refreshSummary(code);
+    try {
+      await this.refreshSummary(code);
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   async refreshSummary(code: string) {
@@ -654,31 +736,45 @@ export class RoomOverviewComponent implements OnInit, OnDestroy {
       return;
     }
 
-    let csv = 'Order,Question,Total Votes,Winning Choice,Winning Percentage,Correct Option\n';
+    // Prepend UTF-8 BOM (\uFEFF) so Microsoft Excel renders Khmer Unicode fonts correctly without garbling
+    const BOM = '\uFEFF';
+    let csv = 'Order,Question,Total Votes,Winning Choice,Winning Percentage,Correct Option,All Options Breakdown\r\n';
+    
     for (const q of results) {
+      const cleanQuestion = (q.question || '').replace(/\r?\n/g, ' ').replace(/"/g, '""').trim();
+      const cleanWinning = (q.winningOptionText || '').replace(/\r?\n/g, ' ').replace(/"/g, '""').trim();
+      const cleanCorrect = (q.correctOptionText || 'N/A').replace(/\r?\n/g, ' ').replace(/"/g, '""').trim();
+      const optionsBreakdown = (q.options || [])
+        .map((opt, i) => `${this.getOptionLetter(i)}: ${opt.text} (${opt.percentage}%, ${opt.votes} votes)`)
+        .join(' | ')
+        .replace(/\r?\n/g, ' ')
+        .replace(/"/g, '""');
+
       const row = [
         q.order,
-        `"${q.question.replace(/"/g, '""')}"`,
+        `"${cleanQuestion}"`,
         q.totalVotes,
-        `"${q.winningOptionText.replace(/"/g, '""')}"`,
-        `${q.winningPercentage}%`,
-        q.correctOptionText ? `"${q.correctOptionText.replace(/"/g, '""')}"` : 'N/A'
+        `"${cleanWinning}"`,
+        `"${q.winningPercentage}%"`,
+        `"${cleanCorrect}"`,
+        `"${optionsBreakdown}"`
       ];
-      csv += row.join(',') + '\n';
+      csv += row.join(',') + '\r\n';
     }
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.setAttribute('download', `slido_overview_${this.roomCode()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 
     this.messageService.add({
       severity: 'success',
       summary: 'Export Complete',
-      detail: 'Overview CSV results downloaded successfully.'
+      detail: 'Overview CSV results exported with Khmer Unicode (UTF-8 BOM) support.'
     });
   }
 
