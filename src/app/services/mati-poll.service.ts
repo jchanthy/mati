@@ -243,6 +243,75 @@ export class MatiPollService {
   }
 
   /**
+   * Update room status (active, completed, closed)
+   */
+  async setRoomStatus(roomCode: string, status: 'active' | 'completed' | 'draft' | 'closed'): Promise<void> {
+    const code = roomCode.toUpperCase();
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, { status });
+      } catch (err) {
+        console.warn('[Mati] Firebase setRoomStatus error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const r = rooms.get(code);
+    if (r) {
+      rooms.set(code, { ...r, status });
+      this.mockRooms$.next(new Map(rooms));
+    }
+  }
+
+  /**
+   * Duplicate room with all its polls and settings
+   */
+  async duplicateRoom(sourceCode: string, newTitle?: string, ownerId?: string, ownerEmail?: string): Promise<string> {
+    const srcCode = sourceCode.toUpperCase();
+    const rooms = this.mockRooms$.getValue();
+    const srcRoom = rooms.get(srcCode);
+    const title = newTitle || (srcRoom ? `${srcRoom.title} (Copy)` : `Session Copy`);
+
+    const today = new Date();
+    const end = new Date();
+    end.setDate(today.getDate() + 2);
+    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const newCode = await this.createRoom(
+      title,
+      undefined,
+      ownerId || srcRoom?.ownerId,
+      ownerEmail || srcRoom?.ownerEmail,
+      srcRoom?.startDate || ymd(today),
+      srcRoom?.endDate || ymd(end)
+    );
+
+    // Fetch source polls
+    let sourcePolls: Poll[] = [];
+    if (this.firestore) {
+      try {
+        const pollsRef = collection(this.firestore, `rooms/${srcCode}/polls`);
+        const q = query(pollsRef, orderBy('order', 'asc'));
+        const snap = await getDocs(q);
+        sourcePolls = snap.docs.map(d => ({ id: d.id, ...d.data() } as Poll));
+      } catch {
+        sourcePolls = this.mockPolls$.getValue().get(srcCode) || [];
+      }
+    } else {
+      sourcePolls = this.mockPolls$.getValue().get(srcCode) || [];
+    }
+
+    // Clone all polls
+    for (const p of sourcePolls) {
+      const optTexts = (p.options || []).map(o => o.text);
+      await this.createPoll(newCode, p.question, optTexts, p.correctOptionId);
+    }
+
+    return newCode;
+  }
+
+  /**
    * Delete specific poll from a room
    */
   async deletePoll(roomCode: string, pollId: string): Promise<void> {

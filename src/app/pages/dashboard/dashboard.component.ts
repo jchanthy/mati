@@ -235,27 +235,169 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                     <i class="pi pi-ellipsis-h text-sm"></i>
                   </button>
 
-                  <!-- Row Dropdown Menu -->
+                  <!-- Slido-Style Popover Menu -->
                   @if (activeMenuRoom() === r.code) {
-                    <div class="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-40 text-left animate-fadein">
-                      <button type="button" (click)="switchRoom(r.code); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
-                        <i class="pi pi-folder-open text-xs text-gray-400"></i> Manage Questions
-                      </button>
-                      <button type="button" (click)="openAddQuestionForRoom(r.code); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
-                        <i class="pi pi-plus text-xs text-gray-400"></i> Add Question
-                      </button>
-                      <button type="button" (click)="openImportForRoom(r.code); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
-                        <i class="pi pi-file-import text-xs text-gray-400"></i> Import (CSV/XML)
-                      </button>
-                      <button type="button" (click)="switchRoom(r.code); openPickQuestionsDialog(); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
-                        <i class="pi pi-check-square text-xs text-gray-400"></i> Pick Questions
-                      </button>
-                      <div class="border-t border-gray-100 my-1"></div>
-                      @if (canManageRoom(r)) {
-                        <button type="button" (click)="deleteRoom(r.code); activeMenuRoom.set(null)" class="w-full text-left px-3.5 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer">
-                          <i class="pi pi-trash text-xs"></i> Delete Mati
-                        </button>
-                      }
+                    <div 
+                      (click)="$event.stopPropagation()"
+                      class="absolute right-0 mt-2 w-80 sm:w-[330px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 text-left overflow-hidden animate-fadein">
+                      
+                      <!-- Top Upgrade Banner -->
+                      <div class="bg-gradient-to-r from-[#B45309] to-[#92400E] px-4 py-2.5 flex items-center gap-2.5 text-white text-xs font-semibold select-none">
+                        <div class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                          <i class="pi pi-crown text-[10px] text-white"></i>
+                        </div>
+                        <span class="truncate">Click here to upgrade your mati account</span>
+                      </div>
+
+                      <div class="p-4 space-y-3.5">
+                        <!-- Room Header: Title, dates, owner, and status badge -->
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="min-w-0 flex-1">
+                            <h4 class="text-base font-bold text-gray-900 leading-snug truncate" [title]="r.title || ('Room ' + r.code)">
+                              {{ r.title || ('Room ' + r.code) }}
+                            </h4>
+                            <div class="flex flex-col text-xs text-gray-500 mt-1 space-y-0.5">
+                              <div class="flex items-center gap-1.5 truncate">
+                                <i class="pi pi-calendar text-[11px] text-gray-400"></i>
+                                <span>{{ formatRoomDates(r) || formatRoomDate(r) }}</span>
+                              </div>
+                              <div class="flex items-center gap-1.5 truncate">
+                                <i class="pi pi-user text-[11px] text-gray-400"></i>
+                                <span>{{ getOwnerDisplayName(r) }}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Active now vs Inactive badge -->
+                          @if (isRoomActive(r)) {
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-[#E8F5E9] text-[#087A38] shrink-0 border border-emerald-200">
+                              Active now
+                            </span>
+                          } @else {
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-600 shrink-0 border border-gray-200">
+                              Inactive
+                            </span>
+                          }
+                        </div>
+
+                        <!-- Action Tiles Grid -->
+                        @if (isRoomActive(r)) {
+                          <!-- ACTIVE NOW TILES: Copy link & Copy code -->
+                          <div class="grid grid-cols-2 gap-2.5">
+                            <!-- Copy mati link -->
+                            <button 
+                              type="button" 
+                              (click)="copyRoomLink(r.code)"
+                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs">
+                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-emerald-100/60 flex items-center justify-center text-gray-700 group-hover:text-[#087A38] mb-1.5 transition-colors">
+                                <i class="pi pi-mobile text-sm"></i>
+                              </div>
+                              <span class="text-xs font-semibold text-gray-800 group-hover:text-[#087A38]">
+                                Copy mati link
+                              </span>
+                            </button>
+
+                            <!-- Copy mati code -->
+                            <button 
+                              type="button" 
+                              (click)="copyRoomCode(r.code)"
+                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs">
+                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-emerald-100/60 flex items-center justify-center text-gray-700 group-hover:text-[#087A38] mb-1.5 transition-colors">
+                                <span class="font-mono font-bold text-sm">#</span>
+                              </div>
+                              <span class="text-xs font-semibold text-gray-800 group-hover:text-[#087A38]">
+                                Copy mati code
+                              </span>
+                            </button>
+                          </div>
+                        } @else {
+                          <!-- INACTIVE TILES: View results & Duplicate -->
+                          <div class="grid grid-cols-2 gap-2.5">
+                            <!-- View results -->
+                            <a 
+                              [routerLink]="['/stage', r.code]" 
+                              target="_blank"
+                              (click)="activeMenuRoom.set(null)"
+                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs no-underline">
+                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-emerald-100/60 flex items-center justify-center text-gray-700 group-hover:text-[#087A38] mb-1.5 transition-colors">
+                                <i class="pi pi-chart-bar text-sm"></i>
+                              </div>
+                              <span class="text-xs font-semibold text-gray-800 group-hover:text-[#087A38]">
+                                View results
+                              </span>
+                            </a>
+
+                            <!-- Duplicate -->
+                            <button 
+                              type="button" 
+                              (click)="duplicateRoom(r.code)"
+                              class="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/20 text-center transition-all cursor-pointer group shadow-2xs">
+                              <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-emerald-100/60 flex items-center justify-center text-gray-700 group-hover:text-[#087A38] mb-1.5 transition-colors">
+                                <i class="pi pi-clone text-sm"></i>
+                              </div>
+                              <span class="text-xs font-semibold text-gray-800 group-hover:text-[#087A38]">
+                                Duplicate
+                              </span>
+                            </button>
+                          </div>
+                        }
+
+                        <!-- Wide Duplicate Card (matching Slido screenshot) -->
+                        <div 
+                          (click)="duplicateRoom(r.code)"
+                          class="flex items-center rounded-xl border border-gray-200 hover:border-[#087A38] bg-white hover:bg-emerald-50/10 overflow-hidden cursor-pointer group transition-all shadow-2xs">
+                          <div class="w-16 self-stretch bg-[#F0FDF4] border-r border-emerald-100 flex items-center justify-center p-3 text-[#087A38]">
+                            <div class="w-8 h-8 rounded-lg border-2 border-[#087A38] flex items-center justify-center">
+                              <i class="pi pi-plus text-xs font-bold"></i>
+                            </div>
+                          </div>
+                          <div class="p-3 text-left flex-1 min-w-0">
+                            <div class="text-xs font-bold text-gray-900 group-hover:text-[#087A38] transition-colors">
+                              Duplicate
+                            </div>
+                            <div class="text-[11px] text-gray-500 leading-tight mt-0.5">
+                              Create a fresh mati using polls and settings from this mati.
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Quick Session Actions (Manage & Pick) -->
+                        <div class="flex items-center gap-2 pt-1 text-xs">
+                          <button 
+                            type="button" 
+                            (click)="switchRoom(r.code); activeMenuRoom.set(null)"
+                            class="flex-1 py-1 px-2 rounded-md border border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium flex items-center justify-center gap-1 cursor-pointer">
+                            <i class="pi pi-folder-open text-[10px] text-gray-500"></i>
+                            <span>Manage Questions</span>
+                          </button>
+                          <button 
+                            type="button" 
+                            (click)="switchRoom(r.code); openPickQuestionsDialog(); activeMenuRoom.set(null)"
+                            class="flex-1 py-1 px-2 rounded-md border border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium flex items-center justify-center gap-1 cursor-pointer">
+                            <i class="pi pi-check-square text-[10px] text-gray-500"></i>
+                            <span>Pick Questions</span>
+                          </button>
+                        </div>
+
+                        <!-- Bottom Action Row: Toggle Active / Inactive & Delete -->
+                        <div class="flex items-center border-t border-gray-100 pt-2 text-xs">
+                          <button 
+                            type="button" 
+                            (click)="toggleRoomActiveStatus(r)"
+                            class="flex-1 py-1.5 px-3 text-gray-700 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5 font-medium transition-colors cursor-pointer">
+                            <i class="pi pi-sync text-xs text-gray-500"></i>
+                            <span>{{ isRoomActive(r) ? 'Set Inactive' : 'Set Active' }}</span>
+                          </button>
+                          <div class="w-px h-5 bg-gray-200 mx-1"></div>
+                          <button 
+                            type="button" 
+                            (click)="deleteRoom(r.code); activeMenuRoom.set(null)"
+                            class="flex-1 py-1.5 px-3 text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center gap-1.5 font-medium transition-colors cursor-pointer">
+                            <i class="pi pi-trash text-xs"></i>
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   }
                 </div>
@@ -1036,6 +1178,89 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return this.formatShortDate(r.startDate);
     }
     return '';
+  }
+
+  isRoomActive(r: Room): boolean {
+    return r.status !== 'completed' && r.status !== 'closed';
+  }
+
+  getOwnerDisplayName(r: Room): string {
+    const user = this.currentUser();
+    if (user && (r.ownerEmail === user.email || r.ownerId === user.uid)) {
+      return `${user.displayName || 'John Chanthy'} (You)`;
+    }
+    return r.ownerEmail || 'Organizer';
+  }
+
+  async copyRoomLink(code: string) {
+    const url = `${window.location.origin}/student?room=${code}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Link Copied! 📋',
+        detail: `Shareable link for #${code} copied to clipboard!`
+      });
+    } catch {
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Shareable Link',
+        detail: url
+      });
+    }
+  }
+
+  async copyRoomCode(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Code Copied! 📋',
+        detail: `Mati code #${code} copied to clipboard!`
+      });
+    } catch {
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Mati Code',
+        detail: code
+      });
+    }
+  }
+
+  async duplicateRoom(code: string) {
+    try {
+      this.activeMenuRoom.set(null);
+      const user = this.currentUser();
+      const newCode = await this.pollService.duplicateRoom(
+        code,
+        undefined,
+        user?.uid,
+        user?.email || undefined
+      );
+      this.switchRoom(newCode);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Mati Duplicated! 🎉',
+        detail: `New duplicate session #${newCode} created with all questions!`
+      });
+    } catch (err) {
+      console.error('Duplicate room failed:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Duplicate Failed',
+        detail: 'Could not duplicate room.'
+      });
+    }
+  }
+
+  async toggleRoomActiveStatus(r: Room) {
+    const newStatus = this.isRoomActive(r) ? 'completed' : 'active';
+    await this.pollService.setRoomStatus(r.code, newStatus);
+    this.messageService.add({
+      severity: 'success',
+      summary: newStatus === 'active' ? 'Mati Activated' : 'Mati Inactive',
+      detail: `Room #${r.code} is now ${newStatus === 'active' ? 'Active now' : 'Inactive'}.`
+    });
   }
   newPollQuestion = '';
   newPollOptionsRaw = 'Angular 19\nReact 19\nVue 3\nSvelte 5';
