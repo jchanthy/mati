@@ -182,7 +182,14 @@ export class MatiPollService {
    * Step 2: createRoom(title: string)
    * Generates 6-character room PIN (e.g. MATI01 or MATI99) and initializes room doc.
    */
-  async createRoom(title: string, customCode?: string, ownerId?: string, ownerEmail?: string): Promise<string> {
+  async createRoom(
+    title: string, 
+    customCode?: string, 
+    ownerId?: string, 
+    ownerEmail?: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<string> {
     const code = (customCode || this.generateRoomCode()).toUpperCase();
     const newRoom: Room = {
       code,
@@ -191,7 +198,9 @@ export class MatiPollService {
       status: 'active',
       createdAt: new Date().toISOString(),
       ...(ownerId ? { ownerId } : {}),
-      ...(ownerEmail ? { ownerEmail } : {})
+      ...(ownerEmail ? { ownerEmail } : {}),
+      ...(startDate ? { startDate } : {}),
+      ...(endDate ? { endDate } : {})
     };
 
     if (this.firestore) {

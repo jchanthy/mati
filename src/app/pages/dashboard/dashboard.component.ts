@@ -87,7 +87,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
         <!-- + Create slido Primary Button (Slido signature forest green) -->
         <button 
           type="button" 
-          (click)="showNewRoomDialog = true" 
+          (click)="openNewRoomDialog()" 
           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-[#087A38] hover:bg-[#06652e] text-white shadow-xs transition-all cursor-pointer select-none">
           <i class="pi pi-plus text-xs"></i>
           <span>Create slido</span>
@@ -174,7 +174,12 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
 
               <!-- Status column -->
               <div class="w-40 sm:w-56 text-left hidden sm:flex items-center gap-2 text-xs font-medium text-gray-600">
-                @if (r.status === 'completed') {
+                @if (formatRoomDates(r)) {
+                  <span class="inline-flex items-center gap-1.5 text-gray-600">
+                    <i class="pi pi-calendar text-xs text-gray-400"></i>
+                    <span>{{ formatRoomDates(r) }}</span>
+                  </span>
+                } @else if (r.status === 'completed') {
                   <span class="inline-flex items-center gap-1.5 text-gray-500">
                     <i class="pi pi-clock text-xs"></i>
                     <span>Last year</span>
@@ -259,7 +264,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
           } @empty {
             <div class="text-center py-12 px-4 text-gray-500 text-sm">
               <i class="pi pi-inbox text-3xl text-gray-300 mb-2 block"></i>
-              No slidos found in this view. Click <strong>+ Create slido</strong> to add your first session!
+              No slidos found in this view. Click <button type="button" (click)="openNewRoomDialog()" class="font-bold text-[#087A38] hover:underline cursor-pointer">+ Create slido</button> to add your first session!
             </div>
           }
         </div>
@@ -425,25 +430,124 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
         </div>
       </div>
 
-      <!-- Create Slido Dialog -->
-      <p-dialog header="Create New Slido" [(visible)]="showNewRoomDialog" [modal]="true" [style]="{width: '450px'}" class="p-fluid">
-        <div class="space-y-4 pt-2">
-          <div>
-            <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Slido Title</label>
-            <input pInputText type="text" [(ngModel)]="newRoomTitle" placeholder="e.g. AI &amp; Web Summit 2026" class="w-full" />
+      <!-- Create Slido Dialog (Pixel-perfect match to Slido modal) -->
+      <p-dialog 
+        [(visible)]="showNewRoomDialog" 
+        [modal]="true" 
+        [closable]="false" 
+        [showHeader]="false" 
+        [style]="{ width: '560px', maxWidth: '95vw', border: 'none', background: 'transparent', boxShadow: 'none' }" 
+        [contentStyle]="{ padding: '0', borderRadius: '16px', overflow: 'hidden' }"
+        styleClass="border-0 shadow-2xl rounded-2xl overflow-hidden p-0">
+        <div class="bg-white p-6 sm:p-7 rounded-2xl space-y-5 border border-gray-100 shadow-2xl">
+          <!-- Dialog Title -->
+          <div class="text-xl font-bold text-gray-900 tracking-tight">
+            Create your slido
           </div>
+
+          <!-- Slido Name Field -->
           <div>
-            <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Slido Code (PIN)</label>
-            <input pInputText type="text" [(ngModel)]="newRoomCode" placeholder="Leave blank for auto PIN (e.g. MATI02)" class="w-full uppercase" />
+            <label class="block text-sm font-semibold text-gray-800 mb-1.5">
+              Give your slido a name
+            </label>
+            <input 
+              type="text" 
+              [(ngModel)]="newRoomTitle" 
+              (keydown.enter)="createNewRoom()"
+              placeholder="Slido name" 
+              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-colors" />
           </div>
-          <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800">
-            This Slido will be assigned to your account: <strong>{{ currentUser()?.email }}</strong>
+
+          <!-- Start Date & End Date Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Start date -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-800 mb-1.5">
+                Start date
+              </label>
+              <div 
+                class="relative flex items-center justify-between w-full px-3.5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm hover:border-gray-400 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900 transition-colors cursor-pointer">
+                <span class="text-gray-900 font-medium select-none truncate">
+                  {{ formatDisplayDate(newRoomStartDate) || 'Select date' }}
+                </span>
+                <i class="pi pi-calendar text-gray-500 text-sm shrink-0"></i>
+                <input 
+                  type="date" 
+                  [(ngModel)]="newRoomStartDate" 
+                  class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+              </div>
+            </div>
+
+            <!-- End date -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-800 mb-1.5">
+                End date
+              </label>
+              <div 
+                class="relative flex items-center justify-between w-full px-3.5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm hover:border-gray-400 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900 transition-colors cursor-pointer">
+                <span class="text-gray-900 font-medium select-none truncate">
+                  {{ formatDisplayDate(newRoomEndDate) || 'Select date' }}
+                </span>
+                <i class="pi pi-calendar text-gray-500 text-sm shrink-0"></i>
+                <input 
+                  type="date" 
+                  [(ngModel)]="newRoomEndDate" 
+                  class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Optional Room PIN / Custom Code -->
+          <div>
+            @if (!showCustomCodeInput) {
+              <button 
+                type="button" 
+                (click)="showCustomCodeInput = true" 
+                class="text-xs text-gray-500 hover:text-gray-800 font-medium inline-flex items-center gap-1.5 cursor-pointer">
+                <i class="pi pi-sliders-h text-[10px]"></i>
+                <span>Custom room code (optional)</span>
+              </button>
+            } @else {
+              <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="block text-xs font-semibold text-gray-700">Slido Code (PIN)</label>
+                  <button type="button" (click)="showCustomCodeInput = false; newRoomCode = ''" class="text-[11px] text-gray-400 hover:text-gray-600">Auto-generate</button>
+                </div>
+                <input 
+                  type="text" 
+                  [(ngModel)]="newRoomCode" 
+                  placeholder="Leave blank for auto PIN (e.g. MATI02)" 
+                  class="w-full px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-900 uppercase font-mono placeholder:text-gray-400 focus:outline-none focus:border-gray-900" />
+              </div>
+            }
+          </div>
+
+          <!-- Dialog Footer matching Slido screenshot -->
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+            <!-- Info Pill on left -->
+            <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#F0F7FD] border border-[#D0E2F2] text-[#1E5A8A] text-xs font-normal">
+              <i class="pi pi-info-circle text-sm text-[#1E5A8A] shrink-0"></i>
+              <span class="truncate">Anyone with the code or link can participate</span>
+            </div>
+
+            <!-- Action buttons on right -->
+            <div class="flex items-center justify-end gap-3 shrink-0">
+              <button 
+                type="button" 
+                (click)="showNewRoomDialog = false"
+                class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                (click)="createNewRoom()"
+                [disabled]="!newRoomTitle.trim()"
+                class="px-5 py-2 text-sm font-semibold text-white bg-[#087A38] hover:bg-[#06652E] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-2xs transition-colors cursor-pointer">
+                Create slido
+              </button>
+            </div>
           </div>
         </div>
-        <ng-template pTemplate="footer">
-          <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showNewRoomDialog = false"></button>
-          <button pButton label="Create Slido" icon="pi pi-check" class="p-button-success" (click)="createNewRoom()"></button>
-        </ng-template>
       </p-dialog>
 
       <!-- Create Poll Dialog -->
@@ -868,6 +972,71 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   newRoomTitle = '';
   newRoomCode = '';
+  newRoomStartDate = '';
+  newRoomEndDate = '';
+  showCustomCodeInput = false;
+
+  openNewRoomDialog() {
+    const today = new Date();
+    const end = new Date();
+    end.setDate(today.getDate() + 2);
+
+    this.newRoomTitle = '';
+    this.newRoomCode = '';
+    this.newRoomStartDate = this.toInputDateFormat(today);
+    this.newRoomEndDate = this.toInputDateFormat(end);
+    this.showCustomCodeInput = false;
+    this.showNewRoomDialog = true;
+  }
+
+  private toInputDateFormat(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  formatDisplayDate(dateStr: string): string {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return dateStr;
+      const year = Number(parts[0]);
+      const month = Number(parts[1]);
+      const day = Number(parts[2]);
+      if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr;
+      const d = new Date(year, month - 1, day);
+      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  }
+
+  formatShortDate(dateStr: string): string {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return dateStr;
+      const year = Number(parts[0]);
+      const month = Number(parts[1]);
+      const day = Number(parts[2]);
+      if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr;
+      const d = new Date(year, month - 1, day);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  }
+
+  formatRoomDates(r: Room): string {
+    if (r.startDate && r.endDate) {
+      return `${this.formatShortDate(r.startDate)} - ${this.formatShortDate(r.endDate)}`;
+    }
+    if (r.startDate) {
+      return this.formatShortDate(r.startDate);
+    }
+    return '';
+  }
   newPollQuestion = '';
   newPollOptionsRaw = 'Angular 19\nReact 19\nVue 3\nSvelte 5';
   newPollCorrectIndex: number | null = null;
@@ -1006,11 +1175,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   async createNewRoom() {
     if (!this.newRoomTitle.trim()) return;
     const user = this.currentUser();
+    const createdTitle = this.newRoomTitle.trim();
     const code = await this.pollService.createRoom(
-      this.newRoomTitle,
+      createdTitle,
       this.newRoomCode || undefined,
       user?.uid,
-      user?.email || undefined
+      user?.email || undefined,
+      this.newRoomStartDate || undefined,
+      this.newRoomEndDate || undefined
     );
     this.showNewRoomDialog = false;
     this.newRoomTitle = '';
@@ -1018,8 +1190,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.switchRoom(code);
     this.messageService.add({
       severity: 'success',
-      summary: 'Room Created! 🎉',
-      detail: `Room ${code} is ready and selected!`
+      summary: 'Slido Created! 🎉',
+      detail: `Slido "${createdTitle}" (${code}) is ready!`
     });
   }
 

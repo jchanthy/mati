@@ -24,6 +24,8 @@ export interface Room {
   mode?: 'live' | 'survey';
   theme?: 'dark' | 'light';
   createdAt: any;
+  startDate?: string;
+  endDate?: string;
   timerDuration?: number;
   timerEndsAt?: number | null;
   selectedPollIds?: string[];
