@@ -37,24 +37,30 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
     <div class="space-y-4 max-w-7xl mx-auto px-2 sm:px-4">
       <p-toast></p-toast>
 
-      <!-- 1. Sleek Compact Header Bar -->
-      <div class="bg-white dark:bg-gray-900 px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center font-black shadow-sm shadow-indigo-600/30 shrink-0">
-            <i class="pi pi-sliders-h text-base"></i>
-          </div>
-          <div>
+      <!-- 1. Sleek Presenter Header Bar -->
+      <header class="bg-white dark:bg-gray-900 px-4 sm:px-6 py-3 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xs flex items-center justify-between gap-3 relative z-30">
+        <!-- Left: Back Button + Room Switcher & Title -->
+        <div class="flex items-center gap-3 min-w-0">
+          <a 
+            routerLink="/dashboard" 
+            title="Back to Dashboard" 
+            class="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer shrink-0">
+            <i class="pi pi-arrow-left text-sm font-bold"></i>
+          </a>
+
+          <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <h1 class="text-base font-black text-gray-900 dark:text-white">
-                Mati Controller
+              <h1 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate max-w-[200px] sm:max-w-xs md:max-w-sm" [title]="room()?.title || ('Mati #' + roomCode())">
+                {{ room()?.title || ('Mati #' + roomCode()) }}
               </h1>
-              <!-- Room Switcher Dropdown Badge -->
-              <div class="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700">
-                <span class="text-xs font-mono font-black text-indigo-600 dark:text-indigo-400">{{ roomCode() }}</span>
+              
+              <!-- Room Switcher Badge -->
+              <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 shrink-0">
+                <span class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">#{{ roomCode() }}</span>
                 <select 
                   [ngModel]="roomCode()" 
                   (ngModelChange)="switchRoom($event)" 
-                  class="bg-transparent text-xs font-bold text-gray-700 dark:text-gray-300 focus:outline-hidden cursor-pointer">
+                  class="bg-transparent text-xs font-semibold text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer">
                   @for (r of availableRooms(); track r.code) {
                     <option [value]="r.code" class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
                       {{ r.code }} - {{ r.title }}
@@ -62,212 +68,181 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   }
                 </select>
               </div>
-              <!-- Status Indicator -->
+
+              <!-- Status Badge -->
               @if (room()?.status === 'completed') {
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">Concluded</span>
-              } @else if (room()?.activePollId) {
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live Sync
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                  Concluded
                 </span>
-              } @else {
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">Ready</span>
+              } @else if (room()?.activePollId) {
+                <span class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Live Sync
+                </span>
               }
             </div>
+
             <div class="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
               <span>{{ polls().length }} of {{ allRawPolls().length }} questions active</span>
               <span>•</span>
-              <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ stats()?.totalVotes || 0 }} total votes</span>
+              <span class="font-semibold text-indigo-600 dark:text-indigo-400">{{ stats()?.totalVotes || 0 }} total votes</span>
             </div>
           </div>
         </div>
 
-        <!-- Header Actions -->
-        <div class="flex items-center gap-2 flex-wrap">
-          <!-- Session Lifecycle Action -->
+        <!-- Right: Present, Start/Finish Session, and Options Menu -->
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- Present Stage TV Button -->
+          <a 
+            [routerLink]="['/stage', roomCode()]" 
+            target="_blank" 
+            title="Launch Presenter Stage TV"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 transition-all cursor-pointer no-underline">
+            <i class="pi pi-desktop text-xs"></i>
+            <span>Present</span>
+          </a>
+
+          <!-- Session Lifecycle (Start / Finish / Restart) -->
           @if (room()?.status === 'completed') {
-            <button type="button" (click)="restartSession()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+            <button 
+              type="button" 
+              (click)="restartSession()" 
+              class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-all cursor-pointer">
               <i class="pi pi-replay text-xs"></i>
-              <span>Restart (Q1)</span>
+              <span class="hidden sm:inline">Restart</span>
             </button>
           } @else if (!room()?.activePollId) {
-            <button type="button" (click)="startSessionFirstQuestion()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+            <button 
+              type="button" 
+              (click)="startSessionFirstQuestion()" 
+              class="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-all cursor-pointer">
               <i class="pi pi-play text-xs"></i>
-              <span>Start Session</span>
+              <span>Start</span>
             </button>
           } @else {
-            <button type="button" (click)="finishSession()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer">
+            <button 
+              type="button" 
+              (click)="finishSession()" 
+              class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-2xs transition-all cursor-pointer">
               <i class="pi pi-check-circle text-xs"></i>
               <span>Finish</span>
             </button>
           }
 
-          <!-- Pick Questions Button -->
-          <button 
-            type="button" 
-            (click)="openPickQuestionsDialog()" 
-            class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Pick which questions are included in voting">
-            <i class="pi pi-check-square text-xs"></i>
-            <span>Pick Questions ({{ selectedQuestionCount() || allRawPolls().length }}/{{ allRawPolls().length }})</span>
-          </button>
+          <!-- Options Menu (Collapsed utilities to prevent massive clutter) -->
+          <div class="relative">
+            <button 
+              type="button" 
+              (click)="toggleSettingsPanel()" 
+              class="p-2 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors cursor-pointer"
+              title="More Session Options">
+              <i class="pi pi-ellipsis-h text-sm"></i>
+            </button>
 
-          <!-- Overview Results Action (Mati Brand Analytics) -->
-          <a 
-            [routerLink]="['/overview', roomCode()]" 
-            class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-indigo-600/20 no-underline"
-            title="Inspect Mati session overview results & analytics">
-            <i class="pi pi-chart-bar text-xs"></i>
-            <span>Overview Results</span>
-          </a>
+            <!-- Compact Settings Dropdown Popover -->
+            @if (showSettingsPanel()) {
+              <div 
+                (click)="$event.stopPropagation()"
+                class="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-3 z-50 space-y-2.5 animate-fadein text-left">
+                <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1">
+                  Session Controls
+                </div>
 
-          <!-- External Stage & Voter links -->
-          <a [routerLink]="['/stage', roomCode()]" target="_blank" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1 transition-all" title="Open Stage on TV">
-            <i class="pi pi-desktop text-xs"></i>
-            <span class="hidden sm:inline">Stage</span>
-          </a>
-          <a [routerLink]="['/vote', roomCode()]" target="_blank" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold flex items-center gap-1 transition-all" title="Open Voter Mobile view">
-            <i class="pi pi-mobile text-xs"></i>
-            <span class="hidden sm:inline">Voter</span>
-          </a>
+                <!-- Overview Results & Analytics -->
+                <a 
+                  [routerLink]="['/overview', roomCode()]" 
+                  class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs font-semibold transition-colors no-underline">
+                  <i class="pi pi-chart-bar text-indigo-600 dark:text-indigo-400"></i>
+                  <span>Overview & Analytics</span>
+                </a>
 
-          <!-- Quick Settings Toggle -->
-          <button 
-            type="button" 
-            (click)="toggleSettingsPanel()" 
-            [ngClass]="showSettingsPanel() ? 'bg-indigo-600 text-white' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'"
-            class="p-2 rounded-xl text-xs font-bold transition-all cursor-pointer" 
-            title="Session Settings (Mode, TV theme, Auto timer)">
-            <i class="pi pi-cog text-xs"></i>
-          </button>
-        </div>
-      </div>
+                <!-- Participant Mobile Link -->
+                <a 
+                  [routerLink]="['/vote', roomCode()]" 
+                  target="_blank" 
+                  class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 text-xs font-semibold transition-colors no-underline">
+                  <i class="pi pi-mobile text-gray-500"></i>
+                  <span>Participant Mobile View</span>
+                </a>
 
-      <!-- Collapsible Settings Panel -->
-      @if (showSettingsPanel()) {
-        <div class="p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs flex flex-wrap items-center justify-between gap-4 animate-fadein">
-          <!-- Room Mode -->
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Mode:</span>
-            <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-xl border border-gray-200 dark:border-gray-700">
-              <button 
-                type="button" 
-                (click)="setRoomMode('live')"
-                [ngClass]="room()?.mode !== 'survey' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'"
-                class="px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer">
-                Live Sync
-              </button>
-              <button 
-                type="button" 
-                (click)="setRoomMode('survey')"
-                [ngClass]="room()?.mode === 'survey' ? 'bg-amber-600 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'"
-                class="px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer">
-                Self-Paced Survey
-              </button>
-            </div>
-          </div>
+                <!-- Pick Questions Subset -->
+                <button 
+                  type="button" 
+                  (click)="openPickQuestionsDialog(); toggleSettingsPanel()" 
+                  class="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 text-xs font-semibold transition-colors cursor-pointer text-left">
+                  <i class="pi pi-check-square text-gray-500"></i>
+                  <span>Pick Questions ({{ selectedQuestionCount() || allRawPolls().length }}/{{ allRawPolls().length }})</span>
+                </button>
 
-          <!-- TV Theme -->
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">TV Theme:</span>
-            <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-xl border border-gray-200 dark:border-gray-700">
-              <button 
-                type="button" 
-                (click)="setStageTheme('dark')"
-                [ngClass]="(room()?.theme || 'dark') === 'dark' ? 'bg-slate-900 text-white shadow-xs' : 'text-gray-600 dark:text-gray-400'"
-                class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer">
-                🌙 Dark
-              </button>
-              <button 
-                type="button" 
-                (click)="setStageTheme('light')"
-                [ngClass]="room()?.theme === 'light' ? 'bg-white text-indigo-600 shadow-xs' : 'text-gray-600 dark:text-gray-400'"
-                class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer">
-                ☀️ Light
-              </button>
-            </div>
-          </div>
+                <!-- Mode & TV Theme Options -->
+                <div class="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-2 text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="font-medium text-gray-600 dark:text-gray-400">Session Mode</span>
+                    <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <button 
+                        type="button" 
+                        (click)="setRoomMode('live')"
+                        [ngClass]="room()?.mode !== 'survey' ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">Live</button>
+                      <button 
+                        type="button" 
+                        (click)="setRoomMode('survey')"
+                        [ngClass]="room()?.mode === 'survey' ? 'bg-amber-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">Survey</button>
+                    </div>
+                  </div>
 
-          <!-- Auto Next Advance -->
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Auto Advance:</span>
-            <p-toggleswitch [(ngModel)]="autoAdvanceEnabled" (onChange)="toggleAutoAdvance()"></p-toggleswitch>
-            @if (autoAdvanceEnabled) {
-              <select [(ngModel)]="timerDuration" (ngModelChange)="resetTimer()" class="text-xs font-bold rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1">
-                <option [value]="15">15s</option>
-                <option [value]="20">20s</option>
-                <option [value]="30">30s</option>
-                <option [value]="45">45s</option>
-                <option [value]="60">60s</option>
-              </select>
+                  <div class="flex items-center justify-between">
+                    <span class="font-medium text-gray-600 dark:text-gray-400">TV Theme</span>
+                    <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <button 
+                        type="button" 
+                        (click)="setStageTheme('dark')"
+                        [ngClass]="(room()?.theme || 'dark') === 'dark' ? 'bg-slate-900 text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">🌙 Dark</button>
+                      <button 
+                        type="button" 
+                        (click)="setStageTheme('light')"
+                        [ngClass]="room()?.theme === 'light' ? 'bg-white text-indigo-600 font-bold' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">☀️ Light</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             }
           </div>
-
-          <!-- Quick Dialog Triggers -->
-          <div class="flex items-center gap-1.5 ml-auto">
-            <button type="button" (click)="showNewPollDialog = true" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold border border-emerald-200 dark:border-emerald-800 cursor-pointer">
-              + New Question
-            </button>
-            <button type="button" (click)="showNewRoomDialog = true" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 cursor-pointer">
-              + New Room
-            </button>
-          </div>
         </div>
-      }
-
-      <!-- Completed Banner if finished -->
-      @if (room()?.status === 'completed') {
-        <div class="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 flex items-center justify-between gap-3 text-xs">
-          <div class="flex items-center gap-2.5">
-            <span class="text-xl">🎉</span>
-            <div>
-              <strong class="text-purple-950 dark:text-purple-200">Session Completed!</strong>
-              <span class="text-purple-700 dark:text-purple-300 ml-1">Stage and participant phones are displaying the celebration screen.</span>
-            </div>
-          </div>
-          <button type="button" (click)="restartSession()" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold cursor-pointer shrink-0">
-            Restart From Q1
-          </button>
-        </div>
-      }
+      </header>
 
       <!-- 2. Responsive 2-Column Command Center -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        <!-- LEFT COLUMN (Col 7 / 12): Active Question Remote & Live Tally -->
+        <!-- LEFT COLUMN (Col 7 / 12): Active Question Spotlight -->
         <div class="lg:col-span-7 space-y-4">
           @if (room()?.status === 'completed') {
-            <!-- Session Completed Hero Card: Overview Results Dashboard -->
-            <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-purple-200 dark:border-purple-800 shadow-xs space-y-4 animate-fadein">
-              <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-                <div class="flex items-center gap-2.5">
-                  <span class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center text-base font-bold shadow-2xs">
-                    🎉
-                  </span>
-                  <div>
-                    <h3 class="text-sm font-black text-gray-900 dark:text-white">Session Completed &amp; Overview Ready</h3>
-                    <p class="text-[11px] text-gray-500">Stage TV and voter phones are projecting the finale results.</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  (click)="restartSession()"
-                  class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs">
-                  <i class="pi pi-replay text-xs"></i>
-                  <span>Restart (Q1)</span>
-                </button>
+            <!-- Clean Celebration Card when Completed -->
+            <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xs space-y-5 animate-fadein text-center">
+              <div class="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-300 flex items-center justify-center text-2xl mx-auto shadow-2xs">
+                🎉
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">Session Completed!</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
+                  Stage TV and participant phones are displaying the finale results screen.
+                </p>
               </div>
 
               <!-- 3 Grand KPI Cards -->
-              <div class="grid grid-cols-3 gap-2.5">
-                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 text-center">
-                  <div class="text-xl font-black font-mono text-gray-900 dark:text-white">{{ polls().length }}</div>
+              <div class="grid grid-cols-3 gap-2.5 max-w-md mx-auto">
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center">
+                  <div class="text-lg font-bold font-mono text-gray-900 dark:text-white">{{ polls().length }}</div>
                   <div class="text-[10px] uppercase font-bold text-gray-400">Questions</div>
                 </div>
-                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 text-center">
-                  <div class="text-xl font-black font-mono text-indigo-600 dark:text-indigo-400">{{ sessionSummary()?.totalVotes || 0 }}</div>
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center">
+                  <div class="text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">{{ sessionSummary()?.totalVotes || 0 }}</div>
                   <div class="text-[10px] uppercase font-bold text-gray-400">Total Votes</div>
                 </div>
-                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 text-center">
-                  <div class="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center">
+                  <div class="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
                     {{ sessionSummary()?.hasScoredQuestions ? (sessionSummary()?.overallAccuracy + '%') : (sessionSummary()?.topConsensusPercentage + '%') }}
                   </div>
                   <div class="text-[10px] uppercase font-bold text-gray-400">
@@ -276,263 +251,225 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 </div>
               </div>
 
-              <!-- Questions Breakdown in Hero Card -->
-              <div class="space-y-2.5">
-                <div class="flex items-center justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
-                  <span>Questions Performance Breakdown</span>
-                  <a
-                    [routerLink]="['/overview', roomCode()]"
-                    class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer">
-                    View Slido Overview →
-                  </a>
+              <!-- Action buttons -->
+              <div class="flex items-center justify-center gap-3 pt-2">
+                <a 
+                  [routerLink]="['/overview', roomCode()]" 
+                  class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 no-underline cursor-pointer">
+                  <i class="pi pi-chart-bar text-xs"></i>
+                  <span>View Mati Overview</span>
+                </a>
+                <button 
+                  type="button" 
+                  (click)="restartSession()" 
+                  class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer">
+                  <i class="pi pi-replay text-xs"></i>
+                  <span>Restart (Q1)</span>
+                </button>
+              </div>
+            </div>
+          } @else {
+            <!-- Active Question Live Spotlight Card -->
+            <div class="bg-white dark:bg-gray-900 p-5 sm:p-6 rounded-2xl border border-gray-200/90 dark:border-gray-800 shadow-2xs space-y-5">
+              <!-- Top Question Navigation Bar -->
+              <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800 gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 font-mono font-bold text-xs">
+                    Q {{ getCurrentQuestionIndex() }} / {{ polls().length }}
+                  </span>
+                  @if (isLocked) {
+                    <span class="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 font-semibold text-[11px] border border-red-200 dark:border-red-800 flex items-center gap-1">
+                      <i class="pi pi-lock text-[10px]"></i> Locked
+                    </span>
+                  } @else {
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                      <i class="pi pi-check text-[10px]"></i> Voting open
+                    </span>
+                  }
                 </div>
 
-                <div class="space-y-2 max-h-[380px] overflow-y-auto pr-1">
-                  @for (q of sessionSummary()?.questionResults; track q.pollId; let idx = $index) {
-                    <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 space-y-1.5 text-xs">
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="flex items-center gap-2 min-w-0">
-                          <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400 shrink-0">#{{ q.order || (idx + 1) }}</span>
-                          <span class="font-bold text-gray-900 dark:text-white truncate">{{ q.question }}</span>
-                        </div>
-                        <span class="text-[10px] font-mono font-bold text-gray-400 shrink-0">{{ q.totalVotes }} votes</span>
+                <!-- Prev / Next Big Buttons -->
+                <div class="flex items-center gap-2">
+                  <button 
+                    type="button"
+                    (click)="prevQuestion()" 
+                    [disabled]="isFirstQuestion()"
+                    class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer">
+                    <i class="pi pi-arrow-left text-[10px]"></i> Prev
+                  </button>
+                  <button 
+                    type="button"
+                    (click)="nextQuestion()" 
+                    [disabled]="isLastQuestion()"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 shadow-sm shadow-indigo-600/20 cursor-pointer">
+                    Next <i class="pi pi-arrow-right text-[10px]"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Question Title -->
+              <div>
+                <h2 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-snug">
+                  {{ currentPoll()?.question || 'No question active' }}
+                </h2>
+              </div>
+
+              <!-- Live Options Breakdown Bars -->
+              <div class="space-y-2.5">
+                @if (currentPoll()) {
+                  @for (opt of currentPoll()!.options; track opt.id) {
+                    <div class="p-3 rounded-xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-1.5 transition-all">
+                      <div class="flex justify-between items-center text-xs font-semibold">
+                        <span class="text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                          <span class="w-5 h-5 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[11px] font-bold flex items-center justify-center border border-gray-200 dark:border-gray-600 shadow-2xs">
+                            {{ opt.id }}
+                          </span>
+                          <span>{{ opt.text }}</span>
+                          @if (currentPoll()?.correctOptionId === opt.id) {
+                            <i class="pi pi-check-circle text-emerald-600 dark:text-emerald-400 text-xs" title="Correct Option"></i>
+                          }
+                        </span>
+                        <span class="text-indigo-600 dark:text-indigo-400 font-bold font-mono">
+                          {{ stats()?.votesPerOption?.[opt.id] || 0 }} ({{ stats()?.percentages?.[opt.id] || 0 }}%)
+                        </span>
                       </div>
-                      <div class="flex items-center justify-between text-[11px]">
-                        @if (q.correctOptionId !== undefined) {
-                          <span class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                            <i class="pi pi-check text-[10px]"></i> Correct: {{ q.correctOptionText }} ({{ q.correctPercentage }}%)
-                          </span>
-                        } @else {
-                          <span class="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
-                            <i class="pi pi-star text-[10px]"></i> Top: {{ q.winningOptionText }} ({{ q.winningPercentage }}%)
-                          </span>
-                        }
+                      <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+                        <div 
+                          class="h-2 rounded-full transition-all duration-500" 
+                          [ngClass]="currentPoll()?.correctOptionId === opt.id ? 'bg-emerald-500' : 'bg-indigo-600'"
+                          [style.width.%]="stats()?.percentages?.[opt.id] || 0">
+                        </div>
                       </div>
                     </div>
+                  }
+                }
+              </div>
+
+              <!-- Streamlined Presenter Control Strip (Tactile buttons, no cluttered nested cards) -->
+              <div class="pt-3 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                  <!-- Lock / Unlock Voting Button -->
+                  <button 
+                    type="button" 
+                    (click)="isLocked = !isLocked; onLockChange()"
+                    [ngClass]="isLocked 
+                      ? 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 hover:bg-red-100' 
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50'"
+                    class="px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
+                    <i class="pi" [ngClass]="isLocked ? 'pi-lock text-red-600' : 'pi-lock-open text-gray-500'"></i>
+                    <span>{{ isLocked ? 'Voting Locked' : 'Lock Voting' }}</span>
+                  </button>
+
+                  <!-- Show / Hide Results on Stage Button -->
+                  <button 
+                    type="button" 
+                    (click)="showResults = !showResults; onShowResultsChange()"
+                    [ngClass]="showResults 
+                      ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100' 
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50'"
+                    class="px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
+                    <i class="pi" [ngClass]="showResults ? 'pi-chart-bar text-indigo-600 dark:text-indigo-400' : 'pi-eye-slash text-gray-500'"></i>
+                    <span>{{ showResults ? 'Results Visible' : 'Hide Results' }}</span>
+                  </button>
+                </div>
+
+                <!-- Compact Broadcast Timer -->
+                <div class="flex items-center gap-1 text-xs">
+                  <span class="text-gray-400 font-medium text-[11px]">Timer:</span>
+                  <button type="button" (click)="triggerQuestionTimer(30)" class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors cursor-pointer text-xs">30s</button>
+                  <button type="button" (click)="triggerQuestionTimer(60)" class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors cursor-pointer text-xs">60s</button>
+                  @if (autoAdvanceEnabled || countdownSeconds) {
+                    <button type="button" (click)="clearQuestionTimer()" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold transition-colors cursor-pointer text-xs">Stop</button>
                   }
                 </div>
               </div>
             </div>
-          } @else {
-            <!-- Active Question Hero Card -->
-            <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-4">
-            <!-- Question Top Nav Bar -->
-            <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800 gap-2">
-              <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-mono font-black text-xs">
-                  Q {{ getCurrentQuestionIndex() }} / {{ polls().length }}
-                </span>
-                @if (isLocked) {
-                  <span class="px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 font-bold text-[10px] uppercase tracking-wider border border-red-200 dark:border-red-900">
-                    <i class="pi pi-lock text-[9px] mr-0.5"></i> Locked
-                  </span>
-                } @else {
-                  <span class="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] uppercase tracking-wider border border-emerald-200 dark:border-emerald-900">
-                    <i class="pi pi-check text-[9px] mr-0.5"></i> Voting Open
-                  </span>
-                }
-              </div>
+          }
+        </div>
 
-              <!-- Prev / Next Big Buttons -->
-              <div class="flex items-center gap-2">
-                <button 
-                  type="button"
-                  (click)="prevQuestion()" 
-                  [disabled]="isFirstQuestion()"
-                  class="px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer">
-                  <i class="pi pi-arrow-left text-[10px]"></i> Prev
-                </button>
-                <button 
-                  type="button"
-                  (click)="nextQuestion()" 
-                  [disabled]="isLastQuestion()"
-                  class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 shadow-xs cursor-pointer">
-                  Next <i class="pi pi-arrow-right text-[10px]"></i>
-                </button>
-              </div>
-            </div>
-
-            <!-- Active Question Text -->
-            <div>
-              <h2 class="text-lg font-black text-gray-900 dark:text-white leading-snug">
-                {{ currentPoll()?.question || 'No question active' }}
-              </h2>
-            </div>
-
-            <!-- Live Options Breakdown -->
-            <div class="space-y-2.5 pt-1">
-              @if (currentPoll()) {
-                @for (opt of currentPoll()!.options; track opt.id) {
-                  <div class="p-3 rounded-xl bg-gray-50/80 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-1.5">
-                    <div class="flex justify-between items-center text-xs font-semibold">
-                      <span class="text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                        <span class="w-5 h-5 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[11px] font-black flex items-center justify-center border border-gray-200 dark:border-gray-600">
-                          {{ opt.id }}
-                        </span>
-                        <span>{{ opt.text }}</span>
-                      </span>
-                      <span class="text-indigo-600 dark:text-indigo-400 font-bold font-mono">
-                        {{ stats()?.votesPerOption?.[opt.id] || 0 }} ({{ stats()?.percentages?.[opt.id] || 0 }}%)
-                      </span>
-                    </div>
-                    <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
-                      <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" [style.width.%]="stats()?.percentages?.[opt.id] || 0"></div>
-                    </div>
-                  </div>
-                }
-              }
-            </div>
-
-            <!-- Sleek Control Strip (Toggles & Countdown Timer) -->
-            <div class="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-3">
-              <div class="grid grid-cols-2 gap-3">
-                <!-- Lock Toggle -->
-                <div class="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <div class="text-xs">
-                    <div class="font-bold text-gray-900 dark:text-white">Lock Voting</div>
-                    <div class="text-[10px] text-gray-500">Block phone input</div>
-                  </div>
-                  <p-toggleswitch [(ngModel)]="isLocked" (onChange)="onLockChange()"></p-toggleswitch>
-                </div>
-
-                <!-- Show Results Toggle -->
-                <div class="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <div class="text-xs">
-                    <div class="font-bold text-gray-900 dark:text-white">Stage Charts</div>
-                    <div class="text-[10px] text-gray-500">Show bar chart on TV</div>
-                  </div>
-                  <p-toggleswitch [(ngModel)]="showResults" (onChange)="onShowResultsChange()"></p-toggleswitch>
-                </div>
-              </div>
-
-              <!-- Live Countdown Timer Row -->
-              <div class="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div class="text-xs">
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-bold text-gray-900 dark:text-white">Broadcast Timer</span>
-                    <span class="text-[10px] text-gray-500">Sync TV & Phones</span>
-                  </div>
-                  <div class="text-[10px] text-gray-500 dark:text-gray-400">
-                    Countdown for this question. Locks voting when time's up.
-                  </div>
-                </div>
-                <div class="flex items-center gap-1 shrink-0">
-                  <button type="button" (click)="triggerQuestionTimer(15)" class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-all cursor-pointer">15s</button>
-                  <button type="button" (click)="triggerQuestionTimer(30)" class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-all cursor-pointer">30s</button>
-                  <button type="button" (click)="triggerQuestionTimer(60)" class="px-2 py-0.5 rounded-md bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-gray-700 dark:text-gray-200 hover:text-indigo-600 font-bold text-xs border border-gray-200 dark:border-gray-600 transition-all cursor-pointer">60s</button>
-                  <button type="button" (click)="clearQuestionTimer()" class="px-2 py-0.5 rounded-md bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs border border-red-200 dark:border-red-900 transition-all cursor-pointer">Stop</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        }
-      </div>
-
-        <!-- RIGHT COLUMN (Col 5 / 12): Question Playlist Deck -->
+        <!-- RIGHT COLUMN (Col 5 / 12): Clean Question Playlist Deck -->
         <div class="lg:col-span-5 space-y-4">
-          <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs space-y-3">
+          <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200/90 dark:border-gray-800 shadow-2xs space-y-3">
             <!-- Playlist Header -->
-            <div class="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
-              <div class="flex items-center gap-1.5">
-                <i class="pi pi-list text-indigo-600 dark:text-indigo-400 text-xs"></i>
-                <h3 class="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-white">Question Deck</h3>
-                <span class="px-1.5 py-0.2 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-[10px]">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Questions</h3>
+                <span class="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold text-xs">
                   {{ polls().length }}
                 </span>
               </div>
-              <div class="flex items-center gap-1.5">
-                <button 
-                  type="button" 
-                  (click)="openPickQuestionsDialog()" 
-                  class="px-2 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 cursor-pointer">
-                  Pick ({{ selectedQuestionCount() || allRawPolls().length }})
-                </button>
-                <button 
-                  type="button" 
-                  (click)="showNewPollDialog = true" 
-                  class="px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-2xs">
-                  + Add
-                </button>
-              </div>
+              <button 
+                type="button" 
+                (click)="showNewPollDialog = true" 
+                class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer shadow-2xs flex items-center gap-1">
+                <i class="pi pi-plus text-xs"></i>
+                <span>Add Question</span>
+              </button>
             </div>
 
-            <!-- Search Filter -->
+            <!-- Compact Search Filter -->
             <div class="relative">
-              <i class="pi pi-search absolute left-2.5 top-2.5 text-gray-400 text-xs"></i>
+              <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
               <input 
                 type="text" 
                 [(ngModel)]="searchQuery" 
                 placeholder="Search questions..." 
-                class="w-full pl-7 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500" />
+                class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all" />
             </div>
 
-            <!-- Quick Number Strip [1] [2] [3]... -->
-            <div class="flex items-center gap-1 flex-wrap max-h-16 overflow-y-auto pb-1">
-              @for (p of polls(); track p.id; let idx = $index) {
-                <button 
-                  type="button" 
-                  (click)="onSelectQuestion(p.id)"
-                  [ngClass]="currentPoll()?.id === p.id 
-                    ? 'bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400' 
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600'"
-                  class="w-6 h-6 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center cursor-pointer">
-                  {{ idx + 1 }}
-                </button>
-              }
-            </div>
-
-            <!-- Scrollable Questions List -->
-            <div class="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+            <!-- Clean Scrollable Questions List -->
+            <div class="space-y-2 max-h-[520px] overflow-y-auto pr-1">
               @for (p of filteredPolls(); track p.id; let idx = $index) {
                 <div 
-                  class="p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2.5 cursor-pointer"
+                  class="p-3 rounded-xl border transition-all flex items-center justify-between gap-3 cursor-pointer group"
                   (click)="onSelectQuestion(p.id)"
                   [ngClass]="currentPoll()?.id === p.id 
-                    ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-2xs' 
-                    : 'bg-gray-50/50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 hover:border-gray-300'">
+                    ? 'bg-indigo-50/40 dark:bg-indigo-950/40 border-indigo-600 dark:border-indigo-500 shadow-2xs ring-1 ring-indigo-500' 
+                    : 'bg-white dark:bg-gray-850 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'">
                   
-                  <div class="flex items-center gap-2 min-w-0 flex-1">
+                  <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <span 
-                      class="w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 border"
+                      class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 border"
                       [ngClass]="currentPoll()?.id === p.id 
-                        ? 'bg-indigo-600 text-white border-indigo-500' 
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600'">
-                      #{{ p.order || (idx + 1) }}
+                        ? 'bg-indigo-600 text-white border-indigo-600' 
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'">
+                      {{ p.order || (idx + 1) }}
                     </span>
                     <div class="min-w-0 flex-1">
                       <div class="text-xs font-bold text-gray-900 dark:text-white truncate">
                         {{ p.question }}
                       </div>
-                      <div class="text-[10px] text-gray-500">
+                      <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                         {{ p.options.length }} options {{ p.correctOptionId ? '• Scored' : '' }}
                       </div>
                     </div>
                   </div>
 
-                  <div class="flex items-center gap-1 shrink-0" (click)="$event.stopPropagation()">
+                  <div class="flex items-center gap-1.5 shrink-0" (click)="$event.stopPropagation()">
                     @if (currentPoll()?.id === p.id) {
-                      <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+                      <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold text-[10px] flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live
                       </span>
                     } @else {
                       <button 
                         type="button" 
                         (click)="onSelectQuestion(p.id)"
-                        class="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[10px] font-bold cursor-pointer">
-                        Launch
+                        class="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950 group-hover:text-indigo-600 text-gray-700 dark:text-gray-300 rounded-md text-[10px] font-semibold transition-colors cursor-pointer">
+                        Present
                       </button>
                     }
                     <button
                       type="button"
                       (click)="deletePoll(p.id)"
                       title="Delete Question"
-                      class="p-1 text-slate-400 hover:text-red-600 rounded transition-colors cursor-pointer">
+                      class="p-1 text-gray-400 hover:text-red-600 rounded transition-colors cursor-pointer">
                       <i class="pi pi-trash text-[11px]"></i>
                     </button>
                   </div>
                 </div>
               } @empty {
-                <div class="p-6 text-center text-xs text-gray-400 space-y-1">
+                <div class="p-8 text-center text-xs text-gray-400 space-y-1">
                   <div>No questions matching "{{ searchQuery }}".</div>
                 </div>
               }
