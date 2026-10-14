@@ -1,16 +1,17 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { MatiPollService } from '../../services/mati-poll.service';
+import { MatiPollService, normalizeRoomCode } from '../../services/mati-poll.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
 
 
 @Component({
   selector: 'app-student-view',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between max-w-md mx-auto shadow-2xl relative">
       <!-- Mobile Top Bar -->
@@ -26,31 +27,86 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
         </div>
 
         <div class="flex items-center gap-2">
-          @if (room()?.status === 'completed') {
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
-              <i class="pi pi-check-circle text-[9px]"></i> Session Ended
-            </span>
-          } @else if (room()?.mode === 'survey') {
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
-              <i class="pi pi-list-check text-[9px]"></i> Survey Mode
-            </span>
-          } @else if (room()?.status === 'draft' || room()?.status === 'closed' || !room()?.activePollId) {
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Standby
-            </span>
-          } @else {
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live Stage
-            </span>
+          @if (!showEnterCodeCard()) {
+            @if (room()?.status === 'completed') {
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                <i class="pi pi-check-circle text-[9px]"></i> Ended
+              </span>
+            } @else if (room()?.mode === 'survey') {
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                <i class="pi pi-list-check text-[9px]"></i> Survey
+              </span>
+            } @else if (room()?.status === 'draft' || room()?.status === 'closed' || !room()?.activePollId) {
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Standby
+              </span>
+            } @else {
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+              </span>
+            }
           }
-          <div class="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">
-            PIN: {{ roomCode() }}
-          </div>
+          <button 
+            type="button" 
+            (click)="openChangeRoomModal()" 
+            title="Click to enter or change event PIN"
+            class="px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer">
+            <span>#{{ roomCode() }}</span>
+            <i class="pi pi-pencil text-[9px] opacity-70"></i>
+          </button>
         </div>
       </header>
 
       <!-- Content Area -->
       <main class="p-4 sm:p-5 flex-1 flex flex-col justify-start overflow-y-auto">
+        @if (showEnterCodeCard()) {
+          <!-- Slido-Style Participant Join Card -->
+          <div class="my-auto py-6 space-y-6 animate-fadein text-center">
+            <div class="space-y-2">
+              <div class="w-16 h-16 rounded-3xl bg-indigo-600 flex items-center justify-center text-white text-3xl font-black mx-auto shadow-xl shadow-indigo-600/30">
+                ម
+              </div>
+              <h2 class="text-2xl font-black text-slate-900 dark:text-white">
+                Join an Event
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                Enter the code shown on the screen (e.g. <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">#MATI3F</span>)
+              </p>
+            </div>
+
+            <div class="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl space-y-4">
+              <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 font-bold font-mono text-xl">#</span>
+                <input
+                  type="text"
+                  [ngModel]="inputJoinCode()"
+                  (ngModelChange)="inputJoinCode.set($event)"
+                  (keyup.enter)="submitJoinCode()"
+                  placeholder="e.g. MATI3F"
+                  class="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-2xl text-slate-900 dark:text-white font-mono font-black text-xl uppercase tracking-wider outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400 placeholder:normal-case placeholder:font-normal placeholder:text-base text-center" />
+              </div>
+
+              <button
+                type="button"
+                (click)="submitJoinCode()"
+                class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-black text-base rounded-2xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer flex items-center justify-center gap-2">
+                <span>Join Event</span>
+                <i class="pi pi-arrow-right"></i>
+              </button>
+
+              @if (activeBroadcastRoom() && activeBroadcastRoom() !== 'MATI01') {
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    (click)="joinQuick(activeBroadcastRoom()!)"
+                    class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold inline-flex items-center gap-1 cursor-pointer">
+                    <span>⚡ Join active live stage: <strong>#{{ activeBroadcastRoom() }}</strong></span>
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
         @if (room()?.status === 'completed' || (room()?.mode === 'survey' && showSurveyCompletedOverview())) {
           <!-- Complete Session & Results Overview Screen for Participant Mobile -->
           <div class="w-full space-y-4 my-auto animate-fadein pb-4">
@@ -798,7 +854,46 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
           </div>
         }
       }
+      }
       </main>
+
+      <!-- Switch Room Modal -->
+      @if (showChangeRoomModal()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadein">
+          <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-sm border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-base font-black text-slate-900 dark:text-white">Switch Event / Room</h3>
+                <p class="text-[11px] text-slate-500">Enter code from presenter's screen</p>
+              </div>
+              <button 
+                type="button" 
+                (click)="showChangeRoomModal.set(false)" 
+                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer">
+                <i class="pi pi-times text-xs"></i>
+              </button>
+            </div>
+
+            <div class="relative">
+              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-500 font-bold font-mono text-base">#</span>
+              <input
+                type="text"
+                [ngModel]="inputJoinCode()"
+                (ngModelChange)="inputJoinCode.set($event)"
+                (keyup.enter)="submitJoinCode()"
+                placeholder="e.g. MATI3F"
+                class="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono font-bold text-sm uppercase outline-none focus:ring-2 focus:ring-indigo-500 text-center" />
+            </div>
+
+            <button
+              type="button"
+              (click)="submitJoinCode()"
+              class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/30 transition-all cursor-pointer">
+              Connect to Room
+            </button>
+          </div>
+        </div>
+      }
 
       <!-- Voter ID Footer -->
       <footer class="p-4 bg-white/50 dark:bg-slate-900/50 border-t border-slate-200/80 dark:border-slate-800/80 text-center">
@@ -814,8 +909,14 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
   `
 })
 export class StudentViewComponent implements OnInit, OnDestroy {
+  private router = inject(Router);
   private route = inject(ActivatedRoute);
   private pollService = inject(MatiPollService);
+
+  showEnterCodeCard = signal<boolean>(false);
+  showChangeRoomModal = signal<boolean>(false);
+  inputJoinCode = signal<string>('');
+  activeBroadcastRoom = signal<string | null>(null);
 
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
@@ -984,6 +1085,27 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   private pollsListSub?: Subscription;
   private currentActivePollIdOnStudent: string | null = null;
 
+  openChangeRoomModal() {
+    this.inputJoinCode.set(this.roomCode());
+    this.showChangeRoomModal.set(true);
+  }
+
+  submitJoinCode() {
+    const raw = this.inputJoinCode();
+    const clean = normalizeRoomCode(raw);
+    if (clean) {
+      this.showEnterCodeCard.set(false);
+      this.showChangeRoomModal.set(false);
+      this.router.navigate(['/join', clean]);
+      this.switchStudentRoom(clean);
+    }
+  }
+
+  joinQuick(code: string) {
+    this.inputJoinCode.set(code);
+    this.submitJoinCode();
+  }
+
   ngOnInit() {
     const vid = this.pollService.getOrCreateVoterId();
     this.voterId.set(vid);
@@ -996,14 +1118,25 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     }
 
     this.route.paramMap.subscribe(params => {
-      const codeFromRoute = params.get('roomCode');
-      const targetCode = (codeFromRoute || this.pollService.getActiveBroadcastRoom() || 'MATI01').toUpperCase();
-      this.switchStudentRoom(targetCode);
+      let raw = params.get('roomCode');
+      if (!raw && typeof window !== 'undefined' && window.location.hash) {
+        raw = window.location.hash;
+      }
+      if (raw) {
+        const clean = normalizeRoomCode(raw);
+        this.showEnterCodeCard.set(false);
+        this.switchStudentRoom(clean);
+      } else {
+        const broadcast = this.pollService.getActiveBroadcastRoom();
+        this.activeBroadcastRoom.set(broadcast);
+        this.showEnterCodeCard.set(true);
+      }
     });
   }
 
   private switchStudentRoom(code: string) {
-    if (code === this.roomCode() && this.roomSub) return;
+    const clean = normalizeRoomCode(code);
+    if (clean === this.roomCode() && this.roomSub) return;
     this.pollSub?.unsubscribe();
     this.roomSub?.unsubscribe();
     this.pollsListSub?.unsubscribe();
@@ -1015,10 +1148,10 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.selectedOptionId.set(null);
     this.remainingSeconds.set(null);
 
-    this.roomCode.set(code);
-    this.listenToPoll(code);
-    this.listenToRoom(code);
-    this.listenToRoomPolls(code);
+    this.roomCode.set(clean);
+    this.listenToPoll(clean);
+    this.listenToRoom(clean);
+    this.listenToRoomPolls(clean);
   }
 
   ngOnDestroy() {

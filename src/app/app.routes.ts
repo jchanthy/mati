@@ -1,7 +1,9 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { AppLayoutComponent } from './layout/app.layout.component';
 import { authGuard } from './guards/auth.guard';
 import { adminGuard } from './guards/admin.guard';
+import { AuthService } from './services/auth.service';
 
 export const routes: Routes = [
   // Admin & Presenter Login with Google
@@ -117,11 +119,14 @@ export const routes: Routes = [
     redirectTo: ({ params }) => `dashboard/control/${params['roomCode']}`
   },
 
-  // Redirect root to dashboard
+  // Redirect root to dashboard if logged in, or join for audience
   {
     path: '',
-    redirectTo: 'dashboard',
-    pathMatch: 'full'
+    pathMatch: 'full',
+    redirectTo: () => {
+      const auth = inject(AuthService);
+      return auth.isAuthenticated() ? 'dashboard' : 'join';
+    }
   },
 
   // Wildcard fallback

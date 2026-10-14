@@ -1,12 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { normalizeRoomCode } from '../../services/mati-poll.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   template: `
     <div class="min-h-screen flex flex-col justify-center items-center p-4 bg-slate-950 text-white relative overflow-hidden select-none">
       <!-- Background Ambient Glow -->
@@ -76,16 +78,33 @@ import { AuthService } from '../../services/auth.service';
           </div>
 
           <!-- Join Quick Box for Students -->
-          <div class="text-center space-y-2 pt-1">
-            <p class="text-xs text-slate-400">
-              Are you an audience member or student?
-            </p>
-            <a
-              routerLink="/join/MATI01"
-              class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
-              <i class="pi pi-mobile text-xs"></i>
-              <span>Join a Live Session via PIN / QR</span>
-            </a>
+          <div class="space-y-3 pt-1">
+            <div class="text-center space-y-0.5">
+              <div class="text-xs font-bold text-slate-200">Audience & Student Participation</div>
+              <p class="text-[11px] text-slate-400">
+                Joining a live poll or quiz? Enter the PIN from the TV screen:
+              </p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <div class="relative flex-1">
+                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-400 font-bold font-mono text-sm">#</span>
+                <input
+                  type="text"
+                  [ngModel]="studentCodeInput()"
+                  (ngModelChange)="studentCodeInput.set($event)"
+                  (keyup.enter)="joinAsStudent()"
+                  placeholder="e.g. MATI3F"
+                  class="w-full pl-8 pr-3 py-2.5 bg-slate-800/90 border border-slate-700 focus:border-indigo-500 rounded-xl text-white font-mono font-bold text-sm uppercase tracking-wider outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all placeholder:text-slate-500 placeholder:normal-case placeholder:font-normal" />
+              </div>
+              <button
+                type="button"
+                (click)="joinAsStudent()"
+                class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/30 transition-all cursor-pointer flex items-center gap-1.5 shrink-0">
+                <span>Join</span>
+                <i class="pi pi-arrow-right text-[10px]"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -104,6 +123,13 @@ export class LoginComponent {
 
   isLoggingIn = signal<boolean>(false);
   errorMessage = signal<string>('');
+  studentCodeInput = signal<string>('');
+
+  joinAsStudent() {
+    const raw = this.studentCodeInput();
+    const clean = normalizeRoomCode(raw);
+    this.router.navigate(['/join', clean]);
+  }
 
   async signInWithGoogle() {
     this.errorMessage.set('');

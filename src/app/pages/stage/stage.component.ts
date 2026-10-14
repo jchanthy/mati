@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { MatiPollService } from '../../services/mati-poll.service';
+import { MatiPollService, normalizeRoomCode } from '../../services/mati-poll.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
 import QRCode from 'qrcode';
 
@@ -1363,7 +1363,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   switchActiveRoom(code: string, isFromBroadcast: boolean) {
-    const target = (code || 'MATI01').toUpperCase();
+    const target = normalizeRoomCode(code);
     if (target === this.roomCode() && this.roomSub) {
       return;
     }
@@ -1414,7 +1414,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
           targetCode = parts[stageIdx + 1];
         }
       }
-      targetCode = (targetCode || this.pollService.getActiveBroadcastRoom() || 'MATI01').toUpperCase();
+      targetCode = normalizeRoomCode(targetCode || this.pollService.getActiveBroadcastRoom() || 'MATI01');
       return this.resolveThemeForRoom(targetCode);
     } catch {
       return 'dark';
@@ -1424,7 +1424,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   private resolveThemeForRoom(code: string): 'dark' | 'light' {
     if (!this.isBrowser) return 'dark';
     try {
-      const normalizedCode = (code || 'MATI01').toUpperCase();
+      const normalizedCode = normalizeRoomCode(code);
       const saved = localStorage.getItem(`mati_stage_theme_${normalizedCode}`);
       if (saved === 'light' || saved === 'dark') {
         return saved;

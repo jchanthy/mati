@@ -21,6 +21,25 @@ import {
 import { Observable, BehaviorSubject, of, combineLatest, map } from 'rxjs';
 import { Room, Poll, Vote, PollStats, DetailedSessionSummary, QuestionResultSummary, QuizLeaderboardEntry } from '../models/poll.model';
 
+/**
+ * Normalizes any room code:
+ * - Strips leading '#' symbol (e.g. #MATI3F -> MATI3F)
+ * - Decodes URI component if encoded (e.g. %23MATI3F -> MATI3F)
+ * - Strips question marks or punctuation (e.g. #MATI3F? -> MATI3F)
+ * - Trims whitespace and converts to uppercase
+ */
+export function normalizeRoomCode(code: string | null | undefined): string {
+  if (!code) return 'MATI01';
+  try {
+    const decoded = decodeURIComponent(code);
+    const cleaned = decoded.replace(/^[#\s]+/, '').replace(/[^a-zA-Z0-9_-]/g, '').trim().toUpperCase();
+    return cleaned || 'MATI01';
+  } catch {
+    const cleaned = code.replace(/^[#\s]+/, '').replace(/[^a-zA-Z0-9_-]/g, '').trim().toUpperCase();
+    return cleaned || 'MATI01';
+  }
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -41,12 +60,19 @@ export class MatiPollService {
   readonly currentStats = signal<PollStats | null>(null);
   readonly isConnectedToFirebase = signal<boolean>(false);
 
+  /**
+   * Public helper to normalize room codes
+   */
+  normalizeRoomCode(code: string | null | undefined): string {
+    return normalizeRoomCode(code);
+  }
+
   constructor() {
     this.initDefaultMockData();
     if (this.isBrowser) {
       const saved = localStorage.getItem('mati_active_room');
       if (saved) {
-        this.activeBroadcastRoom$.next(saved.toUpperCase());
+        this.activeBroadcastRoom$.next(normalizeRoomCode(saved));
       }
     }
     if (this.firestore) {
@@ -64,7 +90,7 @@ export class MatiPollService {
         if (snap.exists()) {
           const data = snap.data();
           if (data && data['activeRoomCode']) {
-            const code = (data['activeRoomCode'] as string).toUpperCase();
+            const code = normalizeRoomCode(data['activeRoomCode'] as string);
             this.activeBroadcastRoom$.next(code);
             if (this.isBrowser) {
               localStorage.setItem('mati_active_room', code);
@@ -83,7 +109,7 @@ export class MatiPollService {
    * Broadcasts the currently active presenter room to all TV stage screens & clients
    */
   async broadcastActiveRoom(roomCode: string, updatedBy?: string): Promise<void> {
-    const code = (roomCode || 'MATI01').toUpperCase().trim();
+    const code = normalizeRoomCode(roomCode);
     if (!code) return;
     this.activeBroadcastRoom$.next(code);
     if (this.isBrowser) {
@@ -227,7 +253,7 @@ export class MatiPollService {
    * Delete room and its associated state
    */
   async deleteRoom(roomCode: string): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
@@ -247,7 +273,7 @@ export class MatiPollService {
    */
   async setRoomStatus(roomCode: string, status: 'active' | 'completed' | 'draft' | 'closed' | 'inactive'): Promise<void> {
     if (!roomCode || roomCode.startsWith('_')) return;
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
@@ -277,7 +303,7 @@ export class MatiPollService {
    * Duplicate room with all its polls and settings
    */
   async duplicateRoom(sourceCode: string, newTitle?: string, ownerId?: string, ownerEmail?: string): Promise<string> {
-    const srcCode = sourceCode.toUpperCase();
+    const srcCode = normalizeRoomCode(sourceCode);
     const rooms = this.mockRooms$.getValue();
     const srcRoom = rooms.get(srcCode);
     const title = newTitle || (srcRoom ? `${srcRoom.title} (Copy)` : `Session Copy`);
@@ -324,7 +350,7 @@ export class MatiPollService {
    * Delete specific poll from a room
    */
   async deletePoll(roomCode: string, pollId: string): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       try {
         const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
@@ -346,7 +372,7 @@ export class MatiPollService {
    * Appends poll to sub-collection.
    */
   async createPoll(roomCode: string, question: string, optionTexts: string[], correctOptionId?: number): Promise<Poll> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     const pollId = 'poll_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
     
     // Determine order
@@ -398,7 +424,7 @@ export class MatiPollService {
    * Batch append multiple parsed questions to a room.
    */
   async createPollsBatch(roomCode: string, questions: { question: string; options: string[]; correctOptionIndex?: number }[]): Promise<number> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     let count = 0;
     for (const q of questions) {
       const correctOptionId = (q.correctOptionIndex !== undefined) ? q.correctOptionIndex + 1 : undefined;
@@ -413,7 +439,7 @@ export class MatiPollService {
    * Sets live question on screen, and atomically sets or clears countdown timer.
    */
   async setActivePoll(roomCode: string, pollId: string | null, timerSeconds?: number | null): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     const hasTimer = timerSeconds !== undefined && timerSeconds !== null && timerSeconds > 0;
     const timerDuration = hasTimer ? timerSeconds : null;
     const timerEndsAt = hasTimer ? Date.now() + (timerSeconds as number) * 1000 : null;
@@ -479,7 +505,7 @@ export class MatiPollService {
    * Opens/closes voting.
    */
   async toggleLockPoll(roomCode: string, pollId: string, isLocked: boolean): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       try {
         const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
@@ -509,7 +535,7 @@ export class MatiPollService {
    * Toggles bar chart visibility on stage.
    */
   async toggleShowResults(roomCode: string, pollId: string, show: boolean): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       try {
         const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
@@ -538,7 +564,7 @@ export class MatiPollService {
    * Toggles reveal of correct answer on stage, controller and participant screens.
    */
   async toggleShowCorrectAnswer(roomCode: string, pollId: string, show: boolean): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       try {
         const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
@@ -578,7 +604,7 @@ export class MatiPollService {
    * When null or 0, clears the timer.
    */
   async setPollTimer(roomCode: string, durationSeconds: number | null): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     const timerDuration = durationSeconds && durationSeconds > 0 ? durationSeconds : null;
     const timerEndsAt = durationSeconds && durationSeconds > 0 ? Date.now() + durationSeconds * 1000 : null;
 
@@ -609,7 +635,7 @@ export class MatiPollService {
    * Sets room interaction mode: 'live' (presenter-led sync) or 'survey' (self-paced audience voting).
    */
   async setRoomMode(roomCode: string, mode: 'live' | 'survey'): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
@@ -634,7 +660,7 @@ export class MatiPollService {
    * Pass null or empty array to include all questions.
    */
   async updateRoomSelectedPollIds(roomCode: string, selectedPollIds: string[] | null): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     const list = selectedPollIds && selectedPollIds.length > 0 ? selectedPollIds : null;
 
     if (this.firestore) {
@@ -662,7 +688,7 @@ export class MatiPollService {
    * Sets room projection stage theme: 'dark' or 'light'.
    */
   async setRoomTheme(roomCode: string, theme: 'dark' | 'light'): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.isBrowser) {
       localStorage.setItem(`mati_stage_theme_${code}`, theme);
       localStorage.setItem('mati_stage_theme_last', theme);
@@ -692,7 +718,7 @@ export class MatiPollService {
    */
   getCachedRoom(roomCode: string): Room | null {
     if (!roomCode || roomCode.startsWith('_')) return null;
-    const code = (roomCode || 'MATI01').toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     let room = this.mockRooms$.getValue().get(code) || null;
     if (!room && this.isBrowser) {
       const savedTheme = localStorage.getItem(`mati_stage_theme_${code}`);
@@ -715,7 +741,7 @@ export class MatiPollService {
    * Sets room status to 'completed' and clears timer.
    */
   async completeSession(roomCode: string): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
@@ -745,7 +771,7 @@ export class MatiPollService {
    * Restarts the session from the first question.
    */
   async restartSession(roomCode: string): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     const roomData = await this.getRoom(code);
     const allPolls = await this.getPollsForRoom(code);
     const polls = roomData?.selectedPollIds && roomData.selectedPollIds.length > 0
@@ -784,7 +810,7 @@ export class MatiPollService {
    * Aggregates detailed session summary (total questions, votes, overall accuracy %, question-by-question results)
    */
   async getSessionSummary(roomCode: string): Promise<DetailedSessionSummary> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     const roomData = await this.getRoom(code);
     const allPolls = await this.getPollsForRoom(code);
     const polls = roomData?.selectedPollIds && roomData.selectedPollIds.length > 0
@@ -978,7 +1004,7 @@ export class MatiPollService {
     voterName?: string,
     timeSpentSeconds?: number
   ): Promise<void> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     const voteKey = `${code}_${pollId}`;
     const newVote: Vote = {
       voterId,
@@ -1019,7 +1045,8 @@ export class MatiPollService {
    */
   getVotedOption(roomCode: string, pollId: string): number | null {
     if (!this.isBrowser) return null;
-    const val = localStorage.getItem(`mati_voted_${roomCode.toUpperCase()}_${pollId}`);
+    const code = normalizeRoomCode(roomCode);
+    const val = localStorage.getItem(`mati_voted_${code}_${pollId}`);
     return val ? parseInt(val, 10) : null;
   }
 
@@ -1028,7 +1055,7 @@ export class MatiPollService {
    * Real-time observable returning poll metadata and aggregated option vote counts.
    */
   listenToActivePoll(roomCode: string, includeVotes: boolean = true): Observable<PollStats | null> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
 
     // RxJS stream listening to Room -> Active Poll -> Votes
     return new Observable<PollStats | null>((subscriber) => {
@@ -1203,7 +1230,7 @@ export class MatiPollService {
    * Listen to all polls in a room
    */
   listenToRoomPolls(roomCode: string): Observable<Poll[]> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       return new Observable<Poll[]>((subscriber) => {
         // Emit in-memory polls first for instant UI response
@@ -1247,7 +1274,7 @@ export class MatiPollService {
     if (!roomCode || roomCode.startsWith('_')) {
       return of(null);
     }
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       return new Observable<Room | null>((subscriber) => {
         // Emit in-memory cached room first for 0ms instant UI response
@@ -1282,7 +1309,7 @@ export class MatiPollService {
    * Listen to real-time stats for any poll by ID (useful for self-paced survey mode)
    */
   listenToPollStats(roomCode: string, pollId: string): Observable<PollStats | null> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       return new Observable<PollStats | null>((subscriber) => {
         const pollRef = doc(this.firestore!, `rooms/${code}/polls/${pollId}`);
@@ -1369,7 +1396,7 @@ export class MatiPollService {
 
   async getRoom(roomCode: string): Promise<Room | null> {
     if (!roomCode || roomCode.startsWith('_')) return null;
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       try {
         const snap = await getDoc(doc(this.firestore, `rooms/${code}`));
@@ -1382,7 +1409,7 @@ export class MatiPollService {
   }
 
   async getPollsForRoom(roomCode: string): Promise<Poll[]> {
-    const code = roomCode.toUpperCase();
+    const code = normalizeRoomCode(roomCode);
     const local = this.mockPolls$.getValue().get(code) || [];
     if (this.firestore) {
       try {
