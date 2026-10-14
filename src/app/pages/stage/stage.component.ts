@@ -759,25 +759,38 @@ import QRCode from 'qrcode';
           </div>
         } @else if (room()?.mode === 'survey') {
           <!-- SLIDO-INSPIRED SURVEY & PRESENTATION JOIN STAGE -->
-          <div class="fixed inset-0 z-40 flex flex-col justify-between p-4 sm:p-8 md:p-10 select-none animate-fadein overflow-hidden"
-            [ngClass]="isLight() ? 'bg-[#F7F5F0] text-[#1E2329]' : 'bg-[#0F172A] text-white'">
+          <div class="fixed inset-0 z-40 flex flex-col justify-between p-4 sm:p-8 md:p-10 select-none animate-fadein overflow-hidden relative"
+            [ngClass]="isLight() ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-white'">
+
+            <!-- Background Ambient Glow -->
+            @if (isLight()) {
+              <div class="absolute -top-32 -left-32 w-[32rem] h-[32rem] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+              <div class="absolute -bottom-32 -right-32 w-[32rem] h-[32rem] bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            } @else {
+              <div class="absolute -top-32 -left-32 w-[32rem] h-[32rem] bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
+              <div class="absolute -bottom-32 -right-32 w-[32rem] h-[32rem] bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
+            }
 
             <!-- 1. Minimalist Top Bar (Back button + Centered Logo) -->
-            <div class="relative w-full flex items-center justify-between shrink-0">
-              <!-- Circular Dark Back Button -->
+            <div class="relative w-full flex items-center justify-between shrink-0 z-10">
+              <!-- Circular Back Button -->
               <button 
                 type="button" 
                 (click)="goBack()"
                 title="Back to controller"
-                class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1E2329] hover:bg-black text-white flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-105 shrink-0">
+                class="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-105 shrink-0 border"
+                [ngClass]="isLight() ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-slate-200/50' : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-800 shadow-black/40'">
                 <i class="pi pi-chevron-left text-xs sm:text-sm font-bold"></i>
               </button>
 
-              <!-- Slido-Style Centered Brand Name -->
-              <div class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
-                <span class="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight lowercase font-sans"
-                  [ngClass]="isLight() ? 'text-[#1E2329]' : 'text-white'">
-                  mati
+              <!-- Mati Brand Centered Name & Icon Mark -->
+              <div class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center gap-2 pointer-events-none">
+                <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs sm:text-sm font-black shadow-md shadow-indigo-600/30">
+                  M
+                </div>
+                <span class="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight font-sans"
+                  [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                  mati<span class="text-indigo-600 dark:text-indigo-400">.</span>
                 </span>
               </div>
 
@@ -786,34 +799,34 @@ import QRCode from 'qrcode';
             </div>
 
             <!-- 2. Pure Slido Hero Layout: [ Join at / domain / #PIN ] | [ Giant QR Code ] -->
-            <div class="flex-1 min-h-0 w-full flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden">
+            <div class="flex-1 min-h-0 w-full flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden z-10">
               <div class="w-full max-w-5xl 2xl:max-w-6xl flex flex-col md:flex-row items-center justify-center gap-6 sm:gap-8 md:gap-10 lg:gap-14 px-3 sm:px-6">
                 
                 <!-- Left Column: Join instructions -->
                 <div class="flex-1 min-w-0 max-w-full text-center md:text-right space-y-0.5 sm:space-y-1">
                   <div class="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-medium tracking-normal"
-                    [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">
+                    [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
                     Join at
                   </div>
                   <div class="font-black tracking-tight leading-tight select-all truncate"
-                    [ngClass]="[isLight() ? 'text-[#1E2329]' : 'text-white', domainFontSizeClass()]"
+                    [ngClass]="[isLight() ? 'text-slate-900' : 'text-white', domainFontSizeClass()]"
                     [title]="joinDomain()">
                     {{ joinDomain() }}
                   </div>
-                  <div class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-tight pt-0.5 sm:pt-1"
-                    [ngClass]="isLight() ? 'text-[#1E2329]' : 'text-white'">
+                  <div class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black font-mono tracking-tight leading-tight pt-0.5 sm:pt-1"
+                    [ngClass]="isLight() ? 'text-indigo-600' : 'text-indigo-400'">
                     {{ formattedPin() }}
                   </div>
                 </div>
 
                 <!-- Subtle Center Divider Line -->
                 <div class="hidden md:block w-px h-44 sm:h-56 md:h-64 lg:h-72 shrink-0"
-                  [ngClass]="isLight() ? 'bg-[#D9D4C7]' : 'bg-slate-700'">
+                  [ngClass]="isLight() ? 'bg-slate-200' : 'bg-slate-800'">
                 </div>
 
-                <!-- Right Column: Crisp White Rounded QR Card (fluidly scaled to never overflow) -->
-                <div class="p-3 sm:p-4 md:p-5 bg-white rounded-3xl sm:rounded-4xl shadow-sm shrink-0 border"
-                  [ngClass]="isLight() ? 'border-[#E5E0D5]' : 'border-slate-800'">
+                <!-- Right Column: Crisp White Rounded QR Card with Mati Brand Glow -->
+                <div class="p-3 sm:p-4 md:p-5 bg-white rounded-3xl sm:rounded-4xl shadow-2xl shrink-0 border ring-4 ring-indigo-500/10"
+                  [ngClass]="isLight() ? 'border-slate-200/80 shadow-slate-200/60' : 'border-slate-800 shadow-indigo-950/40'">
                   @if (qrCodeDataUrl()) {
                     <img 
                       [src]="qrCodeDataUrl()" 
@@ -830,9 +843,10 @@ import QRCode from 'qrcode';
             </div>
 
             <!-- 3. Bottom Controls: Slido-style Floating Pill on Left & Results Peeker on Right -->
-            <div class="flex items-center justify-between w-full shrink-0">
+            <div class="flex items-center justify-between w-full shrink-0 z-10">
               <!-- Slido Floating Pill: Settings & Fullscreen -->
-              <div class="flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl bg-[#1E2329] text-white shadow-xl backdrop-blur-md">
+              <div class="flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl text-white shadow-xl backdrop-blur-md border"
+                [ngClass]="isLight() ? 'bg-slate-900/90 border-slate-700/50' : 'bg-slate-900/90 border-slate-800'">
                 <button 
                   type="button" 
                   (click)="toggleTheme()" 
@@ -856,7 +870,7 @@ import QRCode from 'qrcode';
                   (click)="toggleOverviewMode()" 
                   title="View live survey results" 
                   class="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs hover:scale-102"
-                  [ngClass]="isLight() ? 'bg-white hover:bg-slate-100 text-slate-700 border-[#D9D4C7]' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'">
+                  [ngClass]="isLight() ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-800'">
                   <i class="pi pi-chart-bar text-indigo-500"></i>
                   <span>Live Results ({{ totalVotesCount() }})</span>
                 </button>
