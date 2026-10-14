@@ -603,18 +603,23 @@ export class MatiPollService {
    * When durationSeconds is a positive number, sets timerEndsAt = Date.now() + durationSeconds * 1000.
    * When null or 0, clears the timer.
    */
-  async setPollTimer(roomCode: string, durationSeconds: number | null): Promise<void> {
+  async setPollTimer(roomCode: string, durationSeconds: number | null, autoAdvance?: boolean): Promise<void> {
     const code = normalizeRoomCode(roomCode);
     const timerDuration = durationSeconds && durationSeconds > 0 ? durationSeconds : null;
     const timerEndsAt = durationSeconds && durationSeconds > 0 ? Date.now() + durationSeconds * 1000 : null;
 
+    const updatePayload: any = {
+      timerDuration,
+      timerEndsAt
+    };
+    if (autoAdvance !== undefined) {
+      updatePayload.autoAdvance = autoAdvance;
+    }
+
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
-        await updateDoc(roomRef, {
-          timerDuration,
-          timerEndsAt
-        });
+        await updateDoc(roomRef, updatePayload);
       } catch (err) {
         console.warn('[Mati] Firebase setPollTimer error:', err);
       }
@@ -625,6 +630,9 @@ export class MatiPollService {
     if (room) {
       room.timerDuration = timerDuration ?? undefined;
       room.timerEndsAt = timerEndsAt;
+      if (autoAdvance !== undefined) {
+        room.autoAdvance = autoAdvance;
+      }
       rooms.set(code, { ...room });
       this.mockRooms$.next(new Map(rooms));
       this.currentRoom.set({ ...room });

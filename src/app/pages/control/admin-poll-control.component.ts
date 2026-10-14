@@ -465,13 +465,67 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 </div>
 
                 <div class="flex items-center gap-2">
-                  <!-- Compact Broadcast Timer -->
-                  <div class="flex items-center gap-1 text-xs">
-                    <span class="text-gray-400 font-medium text-[11px]">Timer:</span>
-                    <button type="button" (click)="triggerQuestionTimer(30)" class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors cursor-pointer text-xs">30s</button>
-                    <button type="button" (click)="triggerQuestionTimer(60)" class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 text-gray-700 dark:text-gray-300 font-semibold transition-colors cursor-pointer text-xs">60s</button>
-                    @if (autoAdvanceEnabled || countdownSeconds) {
-                      <button type="button" (click)="clearQuestionTimer()" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold transition-colors cursor-pointer text-xs">Stop</button>
+                  <!-- Timer & Auto-Advance Control Suite -->
+                  <div class="flex items-center gap-1.5 flex-wrap text-xs bg-gray-50 dark:bg-gray-800/80 p-1.5 px-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <!-- Timer Live Countdown Badge if active -->
+                    @if (autoAdvanceEnabled || isTimerActive()) {
+                      <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg font-mono font-bold text-xs"
+                        [ngClass]="countdownSeconds <= 5 
+                          ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 animate-pulse border border-red-300 dark:border-red-800' 
+                          : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'">
+                        <i class="pi pi-clock text-[10px]"></i>
+                        <span>{{ countdownSeconds }}s</span>
+                        @if (autoAdvanceEnabled) {
+                          <span class="text-[10px] font-sans font-semibold text-indigo-600 dark:text-indigo-400">→ Auto-Next</span>
+                        }
+                      </div>
+                    } @else {
+                      <span class="text-gray-400 font-medium text-[11px] flex items-center gap-1">
+                        <i class="pi pi-clock text-[10px]"></i> Timer:
+                      </span>
+                    }
+
+                    <!-- Quick Timer Preset Buttons -->
+                    <div class="flex items-center gap-1">
+                      @for (sec of [15, 20, 30, 45, 60]; track sec) {
+                        <button 
+                          type="button" 
+                          (click)="startAutoAdvanceTimer(sec)" 
+                          [class.bg-indigo-600]="autoAdvanceEnabled && timerDuration === sec"
+                          [class.text-white]="autoAdvanceEnabled && timerDuration === sec"
+                          [class.font-bold]="autoAdvanceEnabled && timerDuration === sec"
+                          class="px-2 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer border"
+                          [ngClass]="autoAdvanceEnabled && timerDuration === sec 
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' 
+                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:text-indigo-600 hover:border-indigo-300'">
+                          {{ sec }}s
+                        </button>
+                      }
+                    </div>
+
+                    <!-- Auto Advance Toggle Switch / Pill -->
+                    <button
+                      type="button"
+                      (click)="toggleAutoAdvance()"
+                      title="Automatically continue to next question when timer runs out"
+                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border"
+                      [ngClass]="autoAdvanceEnabled 
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' 
+                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:text-gray-800'">
+                      <i class="pi" [ngClass]="autoAdvanceEnabled ? 'pi-check text-emerald-600' : 'pi-sync text-gray-400'"></i>
+                      <span>Auto-Next {{ autoAdvanceEnabled ? 'ON' : 'OFF' }}</span>
+                    </button>
+
+                    <!-- Stop Button -->
+                    @if (autoAdvanceEnabled || isTimerActive()) {
+                      <button 
+                        type="button" 
+                        (click)="clearQuestionTimer()" 
+                        title="Stop timer and auto-advance" 
+                        class="px-2 py-1 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 hover:bg-red-100 border border-red-200 dark:border-red-800 font-bold transition-colors cursor-pointer text-xs flex items-center gap-1">
+                        <i class="pi pi-times text-[10px]"></i>
+                        <span>Stop</span>
+                      </button>
                     }
                   </div>
 
@@ -958,6 +1012,8 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   autoAdvanceEnabled = false;
   timerDuration = 20;
   countdownSeconds = 20;
+  timerEndsAt: number | null = null;
+  private isAdvancingQuestion = false;
   private timerInterval: any = null;
 
   private pollSub?: Subscription;
@@ -998,7 +1054,6 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   private subscribeToRoom(code: string) {
     this.stopTimer();
-    this.autoAdvanceEnabled = false;
     this.pollService.broadcastActiveRoom(code, this.currentUser()?.email);
 
     this.pollSub?.unsubscribe();
@@ -1013,6 +1068,16 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       this.room.set(roomData);
       if (roomData?.status === 'completed') {
         this.refreshSessionSummary();
+      }
+      if (roomData?.timerEndsAt && roomData.timerEndsAt > Date.now()) {
+        this.timerEndsAt = roomData.timerEndsAt;
+        if (roomData.timerDuration) this.timerDuration = roomData.timerDuration;
+        if (roomData.autoAdvance !== undefined) {
+          this.autoAdvanceEnabled = roomData.autoAdvance;
+        }
+        if (!this.timerInterval && this.autoAdvanceEnabled) {
+          this.startTimerTicker();
+        }
       }
     });
 
@@ -1292,70 +1357,83 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     }
   }
 
+  startAutoAdvanceTimer(seconds: number) {
+    this.timerDuration = seconds;
+    this.autoAdvanceEnabled = true;
+    this.countdownSeconds = seconds;
+    this.timerEndsAt = Date.now() + seconds * 1000;
+    this.pollService.setPollTimer(this.roomCode(), seconds, true);
+    this.startTimerTicker();
+    this.messageService.add({
+      severity: 'success',
+      summary: `Auto-Next Timer Active (${seconds}s)`,
+      detail: `Questions will automatically advance every ${seconds}s until the final question.`
+    });
+  }
+
+  isTimerActive(): boolean {
+    return this.countdownSeconds > 0 && this.timerEndsAt !== null && Date.now() < this.timerEndsAt;
+  }
+
   toggleAutoAdvance() {
+    this.autoAdvanceEnabled = !this.autoAdvanceEnabled;
     if (this.autoAdvanceEnabled) {
-      this.pollService.setPollTimer(this.roomCode(), this.timerDuration);
-      this.startTimer();
-      this.messageService.add({
-        severity: 'info',
-        summary: 'Auto Next Enabled',
-        detail: `Next question will auto-launch every ${this.timerDuration}s with synchronized timer on voter phones & TV.`
-      });
+      this.startAutoAdvanceTimer(this.timerDuration || 20);
     } else {
-      this.pollService.setPollTimer(this.roomCode(), null);
-      this.stopTimer();
-      this.messageService.add({
-        severity: 'secondary',
-        summary: 'Auto Next Disabled',
-        detail: 'Manual host control active.'
-      });
+      this.clearQuestionTimer();
     }
   }
 
   async triggerQuestionTimer(seconds: number) {
-    this.countdownSeconds = seconds;
-    await this.pollService.setPollTimer(this.roomCode(), seconds);
-    this.messageService.add({
-      severity: 'info',
-      summary: 'Question Timer Broadcasted',
-      detail: `Synchronized ${seconds}s countdown sent to voter phones and TV stage.`
-    });
+    this.startAutoAdvanceTimer(seconds);
   }
 
   async clearQuestionTimer() {
-    if (this.autoAdvanceEnabled) {
-      this.autoAdvanceEnabled = false;
-      this.stopTimer();
-    }
-    await this.pollService.setPollTimer(this.roomCode(), null);
+    this.autoAdvanceEnabled = false;
+    this.timerEndsAt = null;
+    this.countdownSeconds = 0;
+    this.isAdvancingQuestion = false;
+    this.stopTimer();
+    await this.pollService.setPollTimer(this.roomCode(), null, false);
     this.messageService.add({
       severity: 'secondary',
       summary: 'Timer Stopped',
-      detail: 'Countdown cleared from all participant screens.'
+      detail: 'Countdown and auto-advance cleared from all screens.'
     });
   }
 
   resetTimer() {
     this.countdownSeconds = this.timerDuration;
     if (this.autoAdvanceEnabled) {
-      this.pollService.setPollTimer(this.roomCode(), this.timerDuration);
-      this.stopTimer();
-      this.startTimer();
+      this.timerEndsAt = Date.now() + this.timerDuration * 1000;
+      this.pollService.setPollTimer(this.roomCode(), this.timerDuration, true);
+      this.startTimerTicker();
     }
   }
 
-  private startTimer() {
+  private startTimerTicker() {
     this.stopTimer();
-    this.countdownSeconds = this.timerDuration;
+    this.isAdvancingQuestion = false;
+
     this.timerInterval = setInterval(() => {
-      if (this.countdownSeconds > 1) {
-        this.countdownSeconds--;
-      } else {
-        // Time expired: automatically trigger next question
-        this.countdownSeconds = this.timerDuration;
-        this.autoAdvanceNext();
+      if (!this.timerEndsAt) {
+        this.stopTimer();
+        return;
       }
-    }, 1000);
+
+      const diff = Math.ceil((this.timerEndsAt - Date.now()) / 1000);
+      if (diff > 0) {
+        this.countdownSeconds = diff;
+      } else {
+        this.countdownSeconds = 0;
+        this.stopTimer();
+
+        if (this.autoAdvanceEnabled && !this.isAdvancingQuestion) {
+          this.isAdvancingQuestion = true;
+          this.autoAdvanceNext();
+        }
+      }
+    }, 500);
   }
 
   private stopTimer() {
@@ -1370,15 +1448,21 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     if (this.isLastQuestion()) {
       this.autoAdvanceEnabled = false;
       this.stopTimer();
+      await this.pollService.setPollTimer(this.roomCode(), null, false);
       await this.finishSession();
+      this.isAdvancingQuestion = false;
       return;
     }
-    await this.nextQuestion();
-    this.messageService.add({
-      severity: 'info',
-      summary: 'Auto Next Triggered',
-      detail: `Advanced to Question ${this.getCurrentQuestionIndex()} of ${this.polls().length}`
-    });
+    try {
+      await this.nextQuestion();
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Auto-Advanced to Next Question',
+        detail: `Now displaying Question ${this.getCurrentQuestionIndex()} of ${this.polls().length}.`
+      });
+    } finally {
+      this.isAdvancingQuestion = false;
+    }
   }
 
   async finishSession() {
