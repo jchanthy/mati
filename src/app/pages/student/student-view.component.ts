@@ -62,29 +62,65 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
               <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
               @if (studentScoredQuestionsCount() > 0) {
-                <!-- QUIZ MODE: Big Golden Trophy Icon with Rank Badge -->
+                <!-- QUIZ MODE: Celebratory Podium Icon & Rank Badge -->
                 <div class="relative w-28 h-28 mx-auto flex items-center justify-center mb-3">
-                  <svg viewBox="0 0 120 120" class="w-24 h-24 drop-shadow-md">
-                    <!-- Base / Stand -->
-                    <path d="M42 104 h36 v5 h-36 z" fill="#D97706" />
-                    <path d="M48 94 h24 v10 h-24 z" fill="#F59E0B" />
-                    <path d="M54 78 h12 v16 h-12 z" fill="#FBBF24" />
-                    <!-- Handles -->
-                    <path d="M34 38 C18 38 18 64 36 66 L38 58 C26 56 26 44 36 44 Z" fill="#F59E0B" />
-                    <path d="M86 38 C102 38 102 64 84 66 L82 58 C94 56 94 44 84 44 Z" fill="#F59E0B" />
-                    <!-- Cup Body -->
-                    <path d="M36 28 h48 c0 32 -10 52 -24 52 c-14 0 -24 -20 -24 -52 z" fill="#FBBF24" />
-                    <path d="M36 28 h48 v8 h-48 z" fill="#F59E0B" opacity="0.4" />
-                    <!-- Center Medal on Cup -->
-                    <circle cx="60" cy="50" r="14" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="2" />
-                    <text x="60" y="55" font-size="13" font-weight="900" text-anchor="middle" fill="#475569" font-family="sans-serif">1</text>
-                  </svg>
+                  @if (myRank() === 1) {
+                    <!-- 1st Place Trophy -->
+                    <svg viewBox="0 0 120 120" class="w-24 h-24 drop-shadow-md">
+                      <!-- Base / Stand -->
+                      <path d="M42 104 h36 v5 h-36 z" fill="#D97706" />
+                      <path d="M48 94 h24 v10 h-24 z" fill="#F59E0B" />
+                      <path d="M54 78 h12 v16 h-12 z" fill="#FBBF24" />
+                      <!-- Handles -->
+                      <path d="M34 38 C18 38 18 64 36 66 L38 58 C26 56 26 44 36 44 Z" fill="#F59E0B" />
+                      <path d="M86 38 C102 38 102 64 84 66 L82 58 C94 56 94 44 84 44 Z" fill="#F59E0B" />
+                      <!-- Cup Body -->
+                      <path d="M36 28 h48 c0 32 -10 52 -24 52 c-14 0 -24 -20 -24 -52 z" fill="#FBBF24" />
+                      <path d="M36 28 h48 v8 h-48 z" fill="#F59E0B" opacity="0.4" />
+                      <!-- Center Medal on Cup -->
+                      <circle cx="60" cy="50" r="14" fill="#FEF3C7" stroke="#F59E0B" stroke-width="2" />
+                      <text x="60" y="55" font-size="13" font-weight="900" text-anchor="middle" fill="#92400E" font-family="sans-serif">1</text>
+                    </svg>
+                  } @else if (myRank() === 2) {
+                    <!-- 2nd Place Silver Medal -->
+                    <div class="w-20 h-20 rounded-full bg-linear-to-b from-slate-200 to-slate-400 p-1 shadow-lg ring-4 ring-slate-300/40 flex items-center justify-center">
+                      <div class="w-full h-full rounded-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center border-2 border-slate-300">
+                        <span class="text-2xl">🥈</span>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">2nd</span>
+                      </div>
+                    </div>
+                  } @else if (myRank() === 3) {
+                    <!-- 3rd Place Bronze Medal -->
+                    <div class="w-20 h-20 rounded-full bg-linear-to-b from-amber-600 to-amber-800 p-1 shadow-lg ring-4 ring-amber-600/30 flex items-center justify-center">
+                      <div class="w-full h-full rounded-full bg-amber-50 dark:bg-slate-800 flex flex-col items-center justify-center border-2 border-amber-600">
+                        <span class="text-2xl">🥉</span>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">3rd</span>
+                      </div>
+                    </div>
+                  } @else {
+                    <!-- Top Participant Badge -->
+                    <div class="w-20 h-20 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-2 border-indigo-200 dark:border-indigo-800 flex flex-col items-center justify-center shadow-md">
+                      <span class="text-2xl">🎖️</span>
+                      <span class="text-xs font-black font-mono">#{{ myRank() }}</span>
+                    </div>
+                  }
                 </div>
 
                 <!-- Main Heading & Name -->
                 <div class="space-y-1">
-                  <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                    You finished 1<sup>st</sup>
+                  <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                    <span>🎉 សូមអបអរសាទរ! Congratulations</span>
+                  </div>
+                  <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight pt-1">
+                    @if (myRank() === 1) {
+                      You Won 1<sup>st</sup> Place! 🥇
+                    } @else if (myRank() === 2) {
+                      You Finished 2<sup>nd</sup> Place! 🥈
+                    } @else if (myRank() === 3) {
+                      You Finished 3<sup>rd</sup> Place! 🥉
+                    } @else {
+                      You Finished #{{ myRank() }}! 🎯
+                    }
                   </h2>
                   <p class="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-300">
                     Well done, {{ participantName() }}!
@@ -92,7 +128,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 </div>
 
                 <!-- Primary Stats Table -->
-                <div class="max-w-xs mx-auto py-4 space-y-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
+                <div class="max-w-xs mx-auto py-3.5 space-y-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
                   <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                     <span class="text-slate-500 dark:text-slate-400 font-medium">Correct answers:</span>
                     <span class="text-slate-900 dark:text-white font-mono font-bold text-base text-emerald-600 dark:text-emerald-400">
@@ -105,6 +141,12 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                       {{ studentAccuracyPercent() }}%
                     </span>
                   </div>
+                  <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <span class="text-slate-500 dark:text-slate-400 font-medium">Total Time Spent:</span>
+                    <span class="text-slate-900 dark:text-white font-mono font-bold text-base text-indigo-600 dark:text-indigo-400">
+                      ⏱️ {{ myTotalTime() }}s
+                    </span>
+                  </div>
                   <div class="flex items-center justify-between pt-1">
                     <span class="text-slate-500 dark:text-slate-400 font-medium">Participation:</span>
                     <span class="text-slate-900 dark:text-white font-mono font-bold text-base">
@@ -113,30 +155,45 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   </div>
                 </div>
 
-                <!-- Leaderboard Cards -->
-                <div class="space-y-2 pt-1 max-w-xs mx-auto">
-                  <div class="flex items-center justify-between px-4 py-3 rounded-2xl bg-sky-700 text-white font-bold text-sm shadow-md">
-                    <div class="flex items-center gap-2.5 min-w-0">
-                      <span class="w-6 h-6 rounded-full bg-white text-sky-800 text-xs font-black flex items-center justify-center shrink-0">
-                        1
-                      </span>
-                      <span class="truncate">{{ participantName() }} (me)</span>
-                    </div>
-                    <div class="font-mono text-xs text-sky-100 shrink-0">
-                      {{ studentCorrectAnswersCount() }}/{{ studentScoredQuestionsCount() }}
-                    </div>
+                <!-- Real Class Leaderboard Cards -->
+                <div class="space-y-2 pt-2 max-w-sm mx-auto text-left">
+                  <div class="flex items-center justify-between px-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      🏆 Class Leaderboard
+                    </span>
+                    <span class="text-[10px] text-slate-400 font-medium">Ranked by score & speed</span>
                   </div>
 
-                  @if (sessionStats().totalVotes > answeredCount()) {
-                    <div class="flex items-center justify-between px-4 py-3 rounded-2xl bg-sky-800/90 text-white font-bold text-sm">
+                  @for (entry of (sessionStats().leaderboard || []); track entry.voterId; let lIdx = $index) {
+                    <div class="flex items-center justify-between px-3.5 py-2.5 rounded-2xl border transition-all text-sm"
+                      [ngClass]="entry.voterId === voterId() 
+                        ? 'bg-indigo-600 text-white font-bold shadow-md border-indigo-700 ring-2 ring-indigo-400/50' 
+                        : (entry.rank === 1 
+                          ? 'bg-amber-500/10 border-amber-300 dark:border-amber-700/60 text-slate-900 dark:text-white' 
+                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200')">
+                      
                       <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-6 h-6 rounded-full bg-white/20 text-white text-xs font-black flex items-center justify-center shrink-0">
-                          2
+                        <span class="w-6 h-6 rounded-full text-xs font-black flex items-center justify-center shrink-0"
+                          [ngClass]="entry.voterId === voterId()
+                            ? 'bg-white text-indigo-700 shadow-xs'
+                            : (entry.rank === 1 ? 'bg-amber-400 text-amber-950' : (entry.rank === 2 ? 'bg-slate-300 text-slate-900' : (entry.rank === 3 ? 'bg-amber-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300')))">
+                          {{ entry.rank }}
                         </span>
-                        <span class="truncate">Audience Group</span>
+                        <div class="truncate">
+                          <span class="font-bold">{{ entry.voterName }}</span>
+                          @if (entry.voterId === voterId()) {
+                            <span class="ml-1 text-[10px] opacity-90 px-1.5 py-0.5 bg-white/25 rounded-md">you</span>
+                          }
+                        </div>
                       </div>
-                      <div class="font-mono text-xs text-sky-200 shrink-0">
-                        {{ sessionStats().overallAccuracy }}% accuracy
+
+                      <div class="flex items-center gap-2 shrink-0 font-mono text-xs"
+                        [ngClass]="entry.voterId === voterId() ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'">
+                        <span class="font-bold" [ngClass]="entry.voterId === voterId() ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'">
+                          {{ entry.correctAnswers }}/{{ studentScoredQuestionsCount() }}
+                        </span>
+                        <span>•</span>
+                        <span>⏱️ {{ entry.totalTimeSeconds }}s</span>
                       </div>
                     </div>
                   }
@@ -788,7 +845,8 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     overallAccuracy: 0,
     hasScoredQuestions: false,
     topConsensusPercentage: 0,
-    questionResults: []
+    questionResults: [],
+    leaderboard: []
   });
   hasVoted = signal<boolean>(false);
   selectedOptionId = signal<number | null>(null);
@@ -869,6 +927,19 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     const scoredTotal = this.studentScoredQuestionsCount();
     if (scoredTotal === 0) return 0;
     return Math.round((this.studentCorrectAnswersCount() / scoredTotal) * 100);
+  });
+
+  myLeaderboardEntry = computed(() => {
+    const list = this.sessionStats().leaderboard || [];
+    return list.find(e => e.voterId === this.voterId()) || null;
+  });
+
+  myRank = computed(() => {
+    return this.myLeaderboardEntry()?.rank || 1;
+  });
+
+  myTotalTime = computed(() => {
+    return this.myLeaderboardEntry()?.totalTimeSeconds || 0;
   });
 
   // Synchronized countdown timer
@@ -1015,7 +1086,15 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     if (this.isSubmitting()) return;
     this.isSubmitting.set(true);
     try {
-      await this.pollService.submitVote(this.roomCode(), pollId, this.voterId(), optionId);
+      const timeSpentSeconds = 5.0;
+      await this.pollService.submitVote(
+        this.roomCode(), 
+        pollId, 
+        this.voterId(), 
+        optionId,
+        this.participantName(),
+        timeSpentSeconds
+      );
       const currentMap = { ...this.votedOptionsMap() };
       currentMap[pollId] = optionId;
       this.votedOptionsMap.set(currentMap);
@@ -1165,13 +1244,18 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.hasVoted.set(true);
     this.votedOptionsMap.update(m => ({ ...m, [stats.poll.id]: optionId }));
 
+    const elapsedMs = this.questionShownAt() > 0 ? (Date.now() - this.questionShownAt()) : 5000;
+    const timeSpentSeconds = Math.max(1, Math.round(elapsedMs / 100) / 10);
+
     this.isSubmitting.set(true);
     try {
       await this.pollService.submitVote(
         this.roomCode(),
         stats.poll.id,
         this.voterId(),
-        optionId
+        optionId,
+        this.participantName(),
+        timeSpentSeconds
       );
     } catch (err) {
       console.error('[StudentView] Failed to submit vote:', err);

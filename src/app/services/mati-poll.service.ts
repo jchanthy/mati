@@ -19,7 +19,7 @@ import {
   deleteField
 } from '@angular/fire/firestore';
 import { Observable, BehaviorSubject, of, combineLatest, map } from 'rxjs';
-import { Room, Poll, Vote, PollStats, DetailedSessionSummary, QuestionResultSummary } from '../models/poll.model';
+import { Room, Poll, Vote, PollStats, DetailedSessionSummary, QuestionResultSummary, QuizLeaderboardEntry } from '../models/poll.model';
 
 @Injectable({
   providedIn: 'root'
@@ -881,6 +881,79 @@ export class MatiPollService {
     const overallAccuracy = totalScoredVotes > 0 ? Math.round((totalCorrectVotes / totalScoredVotes) * 100) : 0;
     const topConsensusPercentage = polls.length > 0 ? Math.round(consensusSum / polls.length) : 0;
 
+    // Build participant-level leaderboard ranked by most correct answers & fastest total time spent
+    const participantMap = new Map<string, {
+      voterId: string;
+      voterName: string;
+      correctAnswers: number;
+      totalAnswered: number;
+      totalTimeSeconds: number;
+    }>();
+
+    for (let idx = 0; idx < polls.length; idx++) {
+      const p = polls[idx];
+      const voteList = voteListPerPoll[idx] || votesMap.get(`${code}_${p.id}`) || [];
+      const hasCorrect = p.correctOptionId !== undefined;
+
+      for (const v of voteList) {
+        let entry = participantMap.get(v.voterId);
+        if (!entry) {
+          entry = {
+            voterId: v.voterId,
+            voterName: v.voterName || ('Participant #' + v.voterId.slice(-4)),
+            correctAnswers: 0,
+            totalAnswered: 0,
+            totalTimeSeconds: 0
+          };
+          participantMap.set(v.voterId, entry);
+        }
+        if (v.voterName && (!entry.voterName || entry.voterName.startsWith('Participant #'))) {
+          entry.voterName = v.voterName;
+        }
+        entry.totalAnswered++;
+        const spent = (typeof v.timeSpentSeconds === 'number' && v.timeSpentSeconds > 0) ? v.timeSpentSeconds : 6.0;
+        entry.totalTimeSeconds += spent;
+        if (hasCorrect && v.optionId === p.correctOptionId) {
+          entry.correctAnswers++;
+        }
+      }
+    }
+
+    const leaderboard: QuizLeaderboardEntry[] = Array.from(participantMap.values()).map(p => {
+      const accuracy = totalScoredQuestions > 0 ? Math.round((p.correctAnswers / totalScoredQuestions) * 100) : 0;
+      const roundedTotalTime = Math.round(p.totalTimeSeconds * 10) / 10;
+      const avgTime = p.totalAnswered > 0 ? Math.round((p.totalTimeSeconds / p.totalAnswered) * 10) / 10 : 0;
+      return {
+        rank: 1,
+        voterId: p.voterId,
+        voterName: p.voterName,
+        correctAnswers: p.correctAnswers,
+        totalQuestions: polls.length,
+        accuracy,
+        totalTimeSeconds: roundedTotalTime,
+        avgTimeSeconds: avgTime
+      };
+    });
+
+    // Sort formula:
+    // 1. Most correct answers (descending)
+    // 2. Fastest total time spent (ascending)
+    // 3. Most questions answered (descending)
+    leaderboard.sort((a, b) => {
+      if (b.correctAnswers !== a.correctAnswers) {
+        return b.correctAnswers - a.correctAnswers;
+      }
+      if (a.totalTimeSeconds !== b.totalTimeSeconds) {
+        return a.totalTimeSeconds - b.totalTimeSeconds;
+      }
+      return b.totalQuestions - a.totalQuestions;
+    });
+
+    // Assign 1-based ranks
+    leaderboard.forEach((item, index) => {
+      item.rank = index + 1;
+    });
+
     return {
       totalQuestions: polls.length,
       totalVotes,
@@ -888,23 +961,31 @@ export class MatiPollService {
       overallAccuracy,
       hasScoredQuestions: totalScoredQuestions > 0,
       topConsensusPercentage,
-      questionResults
+      questionResults,
+      leaderboard
     };
   }
 
   /**
-   * Step 2: submitVote(roomCode: string, pollId: string, voterId: string, optionId: number)
-
-
+   * Step 2: submitVote(roomCode: string, pollId: string, voterId: string, optionId: number, voterName?: string, timeSpentSeconds?: number)
    * Records vote in sub-collection atomically.
    */
-  async submitVote(roomCode: string, pollId: string, voterId: string, optionId: number): Promise<void> {
+  async submitVote(
+    roomCode: string, 
+    pollId: string, 
+    voterId: string, 
+    optionId: number,
+    voterName?: string,
+    timeSpentSeconds?: number
+  ): Promise<void> {
     const code = roomCode.toUpperCase();
     const voteKey = `${code}_${pollId}`;
     const newVote: Vote = {
       voterId,
       optionId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      ...(voterName ? { voterName } : {}),
+      ...(timeSpentSeconds !== undefined ? { timeSpentSeconds } : {})
     };
 
     if (this.firestore) {
@@ -1412,8 +1493,9 @@ export class MatiPollService {
         order: 1,
         isLocked: false,
         showResults: true,
+        correctOptionId: 1,
         options: [
-          { id: 1, text: 'Agentic AI Workflows (ភ្នាក់ងារឆ្លាតវៃ)' },
+          { id: 1, text: 'Agentic AI Workflows (ភ្នាក់ងារឆ្លាតវៃ)', isCorrect: true },
           { id: 2, text: 'Real-time Multimodal Models (រូបភាព និង សំឡេង)' },
           { id: 3, text: 'Local On-Device SLMs (ដំណើរការលើទូរស័ព្ទ)' },
           { id: 4, text: 'Code Generation & Pair Programming (ការសរសេរកូដ)' }
@@ -1426,8 +1508,9 @@ export class MatiPollService {
         order: 2,
         isLocked: false,
         showResults: true,
+        correctOptionId: 1,
         options: [
-          { id: 1, text: 'Essential for modern lectures & conferences' },
+          { id: 1, text: 'Essential for modern lectures & conferences', isCorrect: true },
           { id: 2, text: 'Very helpful to keep audience awake' },
           { id: 3, text: 'Nice to have occasionally' },
           { id: 4, text: 'Need more gamification features' }
@@ -1435,12 +1518,20 @@ export class MatiPollService {
       }
     ];
 
-    const initialVotes: Vote[] = [
-      { voterId: 'voter_alpha', optionId: 1, timestamp: new Date().toISOString() },
-      { voterId: 'voter_beta', optionId: 1, timestamp: new Date().toISOString() },
-      { voterId: 'voter_gamma', optionId: 2, timestamp: new Date().toISOString() },
-      { voterId: 'voter_delta', optionId: 4, timestamp: new Date().toISOString() },
-      { voterId: 'voter_epsilon', optionId: 1, timestamp: new Date().toISOString() }
+    const initialVotes1: Vote[] = [
+      { voterId: 'voter_alpha', optionId: 1, voterName: 'Sophea Kim', timeSpentSeconds: 4.2, timestamp: new Date().toISOString() },
+      { voterId: 'voter_beta', optionId: 1, voterName: 'Dara Chan', timeSpentSeconds: 6.8, timestamp: new Date().toISOString() },
+      { voterId: 'voter_gamma', optionId: 2, voterName: 'Bona Rath', timeSpentSeconds: 8.5, timestamp: new Date().toISOString() },
+      { voterId: 'voter_delta', optionId: 4, voterName: 'Kosal Vuth', timeSpentSeconds: 11.2, timestamp: new Date().toISOString() },
+      { voterId: 'voter_epsilon', optionId: 1, voterName: 'Chenda Ly', timeSpentSeconds: 5.4, timestamp: new Date().toISOString() }
+    ];
+
+    const initialVotes2: Vote[] = [
+      { voterId: 'voter_alpha', optionId: 1, voterName: 'Sophea Kim', timeSpentSeconds: 3.8, timestamp: new Date().toISOString() },
+      { voterId: 'voter_beta', optionId: 1, voterName: 'Dara Chan', timeSpentSeconds: 4.5, timestamp: new Date().toISOString() },
+      { voterId: 'voter_gamma', optionId: 1, voterName: 'Bona Rath', timeSpentSeconds: 7.1, timestamp: new Date().toISOString() },
+      { voterId: 'voter_delta', optionId: 2, voterName: 'Kosal Vuth', timeSpentSeconds: 9.0, timestamp: new Date().toISOString() },
+      { voterId: 'voter_epsilon', optionId: 3, voterName: 'Chenda Ly', timeSpentSeconds: 6.0, timestamp: new Date().toISOString() }
     ];
 
     const roomsMap = new Map<string, Room>();
@@ -1452,11 +1543,12 @@ export class MatiPollService {
     this.mockPolls$.next(pollsMap);
 
     const votesMap = new Map<string, Vote[]>();
-    votesMap.set(`${defaultCode}_poll_demo_1`, initialVotes);
+    votesMap.set(`${defaultCode}_poll_demo_1`, initialVotes1);
+    votesMap.set(`${defaultCode}_poll_demo_2`, initialVotes2);
     this.mockVotes$.next(votesMap);
 
     this.currentRoom.set(initialRoom);
     this.currentPoll.set(initialPolls[0]);
-    this.currentStats.set(this.computeStats(initialPolls[0], initialVotes));
+    this.currentStats.set(this.computeStats(initialPolls[0], initialVotes1));
   }
 }

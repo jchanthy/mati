@@ -38,6 +38,8 @@ export interface Vote {
   voterId: string;
   optionId: number;
   timestamp: any;
+  voterName?: string;
+  timeSpentSeconds?: number;
 }
 
 export interface PollStats {
@@ -71,6 +73,17 @@ export interface QuestionResultSummary {
   }[];
 }
 
+export interface QuizLeaderboardEntry {
+  rank: number;
+  voterId: string;
+  voterName: string;
+  correctAnswers: number;
+  totalQuestions: number;
+  accuracy: number;
+  totalTimeSeconds: number;
+  avgTimeSeconds: number;
+}
+
 export interface DetailedSessionSummary {
   totalQuestions: number;
   totalVotes: number;
@@ -79,5 +92,6 @@ export interface DetailedSessionSummary {
   hasScoredQuestions: boolean;
   topConsensusPercentage: number;
   questionResults: QuestionResultSummary[];
+  leaderboard?: QuizLeaderboardEntry[];
 }
 

@@ -69,10 +69,29 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 </select>
               </div>
 
+              <!-- Mode Switcher Pill in Topbar -->
+              <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700 shrink-0">
+                <button 
+                  type="button" 
+                  (click)="setRoomMode('live')"
+                  [ngClass]="room()?.mode !== 'survey' ? 'bg-indigo-600 text-white font-bold shadow-2xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'"
+                  class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">Live</button>
+                <button 
+                  type="button" 
+                  (click)="setRoomMode('survey')"
+                  [ngClass]="room()?.mode === 'survey' ? 'bg-amber-600 text-white font-bold shadow-2xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'"
+                  class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">Survey</button>
+              </div>
+
               <!-- Status Badge -->
               @if (room()?.status === 'completed') {
                 <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
                   Concluded
+                </span>
+              } @else if (room()?.mode === 'survey') {
+                <span class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  TV QR Broadcast
                 </span>
               } @else if (room()?.activePollId) {
                 <span class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -250,6 +269,32 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   </div>
                 </div>
               </div>
+
+              <!-- Top Quiz Champions & Speed Leaders Strip in Controller -->
+              @if (sessionSummary()?.hasScoredQuestions && (sessionSummary()?.leaderboard || []).length > 0) {
+                <div class="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-2 text-left max-w-md mx-auto">
+                  <div class="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400">
+                    <span>🏆 Quiz Leaderboard Podium</span>
+                    <span class="text-[10px] font-mono">Ranked by score & speed</span>
+                  </div>
+                  <div class="space-y-1.5">
+                    @for (winner of (sessionSummary()?.leaderboard || []).slice(0, 3); track winner.voterId) {
+                      <div class="flex items-center justify-between px-3 py-2 rounded-xl border text-xs"
+                        [ngClass]="winner.rank === 1 ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-gray-50 dark:bg-gray-800/60 border-gray-100 dark:border-gray-700'">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="text-base">{{ winner.rank === 1 ? '🥇' : (winner.rank === 2 ? '🥈' : '🥉') }}</span>
+                          <span class="font-bold text-gray-900 dark:text-white truncate">{{ winner.voterName }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 font-mono text-[11px] text-gray-600 dark:text-gray-300">
+                          <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ winner.correctAnswers }}/{{ sessionSummary()?.totalScoredQuestions }}</span>
+                          <span>•</span>
+                          <span>⏱️ {{ winner.totalTimeSeconds }}s</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
 
               <!-- Action buttons -->
               <div class="flex items-center justify-center gap-3 pt-2">
