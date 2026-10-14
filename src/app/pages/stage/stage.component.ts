@@ -2,7 +2,7 @@ import { Component, inject, signal, computed, OnInit, AfterViewInit, OnDestroy, 
 
 import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService } from '../../services/mati-poll.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
@@ -758,97 +758,108 @@ import QRCode from 'qrcode';
 
           </div>
         } @else if (room()?.mode === 'survey') {
-          <!-- DEDICATED SURVEY MODE QR & CODE SHOWCASE SCREEN FOR TV / PROJECTOR -->
-          <div class="w-full h-full flex flex-col justify-center items-center text-center animate-fadein py-2 max-w-4xl 2xl:max-w-5xl mx-auto space-y-4 sm:space-y-5 my-auto">
-            
-            <!-- Header Badge & Title -->
-            <div class="space-y-2">
-              <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider border shadow-xs"
-                [ngClass]="isLight() ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-amber-950/60 text-amber-300 border-amber-800'">
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                <span>📋 របៀបស្ទង់មតិ • Self-Paced Survey Active</span>
-              </div>
-              <h1 class="text-2xl sm:text-3xl md:text-4xl 2xl:text-5xl font-black tracking-tight leading-snug"
-                [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
-                {{ room()?.title || 'Mati Audience Survey' }}
-              </h1>
-              <p class="text-xs sm:text-sm md:text-base 2xl:text-lg max-w-xl mx-auto"
-                [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                Scan the QR code with your phone or visit the link below to answer all questions at your own pace.
-              </p>
-            </div>
+          <!-- SLIDO-INSPIRED SURVEY & PRESENTATION JOIN STAGE -->
+          <div class="fixed inset-0 z-40 flex flex-col justify-between p-6 sm:p-10 select-none animate-fadein"
+            [ngClass]="isLight() ? 'bg-[#F7F5F0] text-[#1E2329]' : 'bg-[#0F172A] text-white'">
 
-            <!-- Grand Central QR & Code Showcase Station -->
-            <div class="p-6 sm:p-8 rounded-4xl border shadow-2xl flex flex-col items-center space-y-4 max-w-md 2xl:max-w-lg w-full transition-colors"
-              [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-200/50' : 'bg-slate-900/95 border-slate-800 shadow-slate-950'">
-              
-              <!-- Giant Scannable QR Code -->
-              <div class="p-4 sm:p-5 bg-white rounded-3xl shadow-xl ring-8 ring-amber-500/15 border border-slate-100 shrink-0">
-                @if (qrCodeDataUrl()) {
-                  <img [src]="qrCodeDataUrl()" alt="Scan to join Mati Survey" class="h-48 w-48 sm:h-64 sm:w-64 md:h-72 md:w-72 2xl:h-84 2xl:w-84 object-contain" />
-                } @else {
-                  <div class="h-48 w-48 sm:h-64 sm:w-64 flex items-center justify-center bg-gray-100 text-gray-400 rounded-2xl">
-                    <i class="pi pi-qrcode text-5xl animate-pulse"></i>
-                  </div>
-                }
-              </div>
-
-              <!-- Big Room PIN / Code -->
-              <div class="space-y-0.5 text-center w-full">
-                <div class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-400">
-                  Room PIN
-                </div>
-                <div class="text-4xl sm:text-5xl md:text-6xl 2xl:text-7xl font-black font-mono tracking-widest leading-none text-amber-600 dark:text-amber-400">
-                  {{ roomCode() }}
-                </div>
-              </div>
-
-              <!-- Direct URL Pill -->
-              <div class="px-4 py-2 rounded-2xl border font-mono font-bold text-xs sm:text-sm flex items-center gap-2 shadow-2xs"
-                [ngClass]="isLight() ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950/70 border-slate-800 text-slate-200'">
-                <i class="pi pi-globe text-indigo-500 text-sm"></i>
-                <span>{{ joinUrlShort() }}</span>
-              </div>
-            </div>
-
-            <!-- Live Progress / Response KPI Strip -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-md 2xl:max-w-lg pt-1">
-              <div class="p-3 sm:p-3.5 rounded-2xl border text-center space-y-0.5 shadow-xs"
-                [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'">
-                <div class="text-lg sm:text-xl md:text-2xl font-black font-mono" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
-                  {{ totalQuestionsCount() }}
-                </div>
-                <div class="text-[10px] sm:text-xs uppercase font-bold text-slate-400">Questions</div>
-              </div>
-
-              <div class="p-3 sm:p-3.5 rounded-2xl border text-center space-y-0.5 shadow-xs"
-                [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'">
-                <div class="text-lg sm:text-xl md:text-2xl font-black font-mono text-indigo-600 dark:text-indigo-400">
-                  {{ totalVotesCount() }}
-                </div>
-                <div class="text-[10px] sm:text-xs uppercase font-bold text-slate-400">Total Submissions</div>
-              </div>
-
-              <div class="col-span-2 sm:col-span-1 p-3 sm:p-3.5 rounded-2xl border text-center space-y-0.5 shadow-xs"
-                [ngClass]="isLight() ? 'bg-emerald-50/80 border-emerald-200' : 'bg-emerald-950/30 border-emerald-800/80'">
-                <div class="text-lg sm:text-xl md:text-2xl font-black text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1.5">
-                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>Active</span>
-                </div>
-                <div class="text-[10px] sm:text-xs uppercase font-bold text-emerald-700 dark:text-emerald-400">Submissions Open</div>
-              </div>
-            </div>
-
-            <!-- Live Survey Results Peek Button -->
-            <div class="pt-1">
-              <button
-                type="button"
-                (click)="toggleOverviewMode()"
-                class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all flex items-center gap-2 cursor-pointer shadow-xs hover:scale-102"
-                [ngClass]="isLight() ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'">
-                <i class="pi pi-chart-bar text-indigo-500"></i>
-                <span>View Live Survey Results</span>
+            <!-- 1. Minimalist Top Bar (Back button + Centered Logo) -->
+            <div class="relative w-full flex items-center justify-between shrink-0">
+              <!-- Circular Dark Back Button -->
+              <button 
+                type="button" 
+                (click)="goBack()"
+                title="Back to controller"
+                class="w-10 h-10 rounded-full bg-[#1E2329] hover:bg-black text-white flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-105 shrink-0">
+                <i class="pi pi-chevron-left text-sm font-bold"></i>
               </button>
+
+              <!-- Slido-Style Centered Brand Name -->
+              <div class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+                <span class="text-2xl sm:text-3xl font-bold tracking-tight lowercase font-sans"
+                  [ngClass]="isLight() ? 'text-[#1E2329]' : 'text-white'">
+                  mati
+                </span>
+              </div>
+
+              <!-- Right Spacer (Balance layout) -->
+              <div class="w-10 h-10"></div>
+            </div>
+
+            <!-- 2. Pure Slido Hero Layout: [ Join at / domain / #PIN ] | [ Giant QR Code ] -->
+            <div class="flex-1 flex items-center justify-center py-4">
+              <div class="flex flex-col md:flex-row items-center justify-center gap-8 sm:gap-12 md:gap-16 lg:gap-20 max-w-5xl w-full">
+                
+                <!-- Left Column: Join instructions -->
+                <div class="text-center md:text-right space-y-1 sm:space-y-2 shrink-0">
+                  <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium tracking-normal"
+                    [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">
+                    Join at
+                  </div>
+                  <div class="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-none"
+                    [ngClass]="isLight() ? 'text-[#1E2329]' : 'text-white'">
+                    {{ joinDomain() }}
+                  </div>
+                  <div class="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-none pt-1"
+                    [ngClass]="isLight() ? 'text-[#1E2329]' : 'text-white'">
+                    {{ formattedPin() }}
+                  </div>
+                </div>
+
+                <!-- Subtle Center Divider Line -->
+                <div class="hidden md:block w-px h-52 sm:h-64 lg:h-72 shrink-0"
+                  [ngClass]="isLight() ? 'bg-[#D9D4C7]' : 'bg-slate-700'">
+                </div>
+
+                <!-- Right Column: Crisp White Rounded QR Card -->
+                <div class="p-4 sm:p-5 md:p-6 bg-white rounded-3xl sm:rounded-4xl shadow-sm shrink-0 border"
+                  [ngClass]="isLight() ? 'border-[#E5E0D5]' : 'border-slate-800'">
+                  @if (qrCodeDataUrl()) {
+                    <img 
+                      [src]="qrCodeDataUrl()" 
+                      alt="Scan to join Mati Survey" 
+                      class="w-52 h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-84 lg:h-84 xl:w-96 xl:h-96 object-contain rounded-2xl" />
+                  } @else {
+                    <div class="w-52 h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-84 lg:h-84 xl:w-96 xl:h-96 flex items-center justify-center bg-gray-50 text-gray-400 rounded-2xl">
+                      <i class="pi pi-qrcode text-6xl animate-pulse"></i>
+                    </div>
+                  }
+                </div>
+
+              </div>
+            </div>
+
+            <!-- 3. Bottom Controls: Slido-style Floating Pill on Left & Results Peeker on Right -->
+            <div class="flex items-center justify-between w-full shrink-0">
+              <!-- Slido Floating Pill: Settings & Fullscreen -->
+              <div class="flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl bg-[#1E2329] text-white shadow-xl backdrop-blur-md">
+                <button 
+                  type="button" 
+                  (click)="toggleTheme()" 
+                  title="Toggle light / dark theme" 
+                  class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer text-slate-300 hover:text-white">
+                  <i class="pi pi-cog text-sm"></i>
+                </button>
+                <button 
+                  type="button" 
+                  (click)="toggleFullscreen()" 
+                  title="Toggle fullscreen" 
+                  class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer text-slate-300 hover:text-white">
+                  <i class="pi pi-expand text-sm"></i>
+                </button>
+              </div>
+
+              <!-- Quick Live Results Button -->
+              <div>
+                <button 
+                  type="button" 
+                  (click)="toggleOverviewMode()" 
+                  title="View live survey results" 
+                  class="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs hover:scale-102"
+                  [ngClass]="isLight() ? 'bg-white hover:bg-slate-100 text-slate-700 border-[#D9D4C7]' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'">
+                  <i class="pi pi-chart-bar text-indigo-500"></i>
+                  <span>Live Results ({{ totalVotesCount() }})</span>
+                </button>
+              </div>
             </div>
 
           </div>
@@ -1095,7 +1106,7 @@ import QRCode from 'qrcode';
 
       <!-- Floating Overview Toggle Pill (Available anytime for presenter) -->
       <div class="absolute bottom-3 right-4 z-50 flex items-center gap-2">
-        @if (room()?.status !== 'completed') {
+        @if (room()?.status !== 'completed' && room()?.mode !== 'survey') {
           <button
             type="button"
             (click)="toggleOverviewMode()"
@@ -1113,6 +1124,7 @@ import QRCode from 'qrcode';
 })
 export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private pollService = inject(MatiPollService);
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
@@ -1205,6 +1217,20 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   // Total question and vote counts for completed stage
   totalQuestionsCount = computed(() => Math.max(this.polls().length, this.sessionStats().totalQuestions));
   totalVotesCount = computed(() => this.sessionStats().totalVotes);
+
+  joinDomain = computed(() => {
+    if (!this.isBrowser) return 'mati.app';
+    return window.location.host;
+  });
+
+  formattedPin = computed(() => {
+    const code = (this.roomCode() || '').trim();
+    if (!code) return '';
+    if (/^\d{6,7}$/.test(code)) {
+      return '#' + code.slice(0, 4) + ' ' + code.slice(4);
+    }
+    return '#' + code;
+  });
 
   // Synchronized countdown timer
   remainingSeconds = signal<number | null>(null);
@@ -1562,5 +1588,33 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getOptionLetter(idx: number): string {
     return String.fromCharCode(65 + (idx % 26));
+  }
+
+  goBack() {
+    if (this.isBrowser && window.history.length > 1) {
+      window.history.back();
+    } else {
+      this.router.navigate(['/control', this.roomCode()]);
+    }
+  }
+
+  toggleFullscreen() {
+    if (!this.isBrowser) return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  toggleTheme() {
+    const nextTheme = this.currentTheme() === 'light' ? 'dark' : 'light';
+    this.currentTheme.set(nextTheme);
+    if (this.isBrowser) {
+      try {
+        localStorage.setItem(`mati_stage_theme_${this.roomCode()}`, nextTheme);
+        localStorage.setItem('mati_stage_theme_last', nextTheme);
+      } catch {}
+    }
   }
 }
