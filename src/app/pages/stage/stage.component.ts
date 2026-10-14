@@ -759,7 +759,7 @@ import QRCode from 'qrcode';
           </div>
         } @else if (room()?.mode === 'survey') {
           <!-- SLIDO-INSPIRED SURVEY & PRESENTATION JOIN STAGE -->
-          <div class="fixed inset-0 z-40 flex flex-col justify-between p-6 sm:p-10 select-none animate-fadein"
+          <div class="fixed inset-0 z-40 flex flex-col justify-between p-4 sm:p-8 md:p-10 select-none animate-fadein overflow-hidden"
             [ngClass]="isLight() ? 'bg-[#F7F5F0] text-[#1E2329]' : 'bg-[#0F172A] text-white'">
 
             <!-- 1. Minimalist Top Bar (Back button + Centered Logo) -->
@@ -769,58 +769,59 @@ import QRCode from 'qrcode';
                 type="button" 
                 (click)="goBack()"
                 title="Back to controller"
-                class="w-10 h-10 rounded-full bg-[#1E2329] hover:bg-black text-white flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-105 shrink-0">
-                <i class="pi pi-chevron-left text-sm font-bold"></i>
+                class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1E2329] hover:bg-black text-white flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-105 shrink-0">
+                <i class="pi pi-chevron-left text-xs sm:text-sm font-bold"></i>
               </button>
 
               <!-- Slido-Style Centered Brand Name -->
               <div class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
-                <span class="text-2xl sm:text-3xl font-bold tracking-tight lowercase font-sans"
+                <span class="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight lowercase font-sans"
                   [ngClass]="isLight() ? 'text-[#1E2329]' : 'text-white'">
                   mati
                 </span>
               </div>
 
               <!-- Right Spacer (Balance layout) -->
-              <div class="w-10 h-10"></div>
+              <div class="w-9 h-9 sm:w-10 sm:h-10"></div>
             </div>
 
             <!-- 2. Pure Slido Hero Layout: [ Join at / domain / #PIN ] | [ Giant QR Code ] -->
-            <div class="flex-1 flex items-center justify-center py-4">
-              <div class="flex flex-col md:flex-row items-center justify-center gap-8 sm:gap-12 md:gap-16 lg:gap-20 max-w-5xl w-full">
+            <div class="flex-1 min-h-0 w-full flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden">
+              <div class="w-full max-w-5xl 2xl:max-w-6xl flex flex-col md:flex-row items-center justify-center gap-6 sm:gap-8 md:gap-10 lg:gap-14 px-3 sm:px-6">
                 
                 <!-- Left Column: Join instructions -->
-                <div class="text-center md:text-right space-y-1 sm:space-y-2 shrink-0">
-                  <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium tracking-normal"
+                <div class="flex-1 min-w-0 max-w-full text-center md:text-right space-y-0.5 sm:space-y-1">
+                  <div class="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-medium tracking-normal"
                     [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">
                     Join at
                   </div>
-                  <div class="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-none"
-                    [ngClass]="isLight() ? 'text-[#1E2329]' : 'text-white'">
+                  <div class="font-black tracking-tight leading-tight select-all truncate"
+                    [ngClass]="[isLight() ? 'text-[#1E2329]' : 'text-white', domainFontSizeClass()]"
+                    [title]="joinDomain()">
                     {{ joinDomain() }}
                   </div>
-                  <div class="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-none pt-1"
+                  <div class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-tight pt-0.5 sm:pt-1"
                     [ngClass]="isLight() ? 'text-[#1E2329]' : 'text-white'">
                     {{ formattedPin() }}
                   </div>
                 </div>
 
                 <!-- Subtle Center Divider Line -->
-                <div class="hidden md:block w-px h-52 sm:h-64 lg:h-72 shrink-0"
+                <div class="hidden md:block w-px h-44 sm:h-56 md:h-64 lg:h-72 shrink-0"
                   [ngClass]="isLight() ? 'bg-[#D9D4C7]' : 'bg-slate-700'">
                 </div>
 
-                <!-- Right Column: Crisp White Rounded QR Card -->
-                <div class="p-4 sm:p-5 md:p-6 bg-white rounded-3xl sm:rounded-4xl shadow-sm shrink-0 border"
+                <!-- Right Column: Crisp White Rounded QR Card (fluidly scaled to never overflow) -->
+                <div class="p-3 sm:p-4 md:p-5 bg-white rounded-3xl sm:rounded-4xl shadow-sm shrink-0 border"
                   [ngClass]="isLight() ? 'border-[#E5E0D5]' : 'border-slate-800'">
                   @if (qrCodeDataUrl()) {
                     <img 
                       [src]="qrCodeDataUrl()" 
                       alt="Scan to join Mati Survey" 
-                      class="w-52 h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-84 lg:h-84 xl:w-96 xl:h-96 object-contain rounded-2xl" />
+                      class="w-40 h-40 sm:w-52 sm:h-52 md:w-60 md:h-60 lg:w-72 lg:h-72 xl:w-80 xl:h-80 max-w-[36vh] max-h-[36vh] object-contain rounded-2xl" />
                   } @else {
-                    <div class="w-52 h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-84 lg:h-84 xl:w-96 xl:h-96 flex items-center justify-center bg-gray-50 text-gray-400 rounded-2xl">
-                      <i class="pi pi-qrcode text-6xl animate-pulse"></i>
+                    <div class="w-40 h-40 sm:w-52 sm:h-52 md:w-60 md:h-60 lg:w-72 lg:h-72 xl:w-80 xl:h-80 max-w-[36vh] max-h-[36vh] flex items-center justify-center bg-gray-50 text-gray-400 rounded-2xl">
+                      <i class="pi pi-qrcode text-5xl animate-pulse"></i>
                     </div>
                   }
                 </div>
@@ -1221,6 +1222,14 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   joinDomain = computed(() => {
     if (!this.isBrowser) return 'mati.app';
     return window.location.host;
+  });
+
+  domainFontSizeClass = computed(() => {
+    const len = this.joinDomain().length;
+    if (len > 24) return 'text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl';
+    if (len > 18) return 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl';
+    if (len > 12) return 'text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl';
+    return 'text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl';
   });
 
   formattedPin = computed(() => {
