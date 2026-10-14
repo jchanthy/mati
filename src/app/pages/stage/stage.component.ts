@@ -14,6 +14,7 @@ import QRCode from 'qrcode';
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
     <div class="stage-container w-screen h-screen min-h-screen max-h-screen flex flex-col justify-center px-3 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 select-none overflow-hidden relative"
+      [class.cursor-none]="isFullscreen() && !areControlsVisible()"
       [class.transition-colors]="hasMounted()" [class.duration-300]="hasMounted()"
       [ngClass]="isLight() ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-white'">
       
@@ -760,6 +761,7 @@ import QRCode from 'qrcode';
         } @else if (room()?.mode === 'survey') {
           <!-- SLIDO-INSPIRED SURVEY & PRESENTATION JOIN STAGE -->
           <div class="fixed inset-0 z-40 flex flex-col justify-between p-4 sm:p-8 md:p-10 select-none animate-fadein overflow-hidden relative"
+            [class.cursor-none]="isFullscreen() && !areControlsVisible()"
             [ngClass]="isLight() ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-white'">
 
             <!-- Background Ambient Glow -->
@@ -773,12 +775,17 @@ import QRCode from 'qrcode';
 
             <!-- 1. Minimalist Top Bar (Back button + Centered Logo) -->
             <div class="relative w-full flex items-center justify-between shrink-0 z-10">
-              <!-- Circular Back Button -->
+              <!-- Circular Back Button (Auto-hides on mouse idle) -->
               <button 
                 type="button" 
                 (click)="goBack()"
+                (mouseenter)="onControlsHover(true)"
+                (mouseleave)="onControlsHover(false)"
                 title="Back to controller"
-                class="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md hover:scale-105 shrink-0 border"
+                class="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer shadow-md hover:scale-105 shrink-0 border"
+                [class.opacity-0]="!areControlsVisible()"
+                [class.pointer-events-none]="!areControlsVisible()"
+                [class.opacity-100]="areControlsVisible()"
                 [ngClass]="isLight() ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-slate-200/50' : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-800 shadow-black/40'">
                 <i class="pi pi-chevron-left text-xs sm:text-sm font-bold"></i>
               </button>
@@ -842,8 +849,13 @@ import QRCode from 'qrcode';
               </div>
             </div>
 
-            <!-- 3. Bottom Controls: Slido-style Floating Pill on Left & Results Peeker on Right -->
-            <div class="flex items-center justify-between w-full shrink-0 z-10">
+            <!-- 3. Bottom Controls: Slido-style Floating Pill on Left & Results Peeker on Right (Auto-hides on mouse idle) -->
+            <div class="flex items-center justify-between w-full shrink-0 z-10 transition-all duration-300"
+              [class.opacity-0]="!areControlsVisible()"
+              [class.pointer-events-none]="!areControlsVisible()"
+              [class.opacity-100]="areControlsVisible()"
+              (mouseenter)="onControlsHover(true)"
+              (mouseleave)="onControlsHover(false)">
               <!-- Slido Floating Pill: Settings & Fullscreen -->
               <div class="flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl text-white shadow-xl backdrop-blur-md border"
                 [ngClass]="isLight() ? 'bg-slate-900/90 border-slate-700/50' : 'bg-slate-900/90 border-slate-800'">
@@ -859,7 +871,7 @@ import QRCode from 'qrcode';
                   (click)="toggleFullscreen()" 
                   title="Toggle fullscreen" 
                   class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer text-slate-300 hover:text-white">
-                  <i class="pi pi-expand text-sm"></i>
+                  <i class="pi text-sm" [ngClass]="isFullscreen() ? 'pi-compress' : 'pi-expand'"></i>
                 </button>
               </div>
 
@@ -1119,8 +1131,48 @@ import QRCode from 'qrcode';
         }
       </main>
 
-      <!-- Floating Overview Toggle Pill (Available anytime for presenter) -->
-      <div class="absolute bottom-3 right-4 z-50 flex items-center gap-2">
+      <!-- Floating Presenter Controls on Left (Auto-hides on mouse idle) -->
+      @if (room()?.mode !== 'survey') {
+        <div class="absolute bottom-3 left-4 z-50 flex items-center gap-2 transition-all duration-300"
+          [class.opacity-0]="!areControlsVisible()"
+          [class.pointer-events-none]="!areControlsVisible()"
+          [class.opacity-100]="areControlsVisible()"
+          (mouseenter)="onControlsHover(true)"
+          (mouseleave)="onControlsHover(false)">
+          <div class="flex items-center gap-1.5 p-1.5 px-2.5 rounded-xl text-white shadow-xl backdrop-blur-md border"
+            [ngClass]="isLight() ? 'bg-slate-900/90 border-slate-700/50' : 'bg-slate-900/90 border-slate-800'">
+            <button 
+              type="button" 
+              (click)="goBack()" 
+              title="Back to controller" 
+              class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer text-slate-300 hover:text-white">
+              <i class="pi pi-chevron-left text-sm"></i>
+            </button>
+            <button 
+              type="button" 
+              (click)="toggleTheme()" 
+              title="Toggle light / dark theme" 
+              class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer text-slate-300 hover:text-white">
+              <i class="pi pi-cog text-sm"></i>
+            </button>
+            <button 
+              type="button" 
+              (click)="toggleFullscreen()" 
+              title="Toggle fullscreen" 
+              class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer text-slate-300 hover:text-white">
+              <i class="pi text-sm" [ngClass]="isFullscreen() ? 'pi-compress' : 'pi-expand'"></i>
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Floating Overview Toggle Pill on Right (Auto-hides on mouse idle) -->
+      <div class="absolute bottom-3 right-4 z-50 flex items-center gap-2 transition-all duration-300"
+        [class.opacity-0]="!areControlsVisible()"
+        [class.pointer-events-none]="!areControlsVisible()"
+        [class.opacity-100]="areControlsVisible()"
+        (mouseenter)="onControlsHover(true)"
+        (mouseleave)="onControlsHover(false)">
         @if (room()?.status !== 'completed' && room()?.mode !== 'survey') {
           <button
             type="button"
@@ -1146,6 +1198,14 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   hasMounted = signal<boolean>(false);
   currentTheme = signal<'dark' | 'light'>(this.resolveInitialStageTheme());
+
+  // Mouse inactivity & Fullscreen auto-hide controls
+  areControlsVisible = signal<boolean>(true);
+  isFullscreen = signal<boolean>(false);
+  private hideControlsTimer: any = null;
+  private mouseMoveListener?: () => void;
+  private fullscreenListener?: () => void;
+  private keydownListener?: (e: KeyboardEvent) => void;
 
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
@@ -1319,10 +1379,71 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
       setTimeout(() => {
         this.hasMounted.set(true);
       }, 250);
+
+      this.isFullscreen.set(!!document.fullscreenElement);
+
+      this.mouseMoveListener = () => this.onUserInteraction();
+      this.fullscreenListener = () => {
+        const inFs = !!document.fullscreenElement;
+        this.isFullscreen.set(inFs);
+        this.onUserInteraction();
+      };
+      this.keydownListener = (e: KeyboardEvent) => {
+        if (e.key === 'f' || e.key === 'F') {
+          const target = e.target as HTMLElement;
+          if (target?.tagName !== 'INPUT' && target?.tagName !== 'TEXTAREA') {
+            this.toggleFullscreen();
+          }
+        }
+        this.onUserInteraction();
+      };
+
+      window.addEventListener('mousemove', this.mouseMoveListener);
+      window.addEventListener('touchstart', this.mouseMoveListener);
+      document.addEventListener('fullscreenchange', this.fullscreenListener);
+      window.addEventListener('keydown', this.keydownListener);
+
+      // Start initial timer so controls hide after 3 seconds of inactivity
+      this.onUserInteraction();
+    }
+  }
+
+  onUserInteraction() {
+    this.areControlsVisible.set(true);
+    if (this.hideControlsTimer) {
+      clearTimeout(this.hideControlsTimer);
+    }
+    this.hideControlsTimer = setTimeout(() => {
+      this.areControlsVisible.set(false);
+    }, 2500);
+  }
+
+  onControlsHover(isHovering: boolean) {
+    if (isHovering) {
+      if (this.hideControlsTimer) {
+        clearTimeout(this.hideControlsTimer);
+      }
+      this.areControlsVisible.set(true);
+    } else {
+      this.onUserInteraction();
     }
   }
 
   ngOnDestroy() {
+    if (this.isBrowser) {
+      if (this.mouseMoveListener) {
+        window.removeEventListener('mousemove', this.mouseMoveListener);
+        window.removeEventListener('touchstart', this.mouseMoveListener);
+      }
+      if (this.fullscreenListener) {
+        document.removeEventListener('fullscreenchange', this.fullscreenListener);
+      }
+      if (this.keydownListener) {
+        window.removeEventListener('keydown', this.keydownListener);
+      }
+    }
+    if (this.hideControlsTimer) clearTimeout(this.hideControlsTimer);
+
     this.allRoomsSub?.unsubscribe();
     this.broadcastSub?.unsubscribe();
     this.routeParamSub?.unsubscribe();
@@ -1624,9 +1745,15 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   toggleFullscreen() {
     if (!this.isBrowser) return;
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().then(() => {
+        this.isFullscreen.set(true);
+        this.onUserInteraction();
+      }).catch(() => {});
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().then(() => {
+        this.isFullscreen.set(false);
+        this.onUserInteraction();
+      }).catch(() => {});
     }
   }
 
