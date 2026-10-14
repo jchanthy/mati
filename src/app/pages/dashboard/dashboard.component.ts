@@ -939,51 +939,70 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             </span>
           </div>
 
-          <!-- Quick Presets -->
-          <div class="flex items-center gap-1.5 flex-wrap p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Presets:</span>
-            <button 
-              type="button" 
-              (click)="presetSelectFirst(5)" 
-              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:text-indigo-600 cursor-pointer transition-all">
-              First 5
-            </button>
-            <button 
-              type="button" 
-              (click)="presetSelectFirst(10)" 
-              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:text-indigo-600 cursor-pointer transition-all">
-              First 10
-            </button>
-            <button 
-              type="button" 
-              (click)="presetSelectFirst(15)" 
-              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-indigo-600 dark:text-indigo-400 font-black cursor-pointer transition-all shadow-2xs">
-              First 15
-            </button>
-            <button 
-              type="button" 
-              (click)="presetSelectFirst(20)" 
-              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:text-indigo-600 cursor-pointer transition-all">
-              First 20
-            </button>
-            <button 
-              type="button" 
-              (click)="presetSelectRandom(15)" 
-              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 cursor-pointer transition-all">
-              🎲 Random 15
-            </button>
-            <button 
-              type="button" 
-              (click)="presetSelectAll()" 
-              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 cursor-pointer transition-all ml-auto">
-              Select All ({{ allRawPolls().length }})
-            </button>
-            <button 
-              type="button" 
-              (click)="presetClearAll()" 
-              class="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 cursor-pointer transition-all">
-              Clear
-            </button>
+          <!-- Question Pick Input & Controls -->
+          <div class="flex items-center gap-2 flex-wrap p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <!-- Input section -->
+            <div class="flex items-center gap-1.5">
+              <label class="text-xs font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">Pick:</label>
+              <input 
+                type="text" 
+                [(ngModel)]="customPickInput" 
+                (keyup.enter)="applyPickFromInput()" 
+                placeholder="Count (15 or 1-20)" 
+                class="w-28 sm:w-32 px-2.5 py-1.5 text-xs font-bold text-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-gray-900 dark:text-white shadow-2xs" />
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex items-center gap-1.5">
+              <button 
+                type="button" 
+                (click)="applyPickFromInput()" 
+                title="Pick first N questions or specified range" 
+                class="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-all cursor-pointer flex items-center gap-1">
+                <i class="pi pi-check text-[10px]"></i>
+                <span>Pick</span>
+              </button>
+              <button 
+                type="button" 
+                (click)="applyPickRandom()" 
+                title="Pick random questions using input count" 
+                class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 cursor-pointer transition-all flex items-center gap-1">
+                <span>🎲 Random</span>
+              </button>
+            </div>
+
+            <!-- Quick count pills -->
+            <div class="hidden sm:flex items-center gap-1 pl-1 border-l border-gray-200 dark:border-gray-700">
+              <span class="text-[10px] uppercase font-bold text-gray-400">Quick:</span>
+              @for (q of [5, 10, 15, 20, 30]; track q) {
+                @if (allRawPolls().length >= q) {
+                  <button 
+                    type="button" 
+                    (click)="setPickCount(q)" 
+                    [class.ring-2]="customPickInput === q.toString()"
+                    [class.ring-indigo-500]="customPickInput === q.toString()"
+                    class="px-2 py-0.5 rounded text-[11px] font-semibold bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:border-indigo-400 text-gray-700 dark:text-gray-300 hover:text-indigo-600 cursor-pointer transition-all">
+                    {{ q }}
+                  </button>
+                }
+              }
+            </div>
+
+            <!-- Select All / Clear on the right -->
+            <div class="flex items-center gap-1.5 ml-auto">
+              <button 
+                type="button" 
+                (click)="presetSelectAll()" 
+                class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 cursor-pointer transition-all">
+                Select All ({{ allRawPolls().length }})
+              </button>
+              <button 
+                type="button" 
+                (click)="presetClearAll()" 
+                class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 cursor-pointer transition-all">
+                Clear
+              </button>
+            </div>
           </div>
 
           <!-- Question Checklist -->
@@ -1548,6 +1567,102 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.tempSelectedPollIds.update(ids => 
       ids.includes(pollId) ? ids.filter(id => id !== pollId) : [...ids, pollId]
     );
+  }
+
+  customPickInput = '15';
+
+  setPickCount(count: number) {
+    this.customPickInput = count.toString();
+    this.presetSelectFirst(count);
+  }
+
+  applyPickFromInput() {
+    const raw = this.allRawPolls();
+    if (raw.length === 0) return;
+    const str = (this.customPickInput || '').trim();
+    if (!str) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Enter a value',
+        detail: 'Please enter question count (e.g. 15) or range (e.g. 1-20).'
+      });
+      return;
+    }
+
+    // Check if range: e.g. "1-20", "1 to 20", "1..20"
+    const rangeMatch = str.match(/^(\d+)\s*(?:-|to|\.\.)\s*(\d+)$/i);
+    if (rangeMatch) {
+      const start = Math.max(1, parseInt(rangeMatch[1], 10));
+      const end = Math.min(raw.length, parseInt(rangeMatch[2], 10));
+      if (start <= end) {
+        const slice = raw.slice(start - 1, end).map(p => p.id);
+        this.tempSelectedPollIds.set(slice);
+        this.messageService.add({
+          severity: 'info',
+          summary: 'Range Selected',
+          detail: `Selected ${slice.length} questions (Q${start} to Q${end}).`
+        });
+        return;
+      }
+    }
+
+    // Check if comma-separated: e.g. "1, 3, 5, 8"
+    if (str.includes(',')) {
+      const parts = str.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= raw.length);
+      if (parts.length > 0) {
+        const uniqueIndices = Array.from(new Set(parts));
+        const picked = uniqueIndices.map(idx => raw[idx - 1]?.id).filter(Boolean);
+        this.tempSelectedPollIds.set(picked);
+        this.messageService.add({
+          severity: 'info',
+          summary: 'Custom Questions Selected',
+          detail: `Selected ${picked.length} specific questions.`
+        });
+        return;
+      }
+    }
+
+    // Otherwise single number count: e.g. "15"
+    const count = parseInt(str, 10);
+    if (!isNaN(count) && count > 0) {
+      this.presetSelectFirst(count);
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Questions Selected',
+        detail: `Selected first ${Math.min(count, raw.length)} questions.`
+      });
+    } else {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Invalid Input',
+        detail: 'Please enter a valid number (e.g. 15) or range (e.g. 1-20).'
+      });
+    }
+  }
+
+  applyPickRandom() {
+    const raw = this.allRawPolls();
+    if (raw.length === 0) return;
+    const str = (this.customPickInput || '').trim();
+    let count = 15;
+    const rangeMatch = str.match(/^(\d+)\s*(?:-|to|\.\.)\s*(\d+)$/i);
+    if (rangeMatch) {
+      const start = parseInt(rangeMatch[1], 10);
+      const end = parseInt(rangeMatch[2], 10);
+      count = Math.abs(end - start) + 1;
+    } else {
+      const parsed = parseInt(str, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        count = parsed;
+      }
+    }
+
+    this.presetSelectRandom(count);
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Random Pick',
+      detail: `Randomly selected ${Math.min(count, raw.length)} questions.`
+    });
   }
 
   presetSelectFirst(count: number) {
