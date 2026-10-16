@@ -269,7 +269,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               </div>
 
               <!-- More actions column -->
-              <div class="w-40 sm:w-48 text-right flex items-center justify-end gap-1.5" (click)="$event.stopPropagation()">
+              <div class="w-48 sm:w-56 text-right flex items-center justify-end gap-1.5" (click)="$event.stopPropagation()">
                 <!-- Quick Add question icon [+] -->
                 <button 
                   type="button" 
@@ -295,6 +295,15 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   class="p-1.5 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50/50 transition-colors cursor-pointer">
                   <i class="pi pi-sliders-h text-sm"></i>
                 </a>
+
+                <!-- Delete Session [Trash] -->
+                <button 
+                  type="button" 
+                  (click)="deleteRoom(r.code)"
+                  title="Delete Session" 
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
+                  <i class="pi pi-trash text-sm"></i>
+                </button>
 
                 <!-- More menu [...] -->
                 <div class="relative" [class.z-50]="activeMenuRoom() === r.code">
@@ -495,7 +504,8 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
       </div>
 
       <!-- Mati Questions Management Workspace for the Selected Mati -->
-      <div class="bg-white rounded-xl border border-gray-200/90 p-5 sm:p-6 shadow-2xs space-y-4 relative z-10">
+      @if (selectedRoomCode()) {
+        <div class="bg-white rounded-xl border border-gray-200/90 p-5 sm:p-6 shadow-2xs space-y-4 relative z-10">
         <!-- Slido Question Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-gray-200">
           <div>
@@ -640,6 +650,13 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
           }
         </div>
       </div>
+    } @else {
+        <div class="bg-white rounded-xl border border-dashed border-gray-300 p-10 text-center text-gray-500 text-sm">
+          <i class="pi pi-folder-open text-3xl text-gray-400 mb-2 block"></i>
+          <p class="font-semibold text-gray-700">No mati session selected</p>
+          <p class="text-xs text-gray-400 mt-1">Select an active session from the list above or click <strong>+ Create mati</strong> to start a new session.</p>
+        </div>
+      }
 
       <!-- Create Mati Dialog -->
       <p-dialog 
@@ -1291,20 +1308,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const codes = [...this.selectedRoomCodes()];
     if (codes.length === 0) return;
 
-    if (confirm(`Are you sure you want to delete ${codes.length} selected mati session${codes.length > 1 ? 's' : ''}? This will permanently remove all associated polls.`)) {
-      await Promise.all(codes.map(code => this.pollService.deleteRoom(code)));
+    if (!confirm(`Are you sure you want to delete ${codes.length} selected mati session${codes.length > 1 ? 's' : ''}? This will permanently remove all associated polls.`)) {
+      return;
+    }
 
-      this.messageService.add({
-        severity: 'info',
-        summary: 'Matis Deleted',
-        detail: `${codes.length} mati session${codes.length > 1 ? 's' : ''} deleted.`
-      });
+    this.activeMenuRoom.set(null);
+    // Optimistic UI update immediately
+    this.rooms.update(list => list.filter(r => !codes.includes(r.code)));
+    this.clearSelection();
 
-      const remaining = this.filteredRooms().filter(r => !codes.includes(r.code));
-      if (remaining.length > 0) {
-        this.switchRoom(remaining[0].code);
-      }
-      this.clearSelection();
+    await Promise.all(codes.map(code => this.pollService.deleteRoom(code)));
+
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Matis Deleted',
+      detail: `${codes.length} mati session${codes.length > 1 ? 's' : ''} deleted.`
+    });
+
+    const remaining = this.filteredRooms().filter(r => !codes.includes(r.code));
+    if (remaining.length > 0) {
+      this.switchRoom(remaining[0].code);
+    } else {
+      this.switchRoom('');
     }
   }
 
@@ -1520,8 +1545,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const validRooms = list.filter(r => r.code && !r.code.startsWith('_'));
       this.rooms.set(validRooms);
       const visible = this.filteredRooms();
-      if (visible.length > 0 && (!this.selectedRoomCode() || this.selectedRoomCode().startsWith('_') || !visible.some(r => r.code === this.selectedRoomCode()))) {
-        this.switchRoom(visible[0].code);
+      if (visible.length > 0) {
+        if (!this.selectedRoomCode() || this.selectedRoomCode().startsWith('_') || !visible.some(r => r.code === this.selectedRoomCode())) {
+          this.switchRoom(visible[0].code);
+        }
+      } else {
+        this.switchRoom('');
       }
     });
     this.switchRoom(this.selectedRoomCode());
@@ -1539,7 +1568,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   switchRoom(code: string) {
-    if (!code || code.startsWith('_')) return;
+    if (!code || code.startsWith('_')) {
+      this.selectedRoomCode.set('');
+      this.targetRoomForNewPoll.set('');
+      this.targetRoomForImport.set('');
+      this.pollsSub?.unsubscribe();
+      this.allRawPolls.set([]);
+      return;
+    }
     this.selectedRoomCode.set(code);
     this.targetRoomForNewPoll.set(code);
     this.targetRoomForImport.set(code);
@@ -1760,17 +1796,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async deleteRoom(code: string) {
-    if (confirm(`Are you sure you want to delete room "${code}"? This will remove all its polls.`)) {
-      await this.pollService.deleteRoom(code);
-      this.messageService.add({
-        severity: 'info',
-        summary: 'Room Deleted',
-        detail: `Room ${code} has been deleted.`
-      });
-      const remaining = this.filteredRooms().filter(r => r.code !== code);
-      if (remaining.length > 0) {
-        this.switchRoom(remaining[0].code);
-      }
+    if (!confirm(`Are you sure you want to delete room "${code}"? This will permanently remove the room and all its polls.`)) {
+      return;
+    }
+
+    this.activeMenuRoom.set(null);
+    // Optimistic UI update immediately
+    this.rooms.update(list => list.filter(r => r.code !== code));
+    this.selectedRoomCodes.update(codes => codes.filter(c => c !== code));
+
+    await this.pollService.deleteRoom(code);
+
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Room Deleted',
+      detail: `Room ${code} has been permanently deleted.`
+    });
+
+    const remaining = this.filteredRooms().filter(r => r.code !== code);
+    if (remaining.length > 0) {
+      this.switchRoom(remaining[0].code);
+    } else {
+      this.switchRoom('');
     }
   }
 

@@ -29,14 +29,14 @@ import { Room, Poll, Vote, PollStats, DetailedSessionSummary, QuestionResultSumm
  * - Trims whitespace and converts to uppercase
  */
 export function normalizeRoomCode(code: string | null | undefined): string {
-  if (!code) return 'MATI01';
+  if (!code) return '';
   try {
     const decoded = decodeURIComponent(code);
     const cleaned = decoded.replace(/^[#\s]+/, '').replace(/[^a-zA-Z0-9_-]/g, '').trim().toUpperCase();
-    return cleaned || 'MATI01';
+    return cleaned;
   } catch {
     const cleaned = code.replace(/^[#\s]+/, '').replace(/[^a-zA-Z0-9_-]/g, '').trim().toUpperCase();
-    return cleaned || 'MATI01';
+    return cleaned;
   }
 }
 
@@ -53,6 +53,7 @@ export class MatiPollService {
   private mockPolls$ = new BehaviorSubject<Map<string, Poll[]>>(new Map());
   private mockVotes$ = new BehaviorSubject<Map<string, Vote[]>>(new Map());
   private activeBroadcastRoom$ = new BehaviorSubject<string>('MATI01');
+  private deletedRooms = new Set<string>();
 
   // Active state signals
   readonly currentRoom = signal<Room | null>(null);
@@ -110,16 +111,41 @@ export class MatiPollService {
 
   constructor() {
     this.startClockSync();
-    this.initDefaultMockData();
+
     if (this.isBrowser) {
-      const saved = localStorage.getItem('mati_active_room');
-      if (saved) {
-        this.activeBroadcastRoom$.next(normalizeRoomCode(saved));
+      try {
+        const savedDeleted = localStorage.getItem('mati_deleted_room_codes');
+        if (savedDeleted) {
+          const parsed = JSON.parse(savedDeleted);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(c => {
+              if (c && typeof c === 'string') this.deletedRooms.add(c.toUpperCase());
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('[Mati] Failed to load deleted rooms:', e);
       }
     }
+
+    this.initDefaultMockData();
+
+    if (this.isBrowser) {
+      const saved = localStorage.getItem('mati_active_room');
+      const normalizedSaved = normalizeRoomCode(saved);
+      if (normalizedSaved && !this.deletedRooms.has(normalizedSaved.toUpperCase())) {
+        this.activeBroadcastRoom$.next(normalizedSaved);
+      } else if (this.deletedRooms.has('MATI01')) {
+        const remaining = Array.from(this.mockRooms$.getValue().keys()).filter(c => !this.deletedRooms.has(c));
+        this.activeBroadcastRoom$.next(remaining[0] || '');
+      }
+    }
+
     if (this.firestore) {
       this.isConnectedToFirebase.set(true);
-      this.ensureDefaultRoomInFirestore('MATI01');
+      if (!this.deletedRooms.has('MATI01')) {
+        this.ensureDefaultRoomInFirestore('MATI01');
+      }
       this.initBroadcastListener();
     }
   }
@@ -133,9 +159,11 @@ export class MatiPollService {
           const data = snap.data();
           if (data && data['activeRoomCode']) {
             const code = normalizeRoomCode(data['activeRoomCode'] as string);
-            this.activeBroadcastRoom$.next(code);
-            if (this.isBrowser) {
-              localStorage.setItem('mati_active_room', code);
+            if (code && !this.deletedRooms.has(code.toUpperCase())) {
+              this.activeBroadcastRoom$.next(code);
+              if (this.isBrowser) {
+                localStorage.setItem('mati_active_room', code);
+              }
             }
           }
         }
@@ -188,6 +216,7 @@ export class MatiPollService {
    */
   async ensureDefaultRoomInFirestore(code: string): Promise<void> {
     if (!this.firestore) return;
+    if (this.deletedRooms.has(code.toUpperCase())) return;
     try {
       const roomRef = doc(this.firestore, `rooms/${code}`);
       const snap = await getDoc(roomRef);
@@ -259,6 +288,17 @@ export class MatiPollService {
     endDate?: string
   ): Promise<string> {
     const code = (customCode || this.generateRoomCode()).toUpperCase();
+
+    // If previously deleted, unmark it so it can be used again
+    if (this.deletedRooms.has(code)) {
+      this.deletedRooms.delete(code);
+      if (this.isBrowser) {
+        try {
+          localStorage.setItem('mati_deleted_room_codes', JSON.stringify(Array.from(this.deletedRooms)));
+        } catch {}
+      }
+    }
+
     const newRoom: Room = {
       code,
       title: title || 'Mati Live Session',
@@ -292,12 +332,45 @@ export class MatiPollService {
   }
 
   /**
-   * Delete room and its associated state
+   * Delete room and its associated state permanently
    */
   async deleteRoom(roomCode: string): Promise<void> {
     const code = normalizeRoomCode(roomCode);
+    if (!code) return;
+
+    // 1. Mark as permanently deleted in local cache & storage
+    this.deletedRooms.add(code.toUpperCase());
+    if (this.isBrowser) {
+      try {
+        localStorage.setItem('mati_deleted_room_codes', JSON.stringify(Array.from(this.deletedRooms)));
+      } catch {}
+    }
+
+    // 2. Remove from local in-memory fallback
+    const rooms = this.mockRooms$.getValue();
+    rooms.delete(code);
+    this.mockRooms$.next(new Map(rooms));
+
+    const polls = this.mockPolls$.getValue();
+    polls.delete(code);
+    this.mockPolls$.next(new Map(polls));
+
+    const votes = this.mockVotes$.getValue();
+    for (const key of Array.from(votes.keys())) {
+      if (key.startsWith(code + '_') || key === code) {
+        votes.delete(key);
+      }
+    }
+    this.mockVotes$.next(new Map(votes));
+
+    // 3. Delete from Firestore (both subcollection polls and room doc)
     if (this.firestore) {
       try {
+        const pollsRef = collection(this.firestore, `rooms/${code}/polls`);
+        const pollsSnap = await getDocs(pollsRef);
+        const pollDeletes = pollsSnap.docs.map(d => deleteDoc(d.ref));
+        await Promise.all(pollDeletes);
+
         const roomRef = doc(this.firestore, `rooms/${code}`);
         await deleteDoc(roomRef);
       } catch (err) {
@@ -305,9 +378,25 @@ export class MatiPollService {
       }
     }
 
-    const rooms = this.mockRooms$.getValue();
-    rooms.delete(code);
-    this.mockRooms$.next(new Map(rooms));
+    // 4. Clean up active broadcast if it pointed to this room
+    if (this.activeBroadcastRoom$.getValue() === code) {
+      const remaining = Array.from(this.mockRooms$.getValue().keys()).filter(c => !this.deletedRooms.has(c));
+      const nextCode = remaining.length > 0 ? remaining[0] : '';
+      this.activeBroadcastRoom$.next(nextCode);
+      if (this.isBrowser) {
+        if (nextCode) {
+          localStorage.setItem('mati_active_room', nextCode);
+        } else {
+          localStorage.removeItem('mati_active_room');
+        }
+      }
+    }
+
+    // 5. Clean currentRoom signal if it pointed to this room
+    if (this.currentRoom()?.code === code) {
+      const remainingRooms = Array.from(this.mockRooms$.getValue().values()).filter(r => !this.deletedRooms.has(r.code));
+      this.currentRoom.set(remainingRooms.length > 0 ? remainingRooms[0] : null);
+    }
   }
 
   /**
@@ -1486,7 +1575,7 @@ export class MatiPollService {
       return new Observable<Room[]>((subscriber) => {
         // Emit in-memory fallback first for immediate responsiveness
         const initialMock = Array.from(this.mockRooms$.getValue().values())
-          .filter(r => r.code && !r.code.startsWith('_'));
+          .filter(r => r.code && !r.code.startsWith('_') && !this.deletedRooms.has(r.code.toUpperCase()));
         if (initialMock.length > 0) {
           subscriber.next(initialMock);
         }
@@ -1494,10 +1583,11 @@ export class MatiPollService {
         const roomsCol = collection(this.firestore!, 'rooms');
         const unsub = onSnapshot(roomsCol, (snapshot) => {
           const firestoreRooms = snapshot.docs
-            .filter(d => !d.id.startsWith('_'))
-            .map(d => ({ code: d.id, ...d.data() } as Room));
+            .filter(d => !d.id.startsWith('_') && !this.deletedRooms.has(d.id.toUpperCase()))
+            .map(d => ({ code: d.id, ...d.data() } as Room))
+            .filter(r => r.code && !r.code.startsWith('_') && !this.deletedRooms.has(r.code.toUpperCase()));
           const localRooms = Array.from(this.mockRooms$.getValue().values())
-            .filter(r => r.code && !r.code.startsWith('_'));
+            .filter(r => r.code && !r.code.startsWith('_') && !this.deletedRooms.has(r.code.toUpperCase()));
 
           const map = new Map<string, Room>();
           for (const r of localRooms) map.set(r.code, r);
@@ -1507,7 +1597,10 @@ export class MatiPollService {
           subscriber.next(merged);
         }, (err) => {
           console.warn('[Mati] Firestore rooms listener error, fallback to local store:', err);
-          subscriber.next(Array.from(this.mockRooms$.getValue().values()).filter(r => r.code && !r.code.startsWith('_')));
+          subscriber.next(
+            Array.from(this.mockRooms$.getValue().values())
+              .filter(r => r.code && !r.code.startsWith('_') && !this.deletedRooms.has(r.code.toUpperCase()))
+          );
         });
 
         return () => unsub();
@@ -1515,19 +1608,21 @@ export class MatiPollService {
     }
 
     return this.mockRooms$.pipe(
-      map(m => Array.from(m.values()).filter(r => r.code && !r.code.startsWith('_')))
+      map(m => Array.from(m.values()).filter(r => r.code && !r.code.startsWith('_') && !this.deletedRooms.has(r.code.toUpperCase())))
     );
   }
 
   async listRooms(): Promise<Room[]> {
-    const local = Array.from(this.mockRooms$.getValue().values()).filter(r => r.code && !r.code.startsWith('_'));
+    const local = Array.from(this.mockRooms$.getValue().values())
+      .filter(r => r.code && !r.code.startsWith('_') && !this.deletedRooms.has(r.code.toUpperCase()));
     if (this.firestore) {
       try {
         const snap = await getDocs(collection(this.firestore, 'rooms'));
         if (!snap.empty) {
           const firestoreRooms = snap.docs
-            .filter(d => !d.id.startsWith('_'))
-            .map(d => ({ code: d.id, ...d.data() } as Room));
+            .filter(d => !d.id.startsWith('_') && !this.deletedRooms.has(d.id.toUpperCase()))
+            .map(d => ({ code: d.id, ...d.data() } as Room))
+            .filter(r => r.code && !r.code.startsWith('_') && !this.deletedRooms.has(r.code.toUpperCase()));
           const map = new Map<string, Room>();
           for (const r of local) map.set(r.code, r);
           for (const r of firestoreRooms) map.set(r.code, r);
@@ -1553,6 +1648,9 @@ export class MatiPollService {
    * Seed default room and sample questions for instant usability
    */
   private initDefaultMockData(): void {
+    if (this.deletedRooms.has('MATI01')) {
+      return;
+    }
     const defaultCode = 'MATI01';
     const initialRoom: Room = {
       code: defaultCode,
