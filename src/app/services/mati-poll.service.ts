@@ -499,6 +499,57 @@ export class MatiPollService {
   }
 
   /**
+   * Edit an existing poll (works for manually created and imported questions).
+   * Option ids are positional (1..n), so existing votes keep pointing at the same position.
+   */
+  async updatePoll(roomCode: string, pollId: string, question: string, optionTexts: string[], correctOptionId?: number): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+    const options = optionTexts.map((text, idx) => ({
+      id: idx + 1,
+      text,
+      isCorrect: correctOptionId !== undefined ? (idx + 1 === correctOptionId) : undefined
+    }));
+    const changes: any = { question, options, correctOptionId: correctOptionId !== undefined ? correctOptionId : null };
+
+    if (this.firestore) {
+      try {
+        // Firestore rejects undefined values, so strip isCorrect when unset
+        const cleanOptions = options.map(o => o.isCorrect === undefined ? { id: o.id, text: o.text } : o);
+        await updateDoc(doc(this.firestore, `rooms/${code}/polls/${pollId}`), { ...changes, options: cleanOptions });
+        const room = await this.getRoom(code);
+        if (room?.activePollId === pollId) {
+          await updateDoc(doc(this.firestore, `rooms/${code}`), {
+            'activePoll.question': question,
+            'activePoll.options': cleanOptions,
+            'activePoll.correctOptionId': correctOptionId !== undefined ? correctOptionId : deleteField()
+          });
+        }
+      } catch (err) {
+        console.warn('[Mati] Firebase updatePoll error:', err);
+      }
+    }
+
+    const applyLocal = (p: Poll): Poll => {
+      const next: Poll = { ...p, question, options };
+      if (correctOptionId !== undefined) next.correctOptionId = correctOptionId;
+      else delete next.correctOptionId;
+      return next;
+    };
+    const pollsMap = this.mockPolls$.getValue();
+    pollsMap.set(code, (pollsMap.get(code) || []).map(p => p.id === pollId ? applyLocal(p) : p));
+    this.mockPolls$.next(new Map(pollsMap));
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room && room.activePollId === pollId && room.activePoll) {
+      room.activePoll = applyLocal(room.activePoll);
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+  }
+
+  /**
    * Step 2: createPoll(roomCode: string, question: string, options: string[])
    * Appends poll to sub-collection.
    */

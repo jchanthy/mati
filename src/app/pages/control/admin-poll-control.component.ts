@@ -620,6 +620,13 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     }
                     <button
                       type="button"
+                      (click)="openEditPoll(p)"
+                      title="Edit Question"
+                      class="p-1 text-gray-400 hover:text-indigo-600 rounded transition-colors cursor-pointer">
+                      <i class="pi pi-pencil text-[11px]"></i>
+                    </button>
+                    <button
+                      type="button"
                       (click)="deletePoll(p.id)"
                       title="Delete Question"
                       class="p-1 text-gray-400 hover:text-red-600 rounded transition-colors cursor-pointer">
@@ -638,7 +645,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
       </div>
 
       <!-- Create Question Dialog in Controller -->
-      <p-dialog [header]="'Add Question to Room ' + roomCode()" [(visible)]="showNewPollDialog" [modal]="true" [style]="{width: '520px'}" class="p-fluid">
+      <p-dialog [header]="editingPollId ? 'Edit Question (' + roomCode() + ')' : 'Add Question to Room ' + roomCode()" [(visible)]="showNewPollDialog" (onHide)="resetPollForm()" [modal]="true" [style]="{width: '520px'}" class="p-fluid">
         <div class="space-y-4 pt-2">
           <div>
             <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Question</label>
@@ -655,7 +662,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
         </div>
         <ng-template pTemplate="footer">
           <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showNewPollDialog = false"></button>
-          <button pButton label="Save Question" icon="pi pi-check" class="p-button-primary" (click)="createNewPoll()"></button>
+          <button pButton [label]="editingPollId ? 'Update Question' : 'Save Question'" icon="pi pi-check" class="p-button-primary" (click)="createNewPoll()"></button>
         </ng-template>
       </p-dialog>
 
@@ -950,6 +957,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   newPollQuestion = '';
   newPollOptionsRaw = 'Option 1\nOption 2\nOption 3\nOption 4';
   newPollCorrectIndex: number | null = null;
+  editingPollId: string | null = null;
 
   roomCode = signal<string>('MATI01');
   allRooms = signal<Room[]>([]);
@@ -1335,6 +1343,27 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     }
 
     const correctId = this.newPollCorrectIndex ? Number(this.newPollCorrectIndex) : undefined;
+    if (correctId !== undefined && (correctId < 1 || correctId > opts.length)) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Invalid correct option',
+        detail: `Correct option must be between 1 and ${opts.length}.`
+      });
+      return;
+    }
+
+    if (this.editingPollId) {
+      await this.pollService.updatePoll(this.roomCode(), this.editingPollId, this.newPollQuestion.trim(), opts, correctId);
+      this.showNewPollDialog = false;
+      this.resetPollForm();
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Question Updated ✅',
+        detail: 'Changes saved.'
+      });
+      return;
+    }
+
     await this.pollService.createPoll(this.roomCode(), this.newPollQuestion, opts, correctId);
     this.showNewPollDialog = false;
     this.newPollQuestion = '';
@@ -1344,6 +1373,21 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       summary: 'Question Added 🎉',
       detail: `Question added to ${this.roomCode()}!`
     });
+  }
+
+  openEditPoll(p: Poll) {
+    this.editingPollId = p.id;
+    this.newPollQuestion = p.question;
+    this.newPollOptionsRaw = p.options.map(o => o.text).join('\n');
+    this.newPollCorrectIndex = p.correctOptionId ?? null;
+    this.showNewPollDialog = true;
+  }
+
+  resetPollForm() {
+    this.editingPollId = null;
+    this.newPollQuestion = '';
+    this.newPollOptionsRaw = 'Option 1\nOption 2\nOption 3\nOption 4';
+    this.newPollCorrectIndex = null;
   }
 
   async deletePoll(pollId: string) {

@@ -67,51 +67,6 @@ import QRCode from 'qrcode';
 
               <!-- Right: Navigation View Tabs -->
               <div class="flex items-center gap-2 shrink-0">
-                <div class="p-1 rounded-2xl flex items-center gap-1 border shadow-xs"
-                  [ngClass]="isLight() ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'">
-                  @if (sessionStats().hasScoredQuestions) {
-                    <button
-                      type="button"
-                      (click)="setOverviewTab('leaderboard')"
-                      [ngClass]="overviewTab() === 'leaderboard' 
-                        ? 'bg-amber-500 text-white shadow-xs font-bold' 
-                        : (isLight() ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200')"
-                      class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
-                      <span>🏆</span>
-                      <span>Podium & Leaderboard</span>
-                    </button>
-                  }
-                  <button
-                    type="button"
-                    (click)="setOverviewTab('breakdown')"
-                    [ngClass]="overviewTab() === 'breakdown' 
-                      ? (isLight() ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'bg-indigo-600 text-white shadow-xs font-bold') 
-                      : (isLight() ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200')"
-                    class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
-                    <i class="pi pi-list"></i>
-                    <span>All Questions ({{ sessionStats().questionResults.length }})</span>
-                  </button>
-                  <button
-                    type="button"
-                    (click)="setOverviewTab('spotlight')"
-                    [ngClass]="overviewTab() === 'spotlight' 
-                      ? (isLight() ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'bg-indigo-600 text-white shadow-xs font-bold') 
-                      : (isLight() ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200')"
-                    class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
-                    <i class="pi pi-search"></i>
-                    <span>Spotlight Focus</span>
-                  </button>
-                  <button
-                    type="button"
-                    (click)="setOverviewTab('insights')"
-                    [ngClass]="overviewTab() === 'insights' 
-                      ? (isLight() ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'bg-indigo-600 text-white shadow-xs font-bold') 
-                      : (isLight() ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200')"
-                    class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
-                    <i class="pi pi-chart-pie"></i>
-                    <span>Key Insights</span>
-                  </button>
-                </div>
 
                 @if (isOverviewMode() && room()?.status !== 'completed') {
                   <button
@@ -125,64 +80,6 @@ import QRCode from 'qrcode';
               </div>
             </div>
 
-            <!-- 2. Grand 4-KPI Overview Metric Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 my-3 shrink-0 w-full">
-              <!-- Total Questions -->
-              <div class="p-3 sm:p-3.5 rounded-2xl border shadow-xs text-center space-y-0.5 transition-colors"
-                [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-100' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-xl sm:text-2xl lg:text-3xl font-black font-mono leading-tight"
-                  [ngClass]="isLight() ? 'text-slate-900' : 'text-slate-100'">
-                  {{ totalQuestionsCount() }}
-                </div>
-                <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
-                  [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                  Questions Polled
-                </div>
-              </div>
-
-              <!-- Audience Votes Cast -->
-              <div class="p-3 sm:p-3.5 rounded-2xl border shadow-xs text-center space-y-0.5 transition-colors"
-                [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-100' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-xl sm:text-2xl lg:text-3xl font-black font-mono leading-tight text-indigo-600 dark:text-indigo-400">
-                  {{ totalVotesCount() }}
-                </div>
-                <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
-                  [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                  Total Submissions
-                </div>
-              </div>
-
-              <!-- Overall Accuracy or Top Consensus -->
-              <div class="p-3 sm:p-3.5 rounded-2xl border shadow-xs text-center space-y-0.5 transition-colors"
-                [ngClass]="sessionStats().hasScoredQuestions 
-                  ? (isLight() ? 'bg-emerald-50/70 border-emerald-300' : 'border-emerald-500/40 bg-emerald-950/20') 
-                  : (isLight() ? 'bg-amber-50/70 border-amber-300' : 'border-amber-500/40 bg-amber-950/20')">
-                <div class="text-xl sm:text-2xl lg:text-3xl font-black font-mono leading-tight"
-                  [ngClass]="sessionStats().hasScoredQuestions 
-                    ? (isLight() ? 'text-emerald-700' : 'text-emerald-400') 
-                    : (isLight() ? 'text-amber-700' : 'text-amber-400')">
-                  {{ sessionStats().hasScoredQuestions ? sessionStats().overallAccuracy + '%' : sessionStats().topConsensusPercentage + '%' }}
-                </div>
-                <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
-                  [ngClass]="sessionStats().hasScoredQuestions 
-                    ? (isLight() ? 'text-emerald-800' : 'text-emerald-300') 
-                    : (isLight() ? 'text-amber-800' : 'text-amber-300')">
-                  {{ sessionStats().hasScoredQuestions ? 'Overall Quiz Accuracy' : 'Average Consensus' }}
-                </div>
-              </div>
-
-              <!-- Completion Status -->
-              <div class="p-3 sm:p-3.5 rounded-2xl border shadow-xs text-center space-y-0.5 transition-colors"
-                [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-100' : 'bg-slate-900/90 border-slate-800'">
-                <div class="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono leading-tight">
-                  100%
-                </div>
-                <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider"
-                  [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                  Audience Completed
-                </div>
-              </div>
-            </div>
 
             <!-- 3. Dynamic Tab Content: Scrollable & Responsive View -->
             <div class="flex-1 min-h-0 overflow-y-auto pr-1">
@@ -191,33 +88,6 @@ import QRCode from 'qrcode';
               @if (overviewTab() === 'leaderboard') {
                 <div class="space-y-6 pb-8 animate-fadein max-w-5xl 2xl:max-w-6xl mx-auto">
                   
-                  <!-- Grand Celebration Banner -->
-                  <div class="relative overflow-hidden rounded-3xl p-5 sm:p-6 text-center border shadow-lg"
-                    [ngClass]="isLight() 
-                      ? 'bg-linear-to-r from-amber-50 via-indigo-50 to-amber-50 border-amber-200/80 shadow-amber-100/50' 
-                      : 'bg-linear-to-r from-amber-950/40 via-slate-900 to-amber-950/40 border-amber-500/30 shadow-black/40'">
-                    
-                    <!-- Ambient Glow Sparks -->
-                    <div class="absolute -top-10 left-1/4 w-32 h-32 bg-amber-400/20 rounded-full blur-3xl pointer-events-none"></div>
-                    <div class="absolute -bottom-10 right-1/4 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
-
-                    <div class="relative space-y-1.5">
-                      <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-widest border shadow-xs"
-                        [ngClass]="isLight() ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-amber-950 text-amber-300 border-amber-700'">
-                        <span>👑</span>
-                        <span>Quiz Champions & Speed Leaders</span>
-                      </div>
-                      <h2 class="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight"
-                        [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
-                        🎉 សូមអបអរសាទរអ្នកឈ្នះទាំងអស់គ្នា! • Congratulations!
-                      </h2>
-                      <p class="text-xs sm:text-sm md:text-base font-medium max-w-2xl mx-auto"
-                        [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">
-                        ចំណាត់ថ្នាក់ផ្អែកលើចំនួនចម្លើយត្រឹមត្រូវច្រើនជាងគេ និងចំណាយពេលតិចបំផុត • Ranked by most correct answers & fastest completion time.
-                      </p>
-                    </div>
-                  </div>
-
                   @if ((sessionStats().leaderboard || []).length === 0) {
                     <!-- Empty State -->
                     <div class="p-12 text-center rounded-3xl border space-y-3"
