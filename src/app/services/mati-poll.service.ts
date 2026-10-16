@@ -67,7 +67,49 @@ export class MatiPollService {
     return normalizeRoomCode(code);
   }
 
+  /** Offset (ms) between the server clock and this device's clock. */
+  private serverOffsetMs = 0;
+
+  /** Server-synchronised "now". Use this for ALL timer math instead of Date.now(). */
+  now(): number {
+    return Date.now() + this.serverOffsetMs;
+  }
+
+  /**
+   * Estimates the device clock error using the HTTP `Date` header from our own host.
+   * Picks the lowest-latency sample of a few tries to keep the error small.
+   */
+  async syncClock(): Promise<void> {
+    if (!this.isBrowser) return;
+    let best: { rtt: number; offset: number } | null = null;
+    for (let i = 0; i < 3; i++) {
+      try {
+        const t0 = Date.now();
+        const res = await fetch(`/?_t=${t0}_${i}`, { method: 'HEAD', cache: 'no-store' });
+        const t1 = Date.now();
+        const header = res.headers.get('Date');
+        if (!header) continue;
+        // Date header has 1s resolution (truncated), so add 500ms to centre the error.
+        const serverMs = new Date(header).getTime() + 500;
+        const rtt = t1 - t0;
+        const offset = serverMs - (t0 + rtt / 2);
+        if (!best || rtt < best.rtt) best = { rtt, offset };
+      } catch {}
+    }
+    if (best) this.serverOffsetMs = best.offset;
+  }
+
+  private startClockSync() {
+    if (!this.isBrowser) return;
+    this.syncClock();
+    setInterval(() => this.syncClock(), 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.syncClock();
+    });
+  }
+
   constructor() {
+    this.startClockSync();
     this.initDefaultMockData();
     if (this.isBrowser) {
       const saved = localStorage.getItem('mati_active_room');
@@ -442,7 +484,7 @@ export class MatiPollService {
     const code = normalizeRoomCode(roomCode);
     const hasTimer = timerSeconds !== undefined && timerSeconds !== null && timerSeconds > 0;
     const timerDuration = hasTimer ? timerSeconds : null;
-    const timerEndsAt = hasTimer ? Date.now() + (timerSeconds as number) * 1000 : null;
+    const timerEndsAt = hasTimer ? this.now() + (timerSeconds as number) * 1000 : null;
 
     // Fetch the poll object to embed directly in the room document for 0ms instant load on all clients
     let activePoll: Poll | null = null;
@@ -600,13 +642,13 @@ export class MatiPollService {
 
   /**
    * Sets or clears synchronized countdown timer for the room.
-   * When durationSeconds is a positive number, sets timerEndsAt = Date.now() + durationSeconds * 1000.
+   * When durationSeconds is a positive number, sets timerEndsAt = this.now() + durationSeconds * 1000.
    * When null or 0, clears the timer.
    */
   async setPollTimer(roomCode: string, durationSeconds: number | null, autoAdvance?: boolean): Promise<void> {
     const code = normalizeRoomCode(roomCode);
     const timerDuration = durationSeconds && durationSeconds > 0 ? durationSeconds : null;
-    const timerEndsAt = durationSeconds && durationSeconds > 0 ? Date.now() + durationSeconds * 1000 : null;
+    const timerEndsAt = durationSeconds && durationSeconds > 0 ? this.now() + durationSeconds * 1000 : null;
 
     const updatePayload: any = {
       timerDuration,

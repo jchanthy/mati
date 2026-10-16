@@ -1648,7 +1648,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
       }
 
       if (stats?.timerEndsAt && stats.timerEndsAt > 0) {
-        const diff = Math.ceil((stats.timerEndsAt - Date.now()) / 1000);
+        const diff = Math.ceil((stats.timerEndsAt - this.pollService.now()) / 1000);
         if (diff <= 0) {
           this.remainingSeconds.set(0);
           this.stopLocalTimer(false);
@@ -1665,7 +1665,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   private startLocalTimer(timerEndsAt: number) {
     this.stopLocalTimer(false);
     const updateCountdown = () => {
-      const diff = Math.ceil((timerEndsAt - Date.now()) / 1000);
+      const diff = Math.ceil((timerEndsAt - this.pollService.now()) / 1000);
       if (diff <= 0) {
         this.remainingSeconds.set(0);
         this.stopLocalTimer(false);

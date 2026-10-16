@@ -1069,7 +1069,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       if (roomData?.status === 'completed') {
         this.refreshSessionSummary();
       }
-      if (roomData?.timerEndsAt && roomData.timerEndsAt > Date.now()) {
+      if (roomData?.timerEndsAt && roomData.timerEndsAt > this.pollService.now()) {
         this.timerEndsAt = roomData.timerEndsAt;
         if (roomData.timerDuration) this.timerDuration = roomData.timerDuration;
         if (roomData.autoAdvance !== undefined) {
@@ -1361,7 +1361,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.timerDuration = seconds;
     this.autoAdvanceEnabled = true;
     this.countdownSeconds = seconds;
-    this.timerEndsAt = Date.now() + seconds * 1000;
+    this.timerEndsAt = this.pollService.now() + seconds * 1000;
     this.pollService.setPollTimer(this.roomCode(), seconds, true);
     this.startTimerTicker();
     this.messageService.add({
@@ -1372,7 +1372,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   isTimerActive(): boolean {
-    return this.countdownSeconds > 0 && this.timerEndsAt !== null && Date.now() < this.timerEndsAt;
+    return this.countdownSeconds > 0 && this.timerEndsAt !== null && this.pollService.now() < this.timerEndsAt;
   }
 
   toggleAutoAdvance() {
@@ -1405,7 +1405,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   resetTimer() {
     this.countdownSeconds = this.timerDuration;
     if (this.autoAdvanceEnabled) {
-      this.timerEndsAt = Date.now() + this.timerDuration * 1000;
+      this.timerEndsAt = this.pollService.now() + this.timerDuration * 1000;
       this.pollService.setPollTimer(this.roomCode(), this.timerDuration, true);
       this.startTimerTicker();
     }
@@ -1421,7 +1421,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const diff = Math.ceil((this.timerEndsAt - Date.now()) / 1000);
+      const diff = Math.ceil((this.timerEndsAt - this.pollService.now()) / 1000);
       if (diff > 0) {
         this.countdownSeconds = diff;
       } else {
