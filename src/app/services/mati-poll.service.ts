@@ -499,6 +499,76 @@ export class MatiPollService {
   }
 
   /**
+   * Persist a new question order. `orderedIds` is the full desired sequence;
+   * each poll gets order = position + 1. Polls not listed keep their relative order at the end.
+   */
+  async reorderPolls(roomCode: string, orderedIds: string[]): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+    const current = await this.getPollsForRoom(code);
+    const rest = current.map(p => p.id).filter(id => !orderedIds.includes(id));
+    const finalIds = [...orderedIds.filter(id => current.some(p => p.id === id)), ...rest];
+    const orderOf = new Map(finalIds.map((id, i) => [id, i + 1]));
+
+    if (this.firestore) {
+      try {
+        await Promise.all(finalIds.map((id, i) =>
+          updateDoc(doc(this.firestore!, `rooms/${code}/polls/${id}`), { order: i + 1 })
+        ));
+        const room = await this.getRoom(code);
+        if (room?.activePollId && orderOf.has(room.activePollId)) {
+          await updateDoc(doc(this.firestore, `rooms/${code}`), { 'activePoll.order': orderOf.get(room.activePollId) });
+        }
+      } catch (err) {
+        console.warn('[Mati] Firebase reorderPolls error:', err);
+      }
+    }
+
+    const pollsMap = this.mockPolls$.getValue();
+    const list = (pollsMap.get(code) || []).map(p => ({ ...p, order: orderOf.get(p.id) ?? p.order }));
+    list.sort((a, b) => (a.order || 0) - (b.order || 0));
+    pollsMap.set(code, list);
+    this.mockPolls$.next(new Map(pollsMap));
+  }
+
+  /** Copy a question (appended at the end, never auto-activated). */
+  async duplicatePoll(roomCode: string, pollId: string): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+    const polls = await this.getPollsForRoom(code);
+    const src = polls.find(p => p.id === pollId);
+    if (!src) return;
+    const newId = 'poll_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    const copy: Poll = {
+      ...src,
+      id: newId,
+      question: src.question,
+      order: polls.length + 1,
+      isLocked: false,
+      showCorrectAnswer: false,
+      options: src.options.map(o => ({ ...o }))
+    };
+    if (this.firestore) {
+      try {
+        await setDoc(doc(this.firestore, `rooms/${code}/polls/${newId}`), JSON.parse(JSON.stringify(copy)));
+      } catch (err) {
+        console.warn('[Mati] Firebase duplicatePoll error:', err);
+      }
+    }
+    const pollsMap = this.mockPolls$.getValue();
+    pollsMap.set(code, [...(pollsMap.get(code) || []), copy]);
+    this.mockPolls$.next(new Map(pollsMap));
+  }
+
+  /** Bulk delete, then renumber the remaining questions 1..n. */
+  async deletePolls(roomCode: string, pollIds: string[]): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+    for (const id of pollIds) {
+      await this.deletePoll(code, id);
+    }
+    const remaining = (await this.getPollsForRoom(code)).filter(p => !pollIds.includes(p.id));
+    await this.reorderPolls(code, remaining.map(p => p.id));
+  }
+
+  /**
    * Edit an existing poll (works for manually created and imported questions).
    * Option ids are positional (1..n), so existing votes keep pointing at the same position.
    */

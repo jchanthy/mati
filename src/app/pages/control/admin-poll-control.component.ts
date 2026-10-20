@@ -576,6 +576,23 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all" />
             </div>
 
+            <!-- Bulk actions -->
+            <div class="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" class="w-3.5 h-3.5 accent-indigo-600"
+                  [checked]="filteredPolls().length > 0 && bulkSelected().size === filteredPolls().length"
+                  (change)="toggleBulkAll()" />
+                <span>{{ bulkSelected().size > 0 ? bulkSelected().size + ' selected' : 'Select all' }}</span>
+              </label>
+              @if (bulkSelected().size > 0) {
+                <button type="button" (click)="deleteSelected()"
+                  class="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950 text-red-600 font-semibold flex items-center gap-1 cursor-pointer">
+                  <i class="pi pi-trash text-[10px]"></i>
+                  <span>Delete selected</span>
+                </button>
+              }
+            </div>
+
             <!-- Clean Scrollable Questions List -->
             <div class="space-y-2 max-h-[520px] overflow-y-auto pr-1">
               @for (p of filteredPolls(); track p.id; let idx = $index) {
@@ -587,6 +604,12 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     : 'bg-white dark:bg-gray-850 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'">
                   
                   <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      class="w-3.5 h-3.5 shrink-0 cursor-pointer accent-indigo-600"
+                      [checked]="bulkSelected().has(p.id)"
+                      (click)="$event.stopPropagation()"
+                      (change)="toggleBulk(p.id)" />
                     <span 
                       class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 border"
                       [ngClass]="currentPoll()?.id === p.id 
@@ -618,6 +641,29 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                         Present
                       </button>
                     }
+                    <button
+                      type="button"
+                      (click)="moveQuestion(p.id, -1)"
+                      [disabled]="idx === 0 || !!searchQuery.trim()"
+                      title="Move Up"
+                      class="p-1 text-gray-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors cursor-pointer">
+                      <i class="pi pi-arrow-up text-[11px]"></i>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="moveQuestion(p.id, 1)"
+                      [disabled]="idx === filteredPolls().length - 1 || !!searchQuery.trim()"
+                      title="Move Down"
+                      class="p-1 text-gray-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors cursor-pointer">
+                      <i class="pi pi-arrow-down text-[11px]"></i>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="duplicateQuestion(p.id)"
+                      title="Duplicate Question"
+                      class="p-1 text-gray-400 hover:text-indigo-600 rounded transition-colors cursor-pointer">
+                      <i class="pi pi-copy text-[11px]"></i>
+                    </button>
                     <button
                       type="button"
                       (click)="openEditPoll(p)"
@@ -1001,6 +1047,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     return this.tempSelectedPollIds().includes(pollId);
   }
 
+  bulkSelected = signal<Set<string>>(new Set());
   searchQuery = '';
   filteredPolls = computed(() => {
     const q = this.searchQuery.trim().toLowerCase();
@@ -1388,6 +1435,54 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.newPollQuestion = '';
     this.newPollOptionsRaw = 'Option 1\nOption 2\nOption 3\nOption 4';
     this.newPollCorrectIndex = null;
+  }
+
+  async moveQuestion(pollId: string, dir: -1 | 1) {
+    const visible = this.filteredPolls();
+    const i = visible.findIndex(p => p.id === pollId);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= visible.length) return;
+    const ids = this.allRawPolls().map(p => p.id);
+    const a = ids.indexOf(visible[i].id);
+    const b = ids.indexOf(visible[j].id);
+    if (a < 0 || b < 0) return;
+    [ids[a], ids[b]] = [ids[b], ids[a]];
+    await this.pollService.reorderPolls(this.roomCode(), ids);
+  }
+
+  async duplicateQuestion(pollId: string) {
+    await this.pollService.duplicatePoll(this.roomCode(), pollId);
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Question Duplicated',
+      detail: 'A copy was added at the end of the list.'
+    });
+  }
+
+  toggleBulk(pollId: string) {
+    const next = new Set(this.bulkSelected());
+    if (next.has(pollId)) next.delete(pollId); else next.add(pollId);
+    this.bulkSelected.set(next);
+  }
+
+  toggleBulkAll() {
+    const visible = this.filteredPolls();
+    this.bulkSelected.set(
+      this.bulkSelected().size === visible.length ? new Set() : new Set(visible.map(p => p.id))
+    );
+  }
+
+  async deleteSelected() {
+    const ids = [...this.bulkSelected()];
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} selected question(s)? This cannot be undone.`)) return;
+    await this.pollService.deletePolls(this.roomCode(), ids);
+    this.bulkSelected.set(new Set());
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Questions Removed',
+      detail: `${ids.length} question(s) removed.`
+    });
   }
 
   async deletePoll(pollId: string) {

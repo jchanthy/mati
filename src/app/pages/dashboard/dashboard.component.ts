@@ -694,15 +694,18 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 Start date
               </label>
               <div 
+                (click)="openDatePicker(startDateInput)"
                 class="relative flex items-center justify-between w-full px-3.5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm hover:border-gray-400 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900 transition-colors cursor-pointer">
-                <span class="text-gray-900 font-medium select-none truncate">
+                <span class="text-gray-900 font-medium select-none truncate pointer-events-none">
                   {{ formatDisplayDate(newRoomStartDate) || 'Select date' }}
                 </span>
-                <i class="pi pi-calendar text-gray-500 text-sm shrink-0"></i>
+                <i class="pi pi-calendar text-gray-500 text-sm shrink-0 pointer-events-none"></i>
                 <input 
+                  #startDateInput
                   type="date" 
-                  [(ngModel)]="newRoomStartDate" 
-                  class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                  [(ngModel)]="newRoomStartDate"
+                  (click)="$event.stopPropagation(); openDatePicker(startDateInput)"
+                  class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" />
               </div>
             </div>
 
@@ -712,15 +715,19 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 End date
               </label>
               <div 
+                (click)="openDatePicker(endDateInput)"
                 class="relative flex items-center justify-between w-full px-3.5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm hover:border-gray-400 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900 transition-colors cursor-pointer">
-                <span class="text-gray-900 font-medium select-none truncate">
+                <span class="text-gray-900 font-medium select-none truncate pointer-events-none">
                   {{ formatDisplayDate(newRoomEndDate) || 'Select date' }}
                 </span>
-                <i class="pi pi-calendar text-gray-500 text-sm shrink-0"></i>
+                <i class="pi pi-calendar text-gray-500 text-sm shrink-0 pointer-events-none"></i>
                 <input 
+                  #endDateInput
                   type="date" 
-                  [(ngModel)]="newRoomEndDate" 
-                  class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                  [(ngModel)]="newRoomEndDate"
+                  [min]="newRoomStartDate"
+                  (click)="$event.stopPropagation(); openDatePicker(endDateInput)"
+                  class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" />
               </div>
             </div>
           </div>
@@ -1388,6 +1395,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.newRoomEndDate = this.toInputDateFormat(end);
     this.showCustomCodeInput = false;
     this.showNewRoomDialog = true;
+  }
+
+  openDatePicker(input: HTMLInputElement) {
+    try {
+      if (typeof (input as any).showPicker === 'function') {
+        (input as any).showPicker();
+      } else {
+        input.focus();
+        input.click();
+      }
+    } catch {
+      input.focus();
+    }
   }
 
   private toInputDateFormat(d: Date): string {
