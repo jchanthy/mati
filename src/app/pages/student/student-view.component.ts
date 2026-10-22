@@ -70,7 +70,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 Join an Event
               </h2>
               <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                Enter the code shown on the screen (e.g. <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">#MATI3F</span>)
+                Enter the code shown on the screen (e.g. <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">#482915</span>)
               </p>
             </div>
 
@@ -82,7 +82,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   [ngModel]="inputJoinCode()"
                   (ngModelChange)="inputJoinCode.set($event)"
                   (keyup.enter)="submitJoinCode()"
-                  placeholder="e.g. MATI3F"
+                  placeholder="e.g. 482915"
                   class="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-2xl text-slate-900 dark:text-white font-mono font-black text-xl uppercase tracking-wider outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400 placeholder:normal-case placeholder:font-normal placeholder:text-base text-center" />
               </div>
 
@@ -94,20 +94,61 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 <i class="pi pi-arrow-right"></i>
               </button>
 
-              @if (activeBroadcastRoom() && activeBroadcastRoom() !== 'MATI01') {
-                <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <button
-                    type="button"
-                    (click)="joinQuick(activeBroadcastRoom()!)"
-                    class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold inline-flex items-center gap-1 cursor-pointer">
-                    <span>⚡ Join active live stage: <strong>#{{ activeBroadcastRoom() }}</strong></span>
-                  </button>
+              @if (activeRooms().length > 0) {
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 text-left">
+                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Active Sessions ({{ activeRooms().length }})</span>
+                  </div>
+                  <div class="space-y-1.5 max-h-48 overflow-y-auto">
+                    @for (ar of activeRooms(); track ar.code) {
+                      <button
+                        type="button"
+                        (click)="joinQuick(ar.code)"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 bg-slate-50/70 dark:bg-slate-800/60 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer">
+                        <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                          {{ ar.title || ('Mati #' + ar.code) }}
+                        </span>
+                        <span class="text-xs font-mono font-black text-indigo-600 dark:text-indigo-400 shrink-0">
+                          #{{ ar.code }}
+                        </span>
+                      </button>
+                    }
+                  </div>
                 </div>
               }
             </div>
           </div>
         } @else {
-        @if (room()?.status === 'completed' || (room()?.mode === 'survey' && showSurveyCompletedOverview())) {
+        @if (room()?.status === 'inactive' || room()?.status === 'closed') {
+          <!-- Session Inactive Screen for Participant Mobile -->
+          <div class="w-full my-auto py-10 animate-fadein">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-7 text-center shadow-lg space-y-4">
+              <div class="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center mx-auto text-2xl border border-slate-200 dark:border-slate-700">
+                <i class="pi pi-pause-circle"></i>
+              </div>
+              <div class="space-y-1.5">
+                <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                  Session Inactive • #{{ roomCode() }}
+                </span>
+                <h2 class="text-lg font-black text-slate-900 dark:text-white pt-1">
+                  This Mati session is currently paused
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+                  Room <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">#{{ roomCode() }}</span> is marked as inactive by the host. Questions will appear automatically as soon as the session is activated!
+                </p>
+              </div>
+              <div class="pt-2">
+                <button
+                  type="button"
+                  (click)="openChangeRoomModal()"
+                  class="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+                  Switch Room Code
+                </button>
+              </div>
+            </div>
+          </div>
+        } @else if (room()?.status === 'completed' || (room()?.mode === 'survey' && showSurveyCompletedOverview())) {
           <!-- Complete Session & Results Overview Screen for Participant Mobile -->
           <div class="w-full space-y-4 my-auto animate-fadein pb-4">
             
@@ -907,7 +948,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 [ngModel]="inputJoinCode()"
                 (ngModelChange)="inputJoinCode.set($event)"
                 (keyup.enter)="submitJoinCode()"
-                placeholder="e.g. MATI3F"
+                placeholder="e.g. 482915"
                 class="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono font-bold text-sm uppercase outline-none focus:ring-2 focus:ring-indigo-500 text-center" />
             </div>
 
@@ -917,6 +958,32 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
               class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/30 transition-all cursor-pointer">
               Connect to Room
             </button>
+
+            @if (activeRooms().length > 0) {
+              <div class="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Active Sessions ({{ activeRooms().length }})
+                </div>
+                <div class="space-y-1.5 max-h-40 overflow-y-auto">
+                  @for (ar of activeRooms(); track ar.code) {
+                    <button
+                      type="button"
+                      (click)="joinQuick(ar.code)"
+                      class="w-full px-3 py-2 rounded-xl border flex items-center justify-between gap-2 text-left transition-colors cursor-pointer"
+                      [ngClass]="ar.code === roomCode()
+                        ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/50'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400 bg-slate-50 dark:bg-slate-800/50'">
+                      <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                        {{ ar.title || ('Mati #' + ar.code) }}
+                      </span>
+                      <span class="text-xs font-mono font-black text-indigo-600 dark:text-indigo-400 shrink-0">
+                        #{{ ar.code }}
+                      </span>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
           </div>
         </div>
       }
@@ -1106,7 +1173,15 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   private pollSub?: Subscription;
   private roomSub?: Subscription;
   private pollsListSub?: Subscription;
+  private allRoomsSub?: Subscription;
   private currentActivePollIdOnStudent: string | null = null;
+
+  allRooms = signal<Room[]>([]);
+  activeRooms = computed(() =>
+    this.allRooms().filter(
+      r => r.code && !r.code.startsWith('_') && r.status !== 'inactive' && r.status !== 'closed' && r.status !== 'completed'
+    )
+  );
 
   openChangeRoomModal() {
     this.inputJoinCode.set(this.roomCode());
@@ -1139,6 +1214,10 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     } else {
       this.participantName.set('Participant #' + vid.slice(-4));
     }
+
+    this.allRoomsSub = this.pollService.listenToRooms().subscribe(rooms => {
+      this.allRooms.set(rooms);
+    });
 
     this.route.paramMap.subscribe(params => {
       let raw = params.get('roomCode');
@@ -1181,6 +1260,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.pollSub?.unsubscribe();
     this.roomSub?.unsubscribe();
     this.pollsListSub?.unsubscribe();
+    this.allRoomsSub?.unsubscribe();
     this.stopLocalTimer();
   }
 

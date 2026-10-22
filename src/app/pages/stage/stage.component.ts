@@ -29,7 +29,126 @@ import QRCode from 'qrcode';
 
       <!-- Main Central Presentation Area: Scaled dynamically to TV viewport -->
       <main class="flex-1 min-h-0 flex flex-col justify-center z-10 w-full max-w-[1850px] 2xl:max-w-[2400px] mx-auto overflow-hidden">
-        @if (room()?.status === 'completed' || isOverviewMode()) {
+        @if (activeRooms().length > 1 && showMultiActiveBoard() && !isOverviewMode()) {
+          <!-- Multi-Active Mati Sessions Board (Shows all active Matis with individual QR & PIN) -->
+          <div class="w-full h-full flex flex-col justify-between py-2 sm:py-4 px-2 sm:px-6 animate-fadein overflow-hidden">
+            <!-- Top Header: Mati Logo + Join Domain Banner -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 sm:pb-4 border-b shrink-0"
+              [ngClass]="isLight() ? 'border-slate-200' : 'border-slate-800/80'">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-base sm:text-lg font-black shadow-lg shadow-indigo-600/30">
+                  M
+                </div>
+                <div class="text-left">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl sm:text-2xl font-extrabold tracking-tight" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                      mati<span class="text-indigo-600 dark:text-indigo-400">.</span>
+                    </span>
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>{{ activeRooms().length }} Active Sessions</span>
+                    </span>
+                  </div>
+                  <p class="text-xs sm:text-sm" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
+                    Scan your session's QR code or join at <strong class="font-mono text-indigo-600 dark:text-indigo-400">{{ joinDomain() }}</strong> with your PIN
+                  </p>
+                </div>
+              </div>
+
+              <div class="text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-xl border"
+                [ngClass]="isLight() ? 'bg-white border-slate-200 text-slate-600' : 'bg-slate-900 border-slate-800 text-slate-300'">
+                Click any card to expand full screen
+              </div>
+            </div>
+
+            <!-- Responsive Cards Grid for All Active Matis -->
+            <div class="flex-1 min-h-0 flex items-center justify-center py-3 overflow-y-auto">
+              <div class="w-full grid gap-4 sm:gap-6 items-stretch"
+                [ngClass]="activeRooms().length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto' : (activeRooms().length === 3 ? 'grid-cols-1 md:grid-cols-3 max-w-6xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4')">
+                @for (ar of activeRooms(); track ar.code) {
+                  <div
+                    (click)="focusSingleRoom(ar.code)"
+                    class="rounded-3xl border p-5 sm:p-6 flex flex-col items-center justify-between text-center transition-all duration-200 cursor-pointer hover:scale-[1.02] shadow-xl group relative overflow-hidden"
+                    [ngClass]="isLight()
+                      ? 'bg-white border-slate-200/90 hover:border-indigo-500 shadow-slate-200/60'
+                      : 'bg-slate-900/95 border-slate-800 hover:border-indigo-500 shadow-slate-950/60'">
+                    
+                    <!-- Session Title & Mode Badge -->
+                    <div class="w-full space-y-1.5">
+                      <div class="flex items-center justify-center gap-1.5">
+                        @if (ar.mode === 'survey') {
+                          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                            📋 Survey
+                          </span>
+                        } @else {
+                          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Live Poll
+                          </span>
+                        }
+                      </div>
+                      <h2 class="text-base sm:text-lg md:text-xl font-black tracking-tight line-clamp-2 leading-snug"
+                        [ngClass]="isLight() ? 'text-slate-900 group-hover:text-indigo-600' : 'text-white group-hover:text-indigo-400'">
+                        {{ ar.title || ('Mati #' + ar.code) }}
+                      </h2>
+                    </div>
+
+                    <!-- QR Code for this specific Active Mati -->
+                    <div class="my-3 sm:my-4 p-3 sm:p-4 bg-white rounded-2xl shadow-md ring-4 ring-indigo-500/10 border border-slate-100 shrink-0">
+                      @if (multiRoomQrMap()[ar.code]) {
+                        <img
+                          [src]="multiRoomQrMap()[ar.code]"
+                          [alt]="'Scan to join ' + ar.code"
+                          class="w-36 h-36 sm:w-44 sm:h-44 lg:w-48 lg:h-48 max-w-[26vh] max-h-[26vh] object-contain" />
+                      } @else {
+                        <div class="w-36 h-36 sm:w-44 sm:h-44 lg:w-48 lg:h-48 max-w-[26vh] max-h-[26vh] flex items-center justify-center bg-slate-50 text-slate-400 rounded-xl">
+                          <i class="pi pi-qrcode text-4xl animate-pulse"></i>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- PIN Code Footer -->
+                    <div class="w-full pt-3 border-t space-y-0.5"
+                      [ngClass]="isLight() ? 'border-slate-100' : 'border-slate-800'">
+                      <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        Join Code (PIN)
+                      </div>
+                      <div class="text-2xl sm:text-3xl lg:text-4xl font-black font-mono tracking-tight"
+                        [ngClass]="isLight() ? 'text-indigo-600' : 'text-indigo-400'">
+                        {{ formatPinForRoom(ar.code) }}
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        } @else if ((room()?.status === 'inactive' || room()?.status === 'closed') && !isOverviewMode()) {
+          <!-- Session Inactive Standby Screen -->
+          <div class="w-full h-full flex flex-col items-center justify-center text-center px-6 animate-fadein">
+            <div class="max-w-lg p-8 sm:p-10 rounded-3xl border shadow-2xl space-y-4"
+              [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-200/50' : 'bg-slate-900/90 border-slate-800 shadow-slate-950/60'">
+              <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center mx-auto text-2xl sm:text-3xl border"
+                [ngClass]="isLight() ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-slate-800 text-slate-400 border-slate-700'">
+                <i class="pi pi-pause-circle"></i>
+              </div>
+              <div class="space-y-1.5">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border"
+                  [ngClass]="isLight() ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-800 text-slate-400 border-slate-700'">
+                  <span>Session Inactive • #{{ roomCode() }}</span>
+                </span>
+                <h1 class="text-xl sm:text-2xl md:text-3xl font-black tracking-tight pt-1"
+                  [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                  {{ room()?.title || ('Mati #' + roomCode()) }} is Paused
+                </h1>
+                <p class="text-xs sm:text-sm max-w-md mx-auto leading-relaxed"
+                  [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
+                  This Mati session is currently marked as <strong>Inactive</strong>. Set its status to <strong>Active</strong> in your Dashboard to display the QR code and live questions on screen.
+                </p>
+              </div>
+            </div>
+          </div>
+        } @else if (room()?.status === 'completed' || isOverviewMode()) {
           <!-- Complete Grand Finale & Overview Results Screen for Big TV / Projector -->
           <div class="w-full h-full flex flex-col min-h-0 overflow-hidden animate-fadein py-1">
             
@@ -1043,6 +1162,15 @@ import QRCode from 'qrcode';
         [class.opacity-100]="areControlsVisible()"
         (mouseenter)="onControlsHover(true)"
         (mouseleave)="onControlsHover(false)">
+        @if (activeRooms().length > 1) {
+          <button
+            type="button"
+            (click)="showMultiActiveBoard.set(!showMultiActiveBoard())"
+            class="px-3.5 py-1.5 rounded-full text-xs font-bold shadow-lg border backdrop-blur-md transition-all cursor-pointer flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500">
+            <i class="pi" [ngClass]="showMultiActiveBoard() ? 'pi-expand' : 'pi-th-large'"></i>
+            <span>{{ showMultiActiveBoard() ? ('Focus #' + roomCode()) : ('All Active Matis (' + activeRooms().length + ')') }}</span>
+          </button>
+        }
         @if (room()?.status !== 'completed' && room()?.mode !== 'survey') {
           <button
             type="button"
@@ -1199,6 +1327,13 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   availableRooms = signal<Room[]>([]);
+  activeRooms = computed(() =>
+    this.availableRooms().filter(
+      r => r.code && !r.code.startsWith('_') && r.status !== 'inactive' && r.status !== 'closed' && r.status !== 'completed'
+    )
+  );
+  multiRoomQrMap = signal<Record<string, string>>({});
+  showMultiActiveBoard = signal<boolean>(true);
   autoSyncWithPresenter = signal<boolean>(true);
   recentlySwitchedNotice = signal<string | null>(null);
 
@@ -1214,6 +1349,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit() {
     this.allRoomsSub = this.pollService.listenToRooms().subscribe(rooms => {
       this.availableRooms.set(rooms);
+      this.generateMultiRoomQrs(rooms);
     });
 
     this.routeParamSub = this.route.paramMap.subscribe(params => {
@@ -1322,6 +1458,44 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pollsListSub?.unsubscribe();
     this.stopLocalTimer();
     if (this.switchTimeout) clearTimeout(this.switchTimeout);
+  }
+
+  focusSingleRoom(code: string) {
+    this.showMultiActiveBoard.set(false);
+    this.switchActiveRoom(code, false);
+  }
+
+  formatPinForRoom(rawCode: string): string {
+    const code = (rawCode || '').trim();
+    if (!code) return '';
+    if (/^\d{6,7}$/.test(code)) {
+      return '#' + code.slice(0, 3) + ' ' + code.slice(3);
+    }
+    return '#' + code;
+  }
+
+  private async generateMultiRoomQrs(rooms: Room[]) {
+    if (!this.isBrowser) return;
+    const origin = window.location.origin || 'http://localhost:4200';
+    const currentMap = { ...this.multiRoomQrMap() };
+    let changed = false;
+    for (const r of rooms) {
+      if (!r.code || r.code.startsWith('_') || r.status === 'inactive' || r.status === 'closed') continue;
+      if (!currentMap[r.code]) {
+        try {
+          const url = `${origin}/join/${r.code}`;
+          currentMap[r.code] = await QRCode.toDataURL(url, {
+            width: 320,
+            margin: 1,
+            color: { dark: '#0f172a', light: '#ffffff' }
+          });
+          changed = true;
+        } catch {}
+      }
+    }
+    if (changed) {
+      this.multiRoomQrMap.set(currentMap);
+    }
   }
 
   onManualRoomChange(newCode: string) {
@@ -1455,6 +1629,15 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
             localStorage.setItem(`mati_stage_theme_${code.toUpperCase()}`, roomData.theme);
             localStorage.setItem('mati_stage_theme_last', roomData.theme);
           } catch {}
+        }
+      }
+      if ((roomData?.status === 'inactive' || roomData?.status === 'closed') && this.autoSyncWithPresenter()) {
+        const activeAlternative = this.availableRooms().find(
+          r => r.code !== code && r.status !== 'inactive' && r.status !== 'closed' && r.status !== 'completed'
+        );
+        if (activeAlternative) {
+          this.switchActiveRoom(activeAlternative.code, true);
+          return;
         }
       }
       if (roomData?.status === 'completed') {

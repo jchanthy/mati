@@ -406,6 +406,43 @@ export class MatiPollService {
   async setRoomStatus(roomCode: string, status: 'active' | 'completed' | 'draft' | 'closed' | 'inactive'): Promise<void> {
     if (!roomCode || roomCode.startsWith('_')) return;
     const code = normalizeRoomCode(roomCode);
+
+    // 1. Update local state optimistically FIRST
+    const rooms = this.mockRooms$.getValue();
+    const r = rooms.get(code);
+    const updatedRoom: Room = r
+      ? { ...r, status }
+      : {
+          code,
+          title: code,
+          status,
+          createdAt: new Date().toISOString(),
+          activePollId: null
+        };
+    rooms.set(code, updatedRoom);
+    this.mockRooms$.next(new Map(rooms));
+    if (this.currentRoom()?.code === code) {
+      this.currentRoom.set(updatedRoom);
+    }
+
+    // 2. If activated, broadcast as active room; if deactivated, switch broadcast to another active room if available
+    if (status === 'active') {
+      this.broadcastActiveRoom(code);
+    } else if (status === 'inactive' || status === 'closed') {
+      const currentBroadcast = normalizeRoomCode(this.activeBroadcastRoom$.getValue() || '');
+      if (currentBroadcast === code) {
+        const anotherActive = Array.from(rooms.values()).find(
+          rm => rm.code && !rm.code.startsWith('_') && rm.code !== code &&
+          rm.status !== 'inactive' && rm.status !== 'closed' && rm.status !== 'completed' &&
+          !this.deletedRooms.has(rm.code.toUpperCase())
+        );
+        if (anotherActive) {
+          this.broadcastActiveRoom(anotherActive.code);
+        }
+      }
+    }
+
+    // 3. Persist to Firestore
     if (this.firestore) {
       try {
         const roomRef = doc(this.firestore, `rooms/${code}`);
@@ -414,21 +451,6 @@ export class MatiPollService {
         console.warn('[Mati] Firebase setRoomStatus error:', err);
       }
     }
-
-    const rooms = this.mockRooms$.getValue();
-    const r = rooms.get(code);
-    if (r) {
-      rooms.set(code, { ...r, status });
-    } else {
-      rooms.set(code, { 
-        code, 
-        title: code, 
-        status, 
-        createdAt: new Date().toISOString(), 
-        activePollId: null 
-      });
-    }
-    this.mockRooms$.next(new Map(rooms));
   }
 
   /**

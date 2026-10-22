@@ -256,22 +256,34 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               </div>
 
               <!-- Status column -->
-              <div class="w-40 sm:w-56 text-left hidden sm:flex items-center gap-2 text-xs font-medium text-gray-600">
+              <div class="w-40 sm:w-56 text-left hidden sm:flex items-center gap-2 text-xs font-medium text-gray-600" (click)="$event.stopPropagation()">
                 @if (!isRoomActive(r)) {
-                  <span class="inline-flex items-center gap-1.5 text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200 font-medium">
+                  <button
+                    type="button"
+                    (click)="toggleRoomActiveStatus(r)"
+                    title="Click to activate this Mati session"
+                    class="inline-flex items-center gap-1.5 text-gray-600 bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 px-2.5 py-1 rounded-md border border-gray-200 font-medium transition-colors cursor-pointer">
                     <i class="pi pi-pause-circle text-xs text-gray-400"></i>
                     <span>Inactive</span>
-                  </span>
+                  </button>
                 } @else if (r.mode === 'survey') {
-                  <span class="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 font-medium">
+                  <button
+                    type="button"
+                    (click)="toggleRoomActiveStatus(r)"
+                    title="Click to pause / set Inactive"
+                    class="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 hover:bg-gray-100 hover:text-gray-600 hover:border-gray-200 px-2.5 py-1 rounded-md border border-amber-200 font-medium transition-colors cursor-pointer">
                     <i class="pi pi-list text-xs"></i>
                     <span>Survey</span>
-                  </span>
+                  </button>
                 } @else {
-                  <span class="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-semibold">
+                  <button
+                    type="button"
+                    (click)="toggleRoomActiveStatus(r)"
+                    title="Click to pause / set Inactive"
+                    class="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 hover:bg-gray-100 hover:text-gray-600 hover:border-gray-200 px-2.5 py-1 rounded-md border border-emerald-200 font-semibold transition-colors cursor-pointer">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span>Active &amp; upcoming</span>
-                  </span>
+                  </button>
                 }
               </div>
 
@@ -1702,7 +1714,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.selectedRoomCode.set(code);
     this.targetRoomForNewPoll.set(code);
     this.targetRoomForImport.set(code);
-    this.pollService.broadcastActiveRoom(code, this.currentUser()?.email);
+    const targetRoom = this.rooms().find(rm => rm.code === code);
+    if (!targetRoom || this.isRoomActive(targetRoom)) {
+      this.pollService.broadcastActiveRoom(code, this.currentUser()?.email);
+    }
     this.pollsSub?.unsubscribe();
     this.pollsSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
       this.allRawPolls.set(list);
@@ -1898,16 +1913,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async setAsLive(pollId: string) {
+    const code = this.selectedRoomCode();
     const target = this.polls().find(p => p.id === pollId);
     if (target?.isSkipped) {
-      await this.pollService.toggleSkipPoll(this.selectedRoomCode(), pollId, false);
+      await this.pollService.toggleSkipPoll(code, pollId, false);
     }
-    this.pollService.broadcastActiveRoom(this.selectedRoomCode(), this.currentUser()?.email);
-    await this.pollService.setActivePoll(this.selectedRoomCode(), pollId);
+    const roomObj = this.rooms().find(rm => rm.code === code);
+    if (roomObj && !this.isRoomActive(roomObj)) {
+      this.rooms.update(list => list.map(item => item.code === code ? { ...item, status: 'active' } : item));
+      await this.pollService.setRoomStatus(code, 'active');
+    }
+    this.pollService.broadcastActiveRoom(code, this.currentUser()?.email);
+    await this.pollService.setActivePoll(code, pollId);
     this.messageService.add({
       severity: 'success',
       summary: 'Poll Activated',
-      detail: `Question is now live in room ${this.selectedRoomCode()}!`
+      detail: `Question is now live in room ${code}!`
     });
   }
 
