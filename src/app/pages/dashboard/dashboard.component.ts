@@ -786,8 +786,26 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             </div>
           </div>
 
-          <!-- Optional Room PIN / Custom Code (only when creating) -->
-          @if (!editingRoomCode) {
+          <!-- Room PIN / Code -->
+          @if (editingRoomCode) {
+            <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="block text-xs font-semibold text-gray-700">Mati Code (PIN)</label>
+                <button
+                  type="button"
+                  (click)="generateNumericCode()"
+                  class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1 cursor-pointer">
+                  <i class="pi pi-refresh text-[10px]"></i>
+                  <span>Generate 6-digit number</span>
+                </button>
+              </div>
+              <input 
+                type="text" 
+                [(ngModel)]="newRoomCode" 
+                placeholder="e.g. 482915" 
+                class="w-full px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-900 uppercase font-mono placeholder:text-gray-400 focus:outline-none focus:border-gray-900" />
+            </div>
+          } @else {
             <div>
               @if (!showCustomCodeInput) {
                 <button 
@@ -795,18 +813,18 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   (click)="showCustomCodeInput = true" 
                   class="text-xs text-gray-500 hover:text-gray-800 font-medium inline-flex items-center gap-1.5 cursor-pointer">
                   <i class="pi pi-sliders-h text-[10px]"></i>
-                  <span>Custom room code (optional)</span>
+                  <span>Custom room code (optional — defaults to 6-digit number)</span>
                 </button>
               } @else {
                 <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-1.5">
                   <div class="flex items-center justify-between">
                     <label class="block text-xs font-semibold text-gray-700">Mati Code (PIN)</label>
-                    <button type="button" (click)="showCustomCodeInput = false; newRoomCode = ''" class="text-[11px] text-gray-400 hover:text-gray-600">Auto-generate</button>
+                    <button type="button" (click)="showCustomCodeInput = false; newRoomCode = ''" class="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer">Auto-generate 6-digit number</button>
                   </div>
                   <input 
                     type="text" 
                     [(ngModel)]="newRoomCode" 
-                    placeholder="Leave blank for auto PIN (e.g. MATI02)" 
+                    placeholder="Leave blank for auto 6-digit PIN (e.g. 482915)" 
                     class="w-full px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-900 uppercase font-mono placeholder:text-gray-400 focus:outline-none focus:border-gray-900" />
                 </div>
               }
@@ -1479,6 +1497,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  generateNumericCode() {
+    this.newRoomCode = this.pollService.generateRoomCode();
+  }
+
   openDatePicker(input: HTMLInputElement) {
     try {
       if (typeof (input as any).showPicker === 'function') {
@@ -1895,18 +1917,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (this.editingRoomCode) {
       const targetCode = this.editingRoomCode;
+      const requestedCode = (this.newRoomCode || targetCode).trim().replace(/^#/, '').toUpperCase();
       const startDate = this.newRoomStartDate || undefined;
       const endDate = this.newRoomEndDate || undefined;
-
-      // Optimistic local state update
-      this.rooms.update(list =>
-        list.map(r => r.code === targetCode ? { ...r, title: trimmedTitle, startDate, endDate } : r)
-      );
 
       this.showNewRoomDialog = false;
       this.editingRoomCode = null;
       this.newRoomTitle = '';
       this.newRoomCode = '';
+
+      if (requestedCode && requestedCode !== targetCode) {
+        // Optimistic local state update for code change
+        this.rooms.update(list =>
+          list.map(r => r.code === targetCode ? { ...r, code: requestedCode, title: trimmedTitle, startDate, endDate } : r)
+        );
+        const finalCode = await this.pollService.changeRoomCode(targetCode, requestedCode, {
+          title: trimmedTitle,
+          startDate,
+          endDate
+        });
+        this.switchRoom(finalCode);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Mati Updated',
+          detail: `Mati "${trimmedTitle}" is now #${finalCode}.`
+        });
+        return;
+      }
+
+      // Optimistic local state update
+      this.rooms.update(list =>
+        list.map(r => r.code === targetCode ? { ...r, title: trimmedTitle, startDate, endDate } : r)
+      );
 
       await this.pollService.updateRoomDetails(targetCode, {
         title: trimmedTitle,

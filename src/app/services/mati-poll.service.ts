@@ -464,6 +464,77 @@ export class MatiPollService {
   }
 
   /**
+   * Change an existing room's code (PIN) while preserving all polls, settings, and details
+   */
+  async changeRoomCode(
+    oldRoomCode: string,
+    newRoomCode: string,
+    updates: { title?: string; startDate?: string; endDate?: string } = {}
+  ): Promise<string> {
+    const oldCode = normalizeRoomCode(oldRoomCode);
+    const newCode = normalizeRoomCode(newRoomCode);
+    if (!oldCode || !newCode || oldCode === newCode) {
+      await this.updateRoomDetails(oldCode, updates);
+      return oldCode;
+    }
+
+    if (this.deletedRooms.has(newCode)) {
+      this.deletedRooms.delete(newCode);
+      if (this.isBrowser) {
+        try {
+          localStorage.setItem('mati_deleted_room_codes', JSON.stringify(Array.from(this.deletedRooms)));
+        } catch {}
+      }
+    }
+
+    const existingRoom = (await this.getRoom(oldCode)) || this.mockRooms$.getValue().get(oldCode);
+    const sourcePolls = await this.getPollsForRoom(oldCode);
+
+    const newRoom: Room = {
+      ...(existingRoom || {
+        code: newCode,
+        title: updates.title || `Room ${newCode}`,
+        activePollId: sourcePolls[0]?.id || null,
+        status: 'active',
+        createdAt: new Date().toISOString()
+      }),
+      code: newCode,
+      ...(updates.title !== undefined ? { title: updates.title.trim() } : {}),
+      ...(updates.startDate !== undefined ? { startDate: updates.startDate } : {}),
+      ...(updates.endDate !== undefined ? { endDate: updates.endDate } : {})
+    };
+
+    // Update local state optimistically
+    const rooms = this.mockRooms$.getValue();
+    rooms.set(newCode, newRoom);
+    this.mockRooms$.next(new Map(rooms));
+
+    const pollsMap = this.mockPolls$.getValue();
+    pollsMap.set(newCode, [...sourcePolls]);
+    this.mockPolls$.next(new Map(pollsMap));
+
+    if (this.firestore) {
+      try {
+        const cleanRoomPayload: Record<string, any> = {};
+        for (const [k, v] of Object.entries(newRoom)) {
+          if (v !== undefined) cleanRoomPayload[k] = v;
+        }
+        await setDoc(doc(this.firestore, `rooms/${newCode}`), cleanRoomPayload);
+        await Promise.all(
+          sourcePolls.map(p =>
+            setDoc(doc(this.firestore!, `rooms/${newCode}/polls/${p.id}`), this.sanitizePollForFirestore(p))
+          )
+        );
+      } catch (err) {
+        console.warn('[Mati] Firebase changeRoomCode error:', err);
+      }
+    }
+
+    await this.deleteRoom(oldCode);
+    return newCode;
+  }
+
+  /**
    * Duplicate room with all its polls and settings
    */
   async duplicateRoom(sourceCode: string, newTitle?: string, ownerId?: string, ownerEmail?: string): Promise<string> {
@@ -1977,13 +2048,15 @@ export class MatiPollService {
     return local;
   }
 
-  private generateRoomCode(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let result = 'MATI';
-    for (let i = 0; i < 2; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+  generateRoomCode(): string {
+    const existing = this.mockRooms$.getValue();
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      if (!existing.has(code) && !this.deletedRooms.has(code)) {
+        return code;
+      }
     }
-    return result;
+    return String(Math.floor(100000 + Math.random() * 900000));
   }
 
   /**
