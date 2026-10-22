@@ -583,6 +583,7 @@ export class MatiPollService {
       type: poll.type || 'multiple_choice',
       order: poll.order ?? 1,
       isLocked: poll.isLocked ?? false,
+      isSkipped: poll.isSkipped ?? false,
       showResults: poll.showResults ?? true,
       showCorrectAnswer: poll.showCorrectAnswer ?? false,
       options: cleanOptions
@@ -833,17 +834,8 @@ export class MatiPollService {
    */
   async toggleLockPoll(roomCode: string, pollId: string, isLocked: boolean): Promise<void> {
     const code = normalizeRoomCode(roomCode);
-    if (this.firestore) {
-      try {
-        const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
-        await updateDoc(pollRef, { isLocked });
-        const roomRef = doc(this.firestore, `rooms/${code}`);
-        await updateDoc(roomRef, { 'activePoll.isLocked': isLocked });
-      } catch (err) {
-        console.warn('[Mati] Firebase toggleLockPoll error:', err);
-      }
-    }
 
+    // 1. Optimistic local state update FIRST
     const pollsMap = this.mockPolls$.getValue();
     const list = pollsMap.get(code) || [];
     const poll = list.find(p => p.id === pollId);
@@ -853,7 +845,88 @@ export class MatiPollService {
       this.mockPolls$.next(new Map(pollsMap));
       if (this.currentPoll()?.id === pollId) {
         this.currentPoll.set({ ...poll });
+        const votes = this.mockVotes$.getValue().get(`${code}_${poll.id}`) || [];
+        const room = this.mockRooms$.getValue().get(code);
+        this.currentStats.set(this.computeStats({ ...poll }, votes, room?.timerDuration, room?.timerEndsAt));
       }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room && room.activePoll && room.activePoll.id === pollId) {
+      room.activePoll = { ...room.activePoll, isLocked };
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+
+    // 2. Persist to Firestore concurrently
+    if (this.firestore) {
+      try {
+        const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await Promise.allSettled([
+          setDoc(pollRef, { isLocked }, { merge: true }),
+          updateDoc(roomRef, { 'activePoll.isLocked': isLocked })
+        ]);
+      } catch (err) {
+        console.warn('[Mati] Firebase toggleLockPoll error:', err);
+      }
+    }
+  }
+
+  /**
+   * Toggles whether a question is skipped/hidden from participants and Next/Prev navigation.
+   */
+  async toggleSkipPoll(roomCode: string, pollId: string, isSkipped: boolean): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+
+    const pollsMap = this.mockPolls$.getValue();
+    const list = pollsMap.get(code) || [];
+    const pollIdx = list.findIndex(p => p.id === pollId);
+    const poll = pollIdx >= 0 ? list[pollIdx] : undefined;
+    if (poll) {
+      poll.isSkipped = isSkipped;
+      pollsMap.set(code, [...list]);
+      this.mockPolls$.next(new Map(pollsMap));
+      if (this.currentPoll()?.id === pollId) {
+        this.currentPoll.set({ ...poll });
+      }
+    }
+
+    if (this.firestore) {
+      try {
+        const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
+        await setDoc(pollRef, { isSkipped }, { merge: true });
+      } catch (err) {
+        console.warn('[Mati] Firebase toggleSkipPoll error:', err);
+      }
+    }
+
+    // If we just skipped the currently active question, automatically switch to the next non-skipped question
+    const room = this.mockRooms$.getValue().get(code);
+    if (isSkipped && room?.activePollId === pollId) {
+      const sel = room.selectedPollIds && room.selectedPollIds.length > 0 ? room.selectedPollIds : null;
+      const subset = sel ? list.filter(p => sel.includes(p.id)) : list;
+      const curSubsetIdx = subset.findIndex(p => p.id === pollId);
+      let nextCandidate: Poll | null = null;
+      for (let i = curSubsetIdx + 1; i < subset.length; i++) {
+        if (!subset[i].isSkipped) {
+          nextCandidate = subset[i];
+          break;
+        }
+      }
+      if (!nextCandidate) {
+        for (let i = curSubsetIdx - 1; i >= 0; i--) {
+          if (!subset[i].isSkipped) {
+            nextCandidate = subset[i];
+            break;
+          }
+        }
+      }
+      await this.setActivePoll(code, nextCandidate ? nextCandidate.id : null);
+    } else if (!isSkipped && room && !room.activePollId) {
+      await this.setActivePoll(code, pollId);
     }
   }
 
@@ -863,16 +936,6 @@ export class MatiPollService {
    */
   async toggleShowResults(roomCode: string, pollId: string, show: boolean): Promise<void> {
     const code = normalizeRoomCode(roomCode);
-    if (this.firestore) {
-      try {
-        const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
-        await updateDoc(pollRef, { showResults: show });
-        const roomRef = doc(this.firestore, `rooms/${code}`);
-        await updateDoc(roomRef, { 'activePoll.showResults': show });
-      } catch (err) {
-        console.warn('[Mati] Firebase toggleShowResults error:', err);
-      }
-    }
 
     const pollsMap = this.mockPolls$.getValue();
     const list = pollsMap.get(code) || [];
@@ -883,6 +946,31 @@ export class MatiPollService {
       this.mockPolls$.next(new Map(pollsMap));
       if (this.currentPoll()?.id === pollId) {
         this.currentPoll.set({ ...poll });
+        const votes = this.mockVotes$.getValue().get(`${code}_${poll.id}`) || [];
+        const room = this.mockRooms$.getValue().get(code);
+        this.currentStats.set(this.computeStats({ ...poll }, votes, room?.timerDuration, room?.timerEndsAt));
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room && room.activePoll && room.activePoll.id === pollId) {
+      room.activePoll = { ...room.activePoll, showResults: show };
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+
+    if (this.firestore) {
+      try {
+        const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await Promise.allSettled([
+          setDoc(pollRef, { showResults: show }, { merge: true }),
+          updateDoc(roomRef, { 'activePoll.showResults': show })
+        ]);
+      } catch (err) {
+        console.warn('[Mati] Firebase toggleShowResults error:', err);
       }
     }
   }
@@ -892,16 +980,6 @@ export class MatiPollService {
    */
   async toggleShowCorrectAnswer(roomCode: string, pollId: string, show: boolean): Promise<void> {
     const code = normalizeRoomCode(roomCode);
-    if (this.firestore) {
-      try {
-        const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
-        await updateDoc(pollRef, { showCorrectAnswer: show });
-        const roomRef = doc(this.firestore, `rooms/${code}`);
-        await updateDoc(roomRef, { 'activePoll.showCorrectAnswer': show });
-      } catch (err) {
-        console.warn('[Mati] Firebase toggleShowCorrectAnswer error:', err);
-      }
-    }
 
     const pollsMap = this.mockPolls$.getValue();
     const list = pollsMap.get(code) || [];
@@ -912,16 +990,32 @@ export class MatiPollService {
       this.mockPolls$.next(new Map(pollsMap));
       if (this.currentPoll()?.id === pollId) {
         this.currentPoll.set({ ...poll });
+        const votes = this.mockVotes$.getValue().get(`${code}_${poll.id}`) || [];
+        const room = this.mockRooms$.getValue().get(code);
+        this.currentStats.set(this.computeStats({ ...poll }, votes, room?.timerDuration, room?.timerEndsAt));
       }
     }
 
     const rooms = this.mockRooms$.getValue();
     const room = rooms.get(code);
     if (room && room.activePoll && room.activePoll.id === pollId) {
-      room.activePoll.showCorrectAnswer = show;
+      room.activePoll = { ...room.activePoll, showCorrectAnswer: show };
       rooms.set(code, { ...room });
       this.mockRooms$.next(new Map(rooms));
       this.currentRoom.set({ ...room });
+    }
+
+    if (this.firestore) {
+      try {
+        const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await Promise.allSettled([
+          setDoc(pollRef, { showCorrectAnswer: show }, { merge: true }),
+          updateDoc(roomRef, { 'activePoll.showCorrectAnswer': show })
+        ]);
+      } catch (err) {
+        console.warn('[Mati] Firebase toggleShowCorrectAnswer error:', err);
+      }
     }
   }
 
@@ -1109,9 +1203,10 @@ export class MatiPollService {
     const code = normalizeRoomCode(roomCode);
     const roomData = await this.getRoom(code);
     const allPolls = await this.getPollsForRoom(code);
-    const polls = roomData?.selectedPollIds && roomData.selectedPollIds.length > 0
+    const subset = roomData?.selectedPollIds && roomData.selectedPollIds.length > 0
       ? allPolls.filter(p => roomData.selectedPollIds!.includes(p.id))
       : allPolls;
+    const polls = subset.filter(p => !p.isSkipped);
     const firstPoll = polls.length > 0 ? polls[0] : null;
     const firstPollId = firstPoll ? firstPoll.id : null;
     const sanitizedFirstPoll = firstPoll
@@ -1157,9 +1252,10 @@ export class MatiPollService {
     const code = normalizeRoomCode(roomCode);
     const roomData = await this.getRoom(code);
     const allPolls = await this.getPollsForRoom(code);
-    const polls = roomData?.selectedPollIds && roomData.selectedPollIds.length > 0
+    const subset = roomData?.selectedPollIds && roomData.selectedPollIds.length > 0
       ? allPolls.filter(p => roomData.selectedPollIds!.includes(p.id))
       : allPolls;
+    const polls = subset.filter(p => !p.isSkipped);
     let totalVotes = 0;
     let totalScoredQuestions = 0;
     let totalScoredVotes = 0;

@@ -1082,7 +1082,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   room = signal<Room | null>(null);
   rawPolls = signal<Poll[]>([]);
   polls = computed(() => {
-    const list = this.rawPolls();
+    const list = this.rawPolls().filter(p => !p.isSkipped);
     const sel = this.room()?.selectedPollIds;
     if (sel && Array.isArray(sel) && sel.length > 0) {
       const filtered = list.filter(p => sel.includes(p.id));

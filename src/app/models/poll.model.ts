@@ -10,6 +10,7 @@ export interface Poll {
   type: 'multiple_choice';
   order: number;
   isLocked: boolean;
+  isSkipped?: boolean;
   showResults: boolean;
   showCorrectAnswer?: boolean;
   options: PollOption[];

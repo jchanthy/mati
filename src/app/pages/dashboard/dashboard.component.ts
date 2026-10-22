@@ -588,7 +588,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               class="p-4 rounded-xl border transition-all"
               [ngClass]="currentRoom()?.activePollId === poll.id 
                 ? 'border-indigo-600 bg-indigo-50/20 shadow-xs ring-1 ring-indigo-500' 
-                : 'border-gray-200 bg-white hover:border-gray-300'">
+                : (poll.isSkipped ? 'border-dashed border-gray-200 bg-gray-50/70 opacity-65' : 'border-gray-200 bg-white hover:border-gray-300')">
               
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div class="space-y-1.5 flex-1 min-w-0">
@@ -596,10 +596,16 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                     <span class="w-6 h-6 rounded-full bg-gray-100 text-xs font-bold flex items-center justify-center text-gray-700">
                       {{ idx + 1 }}
                     </span>
-                    <h3 class="text-sm font-bold text-gray-900 leading-snug break-words">
+                    <h3 class="text-sm font-bold leading-snug break-words"
+                      [ngClass]="poll.isSkipped ? 'line-through text-gray-400' : 'text-gray-900'">
                       {{ poll.question }}
                     </h3>
-                    @if (currentRoom()?.activePollId === poll.id) {
+                    @if (poll.isSkipped) {
+                      <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                        <i class="pi pi-eye-slash text-[9px]"></i>
+                        SKIPPED
+                      </span>
+                    } @else if (currentRoom()?.activePollId === poll.id) {
                       <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                         LIVE ON STAGE
@@ -630,6 +636,18 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
 
                 <!-- Action buttons -->
                 <div class="flex items-center gap-2 shrink-0 self-end md:self-center">
+                  <button
+                    type="button"
+                    (click)="toggleSkipPoll(poll)"
+                    [title]="poll.isSkipped ? 'Unskip / Show question to participants' : 'Skip / Hide question from participants'"
+                    [ngClass]="poll.isSkipped
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-1 cursor-pointer transition-colors">
+                    <i class="pi text-[10px]" [ngClass]="poll.isSkipped ? 'pi-eye' : 'pi-eye-slash'"></i>
+                    <span>{{ poll.isSkipped ? 'Unskip' : 'Skip' }}</span>
+                  </button>
+
                   @if (currentRoom()?.activePollId !== poll.id) {
                     <button 
                       type="button" 
@@ -1845,7 +1863,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.showImportDialog = true;
   }
 
+  async toggleSkipPoll(poll: Poll) {
+    const nextSkipped = !poll.isSkipped;
+    await this.pollService.toggleSkipPoll(this.selectedRoomCode(), poll.id, nextSkipped);
+    this.messageService.add({
+      severity: nextSkipped ? 'warn' : 'info',
+      summary: nextSkipped ? 'Question Skipped' : 'Question Restored',
+      detail: nextSkipped
+        ? 'Question is now hidden from participants and skipped during presentation.'
+        : 'Question is visible to participants again.'
+    });
+  }
+
   async setAsLive(pollId: string) {
+    const target = this.polls().find(p => p.id === pollId);
+    if (target?.isSkipped) {
+      await this.pollService.toggleSkipPoll(this.selectedRoomCode(), pollId, false);
+    }
     this.pollService.broadcastActiveRoom(this.selectedRoomCode(), this.currentUser()?.email);
     await this.pollService.setActivePoll(this.selectedRoomCode(), pollId);
     this.messageService.add({

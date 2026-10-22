@@ -326,7 +326,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 <!-- Left: Question Index, Voting Status, and Show Answer -->
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 font-mono font-bold text-xs">
-                    Q {{ getCurrentQuestionIndex() }} / {{ polls().length }}
+                    Q {{ getCurrentQuestionIndex() }} / {{ playablePolls().length }}
                   </span>
                   @if (isLocked) {
                     <span class="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 font-semibold text-[11px] border border-red-200 dark:border-red-800 flex items-center gap-1">
@@ -453,6 +453,18 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     <i class="pi" [ngClass]="showResults ? 'pi-chart-bar text-indigo-600 dark:text-indigo-400' : 'pi-eye-slash text-gray-500'"></i>
                     <span>{{ showResults ? 'Results Visible' : 'Hide Results' }}</span>
                   </button>
+
+                  <!-- Skip / Hide Current Question Button -->
+                  @if (currentPoll(); as activeP) {
+                    <button
+                      type="button"
+                      (click)="toggleSkipQuestion(activeP)"
+                      title="Skip and hide this question from participants"
+                      class="px-3 py-1.5 rounded-xl text-xs font-semibold border bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/50 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
+                      <i class="pi pi-eye-slash text-amber-600"></i>
+                      <span>Skip Question</span>
+                    </button>
+                  }
 
                   <!-- Show / Hide Correct Answer (Presenter Action) -->
                   @if (currentPoll()?.correctOptionId !== undefined) {
@@ -606,7 +618,9 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   (click)="onSelectQuestion(p.id)"
                   [ngClass]="currentPoll()?.id === p.id 
                     ? 'bg-indigo-50/40 dark:bg-indigo-950/40 border-indigo-600 dark:border-indigo-500 shadow-2xs ring-1 ring-indigo-500' 
-                    : 'bg-white dark:bg-gray-850 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'">
+                    : (p.isSkipped 
+                      ? 'bg-gray-50/80 dark:bg-gray-900/40 border-dashed border-gray-200 dark:border-gray-800 opacity-65' 
+                      : 'bg-white dark:bg-gray-850 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700')">
                   
                   <!-- Top row: Checkbox, Question Number, Full Question Title, and Live/Present Pill -->
                   <div class="flex items-start justify-between gap-2.5">
@@ -624,13 +638,23 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                           : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'">
                         {{ idx + 1 }}
                       </span>
-                      <div class="text-xs font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 break-words min-w-0 flex-1">
+                      <div class="text-xs font-bold leading-snug line-clamp-2 break-words min-w-0 flex-1"
+                        [ngClass]="p.isSkipped ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'">
                         {{ p.question }}
                       </div>
                     </div>
 
-                    <div class="shrink-0" (click)="$event.stopPropagation()">
-                      @if (currentPoll()?.id === p.id) {
+                    <div class="shrink-0 flex items-center gap-1" (click)="$event.stopPropagation()">
+                      @if (p.isSkipped) {
+                        <button
+                          type="button"
+                          (click)="toggleSkipQuestion(p)"
+                          title="Click to unskip and show to participants"
+                          class="px-2 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-semibold text-[10px] flex items-center gap-1 cursor-pointer transition-colors">
+                          <i class="pi pi-eye-slash text-[9px]"></i>
+                          <span>Skipped</span>
+                        </button>
+                      } @else if (currentPoll()?.id === p.id) {
                         <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold text-[10px] flex items-center gap-1">
                           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                           Live
@@ -648,11 +672,22 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
 
                   <!-- Bottom row: Metadata on left + Action icons on right -->
                   <div class="flex items-center justify-between gap-2 pl-8">
-                    <div class="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                      {{ (p.options || []).length }} options {{ p.correctOptionId !== undefined ? '• Scored' : '' }}
+                    <div class="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1.5">
+                      <span>{{ (p.options || []).length }} options {{ p.correctOptionId !== undefined ? '• Scored' : '' }}</span>
+                      @if (p.isLocked) {
+                        <span class="text-[10px] font-semibold text-red-600 dark:text-red-400">• Locked</span>
+                      }
                     </div>
 
                     <div class="flex items-center gap-1 shrink-0" (click)="$event.stopPropagation()">
+                      <button
+                        type="button"
+                        (click)="toggleSkipQuestion(p)"
+                        [title]="p.isSkipped ? 'Unskip / Show question to participants' : 'Skip / Hide question from participants'"
+                        [ngClass]="p.isSkipped ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/60' : 'text-gray-400 hover:text-amber-600'"
+                        class="p-1 rounded transition-colors cursor-pointer">
+                        <i class="pi text-[11px]" [ngClass]="p.isSkipped ? 'pi-eye' : 'pi-eye-slash'"></i>
+                      </button>
                       <button
                         type="button"
                         (click)="moveQuestion(p.id, -1)"
@@ -1043,6 +1078,9 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     }
     return raw;
   });
+
+  // Non-skipped questions used for Next/Prev navigation and live count
+  playablePolls = computed(() => this.polls().filter(p => !p.isSkipped));
 
   selectedQuestionCount = computed(() => {
     const sel = this.room()?.selectedPollIds;
@@ -1696,8 +1734,20 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     });
   }
 
+  async toggleSkipQuestion(poll: Poll) {
+    const nextSkipped = !poll.isSkipped;
+    await this.pollService.toggleSkipPoll(this.roomCode(), poll.id, nextSkipped);
+    this.messageService.add({
+      severity: nextSkipped ? 'warn' : 'info',
+      summary: nextSkipped ? 'Question Skipped' : 'Question Restored',
+      detail: nextSkipped
+        ? 'Hidden from participants and skipped during Next/Prev.'
+        : 'Question is visible to participants again.'
+    });
+  }
+
   isFirstQuestion(): boolean {
-    const list = this.polls();
+    const list = this.playablePolls();
     if (list.length === 0) return true;
     const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     if (!activeId) return false;
@@ -1706,7 +1756,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   isLastQuestion(): boolean {
-    const list = this.polls();
+    const list = this.playablePolls();
     if (list.length === 0) return true;
     const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     if (!activeId) return false;
@@ -1715,7 +1765,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   getCurrentQuestionIndex(): number {
-    const list = this.polls();
+    const list = this.playablePolls();
     if (list.length === 0) return 0;
     const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     const idx = list.findIndex(p => p.id === activeId);
@@ -1724,6 +1774,10 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   async onSelectQuestion(pollId: string) {
     if (!pollId) return;
+    const target = this.polls().find(p => p.id === pollId);
+    if (target?.isSkipped) {
+      await this.pollService.toggleSkipPoll(this.roomCode(), pollId, false);
+    }
     this.showCorrectAnswer = false;
     const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
     if (this.autoAdvanceEnabled) {
@@ -1738,7 +1792,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   async prevQuestion() {
-    const list = this.polls();
+    const list = this.playablePolls();
     if (list.length === 0) return;
     const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     const idx = list.findIndex(p => p.id === activeId);
@@ -1754,7 +1808,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   async nextQuestion() {
-    const list = this.polls();
+    const list = this.playablePolls();
     if (list.length === 0) return;
     const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     const idx = list.findIndex(p => p.id === activeId);

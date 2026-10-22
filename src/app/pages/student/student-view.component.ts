@@ -510,7 +510,11 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                     Question #{{ getSurveyIndex(sPoll.id) + 1 }} of {{ polls().length }}
                   </span>
-                  @if (hasVotedFor(sPoll.id)) {
+                  @if (sPoll.isLocked) {
+                    <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                      <i class="pi pi-lock text-[10px]"></i> Voting Locked
+                    </span>
+                  } @else if (hasVotedFor(sPoll.id)) {
                     <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                       <i class="pi pi-check text-[10px]"></i> Answered
                     </span>
@@ -530,12 +534,12 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   @for (opt of sPoll.options; track opt.id) {
                     <button
                       type="button"
-                      (click)="voteSurvey(sPoll.id, opt.id)"
-                      [disabled]="isSubmitting()"
+                      (click)="!sPoll.isLocked && voteSurvey(sPoll.id, opt.id)"
+                      [disabled]="isSubmitting() || sPoll.isLocked"
                       [ngClass]="getVotedOptionFor(sPoll.id) === opt.id 
                         ? 'border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/50 shadow-sm ring-1 ring-indigo-500' 
                         : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300'"
-                      class="w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 active:scale-98 cursor-pointer">
+                      class="w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
                       <div class="flex items-center gap-3 flex-1 min-w-0">
                         <span class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0"
                           [ngClass]="getVotedOptionFor(sPoll.id) === opt.id 
@@ -555,7 +559,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   }
                 </div>
 
-                @if (hasVotedFor(sPoll.id)) {
+                @if (hasVotedFor(sPoll.id) && !sPoll.isLocked) {
                   <div class="text-center pt-1">
                     <button type="button" (click)="changeSurveyVote(sPoll.id)" class="text-xs text-slate-400 hover:text-indigo-600 underline font-medium cursor-pointer">
                       Change my answer for this question
@@ -762,6 +766,39 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 }
               </div>
             </div>
+          } @else if (stats.poll.isLocked) {
+            <!-- Poll Locked Screen -->
+            <div class="p-6 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-3xl text-center space-y-3 animate-fadein">
+              <div class="w-12 h-12 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto text-xl">
+                <i class="pi pi-lock"></i>
+              </div>
+              <h3 class="text-base font-bold text-amber-900 dark:text-amber-200">Voting Closed</h3>
+              <p class="text-xs text-amber-700 dark:text-amber-400">
+                The presenter has locked responses for this question. Look up at the screen!
+              </p>
+
+              @if (stats.poll.showResults) {
+                <div class="mt-4 pt-3 border-t border-amber-200/60 dark:border-amber-800/60 space-y-2 text-left">
+                  <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <span>Audience Results</span>
+                    <span>{{ stats.totalVotes }} votes</span>
+                  </div>
+                  @for (opt of stats.poll.options; track opt.id) {
+                    <div class="space-y-1">
+                      <div class="flex justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        <span>{{ opt.text }}</span>
+                        <span class="font-mono text-slate-500">{{ stats.percentages[opt.id] || 0 }}%</span>
+                      </div>
+                      <div class="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-500 bg-amber-500"
+                          [style.width.%]="stats.percentages[opt.id] || 0">
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
           } @else if (isTimeUp()) {
             <!-- Time's Up Screen with Live Results Breakdown -->
             <div class="p-6 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-3xl text-center space-y-3">
@@ -793,17 +830,6 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   </div>
                 }
               </div>
-            </div>
-          } @else if (stats.poll.isLocked) {
-            <!-- Poll Locked Screen -->
-            <div class="p-8 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-3xl text-center space-y-3">
-              <div class="w-12 h-12 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto text-xl">
-                <i class="pi pi-lock"></i>
-              </div>
-              <h3 class="text-base font-bold text-amber-900 dark:text-amber-200">Voting Closed</h3>
-              <p class="text-xs text-amber-700 dark:text-amber-400">
-                The presenter has locked responses for this question. Look up at the screen!
-              </p>
             </div>
           } @else {
             <!-- Interactive Choice Cards (Touch Friendly) -->
@@ -923,7 +949,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   room = signal<Room | null>(null);
   rawPolls = signal<Poll[]>([]);
   polls = computed(() => {
-    const list = this.rawPolls();
+    const list = this.rawPolls().filter(p => !p.isSkipped);
     const sel = this.room()?.selectedPollIds;
     if (sel && Array.isArray(sel) && sel.length > 0) {
       const filtered = list.filter(p => sel.includes(p.id));
@@ -1057,9 +1083,6 @@ export class StudentViewComponent implements OnInit, OnDestroy {
    * 3. Provide a 3-second grace period (diff <= -3) after 0s to compensate for client clock skew.
    */
   isTimeUp = computed(() => {
-    const stats = this.pollStats();
-    if (stats?.poll?.isLocked) return true;
-
     const rem = this.remainingSeconds();
     if (rem === null) return false;
 
