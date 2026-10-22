@@ -240,6 +240,13 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   <span class="text-xs font-mono font-semibold text-gray-500">
                     (#{{ r.code }})
                   </span>
+                  <button
+                    type="button"
+                    (click)="openEditRoomDialog(r, $event)"
+                    title="Edit mati name & dates"
+                    class="p-1 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all cursor-pointer shrink-0">
+                    <i class="pi pi-pencil text-xs"></i>
+                  </button>
                 </div>
                 <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
                   <span>{{ formatRoomDate(r) }}</span>
@@ -325,9 +332,18 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                         <!-- Room Header: Title, dates, owner, and status badge -->
                         <div class="flex items-start justify-between gap-3">
                           <div class="min-w-0 flex-1">
-                            <h4 class="text-base font-bold text-gray-900 leading-snug truncate" [title]="r.title || ('Room ' + r.code)">
-                              {{ r.title || ('Room ' + r.code) }}
-                            </h4>
+                            <div class="flex items-center gap-1.5">
+                              <h4 class="text-base font-bold text-gray-900 leading-snug truncate" [title]="r.title || ('Room ' + r.code)">
+                                {{ r.title || ('Room ' + r.code) }}
+                              </h4>
+                              <button
+                                type="button"
+                                (click)="openEditRoomDialog(r, $event)"
+                                title="Rename mati"
+                                class="p-1 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer shrink-0">
+                                <i class="pi pi-pencil text-xs"></i>
+                              </button>
+                            </div>
                             <div class="flex flex-col text-xs text-gray-500 mt-1 space-y-0.5">
                               <div class="flex items-center gap-1.5 truncate">
                                 <i class="pi pi-calendar text-[11px] text-gray-400"></i>
@@ -457,12 +473,20 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                           </button>
                         </div>
 
-                        <!-- Bottom Action Row: Toggle Active / Inactive & Delete -->
+                        <!-- Bottom Action Row: Edit, Toggle Active / Inactive & Delete -->
                         <div class="flex items-center border-t border-gray-100 pt-2 text-xs">
                           <button 
                             type="button" 
+                            (click)="openEditRoomDialog(r, $event)"
+                            class="flex-1 py-1.5 px-2 text-gray-700 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5 font-medium transition-colors cursor-pointer">
+                            <i class="pi pi-pencil text-xs text-gray-500"></i>
+                            <span>Edit</span>
+                          </button>
+                          <div class="w-px h-5 bg-gray-200 mx-1"></div>
+                          <button 
+                            type="button" 
                             (click)="toggleRoomActiveStatus(r)"
-                            class="flex-1 py-1.5 px-3 text-gray-700 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5 font-medium transition-colors cursor-pointer">
+                            class="flex-1 py-1.5 px-2 text-gray-700 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1.5 font-medium transition-colors cursor-pointer">
                             <i class="pi pi-sync text-xs text-gray-500"></i>
                             <span>{{ isRoomActive(r) ? 'Set Inactive' : 'Set Active' }}</span>
                           </button>
@@ -470,7 +494,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                           <button 
                             type="button" 
                             (click)="deleteRoom(r.code); activeMenuRoom.set(null)"
-                            class="flex-1 py-1.5 px-3 text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center gap-1.5 font-medium transition-colors cursor-pointer">
+                            class="flex-1 py-1.5 px-2 text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center gap-1.5 font-medium transition-colors cursor-pointer">
                             <i class="pi pi-trash text-xs"></i>
                             <span>Delete</span>
                           </button>
@@ -513,6 +537,13 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               <h2 class="text-lg font-bold text-gray-900">
                 Questions in {{ getSelectedRoomTitle() }}
               </h2>
+              <button
+                type="button"
+                (click)="openEditSelectedRoom()"
+                title="Edit mati name & dates"
+                class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer">
+                <i class="pi pi-pencil text-xs"></i>
+              </button>
               <span class="text-xs font-mono font-bold px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
                 #{{ selectedRoomCode() }}
               </span>
@@ -669,8 +700,15 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
         styleClass="border-0 shadow-2xl rounded-2xl overflow-hidden p-0">
         <div class="bg-white p-6 sm:p-7 rounded-2xl space-y-5 border border-gray-100 shadow-2xl">
           <!-- Dialog Title -->
-          <div class="text-xl font-bold text-gray-900 tracking-tight">
-            Create your mati
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-xl font-bold text-gray-900 tracking-tight">
+              {{ editingRoomCode ? 'Edit your mati' : 'Create your mati' }}
+            </div>
+            @if (editingRoomCode) {
+              <span class="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                #{{ editingRoomCode }}
+              </span>
+            }
           </div>
 
           <!-- Mati Name Field -->
@@ -730,30 +768,32 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             </div>
           </div>
 
-          <!-- Optional Room PIN / Custom Code -->
-          <div>
-            @if (!showCustomCodeInput) {
-              <button 
-                type="button" 
-                (click)="showCustomCodeInput = true" 
-                class="text-xs text-gray-500 hover:text-gray-800 font-medium inline-flex items-center gap-1.5 cursor-pointer">
-                <i class="pi pi-sliders-h text-[10px]"></i>
-                <span>Custom room code (optional)</span>
-              </button>
-            } @else {
-              <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <label class="block text-xs font-semibold text-gray-700">Mati Code (PIN)</label>
-                  <button type="button" (click)="showCustomCodeInput = false; newRoomCode = ''" class="text-[11px] text-gray-400 hover:text-gray-600">Auto-generate</button>
+          <!-- Optional Room PIN / Custom Code (only when creating) -->
+          @if (!editingRoomCode) {
+            <div>
+              @if (!showCustomCodeInput) {
+                <button 
+                  type="button" 
+                  (click)="showCustomCodeInput = true" 
+                  class="text-xs text-gray-500 hover:text-gray-800 font-medium inline-flex items-center gap-1.5 cursor-pointer">
+                  <i class="pi pi-sliders-h text-[10px]"></i>
+                  <span>Custom room code (optional)</span>
+                </button>
+              } @else {
+                <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <label class="block text-xs font-semibold text-gray-700">Mati Code (PIN)</label>
+                    <button type="button" (click)="showCustomCodeInput = false; newRoomCode = ''" class="text-[11px] text-gray-400 hover:text-gray-600">Auto-generate</button>
+                  </div>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="newRoomCode" 
+                    placeholder="Leave blank for auto PIN (e.g. MATI02)" 
+                    class="w-full px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-900 uppercase font-mono placeholder:text-gray-400 focus:outline-none focus:border-gray-900" />
                 </div>
-                <input 
-                  type="text" 
-                  [(ngModel)]="newRoomCode" 
-                  placeholder="Leave blank for auto PIN (e.g. MATI02)" 
-                  class="w-full px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-900 uppercase font-mono placeholder:text-gray-400 focus:outline-none focus:border-gray-900" />
-              </div>
-            }
-          </div>
+              }
+            </div>
+          }
 
           <!-- Dialog Footer -->
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
@@ -767,7 +807,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
             <div class="flex items-center justify-end gap-3 shrink-0">
               <button 
                 type="button" 
-                (click)="showNewRoomDialog = false"
+                (click)="showNewRoomDialog = false; editingRoomCode = null"
                 class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
                 Cancel
               </button>
@@ -776,7 +816,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 (click)="createNewRoom()"
                 [disabled]="!newRoomTitle.trim()"
                 class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm shadow-indigo-600/20 transition-colors cursor-pointer">
-                Create mati
+                {{ editingRoomCode ? 'Save changes' : 'Create mati' }}
               </button>
             </div>
           </div>
@@ -1381,18 +1421,44 @@ export class DashboardComponent implements OnInit, OnDestroy {
   newRoomStartDate = '';
   newRoomEndDate = '';
   showCustomCodeInput = false;
+  editingRoomCode: string | null = null;
 
   openNewRoomDialog() {
     const today = new Date();
     const end = new Date();
     end.setDate(today.getDate() + 2);
 
+    this.editingRoomCode = null;
     this.newRoomTitle = '';
     this.newRoomCode = '';
     this.newRoomStartDate = this.toInputDateFormat(today);
     this.newRoomEndDate = this.toInputDateFormat(end);
     this.showCustomCodeInput = false;
     this.showNewRoomDialog = true;
+  }
+
+  openEditRoomDialog(r: Room, event?: Event) {
+    event?.stopPropagation();
+    this.activeMenuRoom.set(null);
+
+    const today = new Date();
+    const end = new Date();
+    end.setDate(today.getDate() + 2);
+
+    this.editingRoomCode = r.code;
+    this.newRoomTitle = r.title || `Room ${r.code}`;
+    this.newRoomCode = r.code;
+    this.newRoomStartDate = r.startDate || this.toInputDateFormat(today);
+    this.newRoomEndDate = r.endDate || this.toInputDateFormat(end);
+    this.showCustomCodeInput = false;
+    this.showNewRoomDialog = true;
+  }
+
+  openEditSelectedRoom() {
+    const r = this.rooms().find(rm => rm.code === this.selectedRoomCode());
+    if (r) {
+      this.openEditRoomDialog(r);
+    }
   }
 
   openDatePicker(input: HTMLInputElement) {
@@ -1791,10 +1857,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   async createNewRoom() {
     if (!this.newRoomTitle.trim()) return;
+    const trimmedTitle = this.newRoomTitle.trim();
+
+    if (this.editingRoomCode) {
+      const targetCode = this.editingRoomCode;
+      const startDate = this.newRoomStartDate || undefined;
+      const endDate = this.newRoomEndDate || undefined;
+
+      // Optimistic local state update
+      this.rooms.update(list =>
+        list.map(r => r.code === targetCode ? { ...r, title: trimmedTitle, startDate, endDate } : r)
+      );
+
+      this.showNewRoomDialog = false;
+      this.editingRoomCode = null;
+      this.newRoomTitle = '';
+      this.newRoomCode = '';
+
+      await this.pollService.updateRoomDetails(targetCode, {
+        title: trimmedTitle,
+        startDate,
+        endDate
+      });
+
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Mati Updated',
+        detail: `Mati "${trimmedTitle}" (#${targetCode}) has been updated.`
+      });
+      return;
+    }
+
     const user = this.currentUser();
-    const createdTitle = this.newRoomTitle.trim();
     const code = await this.pollService.createRoom(
-      createdTitle,
+      trimmedTitle,
       this.newRoomCode || undefined,
       user?.uid,
       user?.email || undefined,
@@ -1808,7 +1904,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.messageService.add({
       severity: 'success',
       summary: 'Mati Created! 🎉',
-      detail: `Mati "${createdTitle}" (${code}) is ready!`
+      detail: `Mati "${trimmedTitle}" (${code}) is ready!`
     });
   }
 

@@ -432,6 +432,38 @@ export class MatiPollService {
   }
 
   /**
+   * Update room title and/or dates
+   */
+  async updateRoomDetails(roomCode: string, updates: { title?: string; startDate?: string; endDate?: string }): Promise<void> {
+    if (!roomCode || roomCode.startsWith('_')) return;
+    const code = normalizeRoomCode(roomCode);
+    const cleanUpdates: Record<string, any> = {};
+    if (updates.title !== undefined) cleanUpdates['title'] = updates.title.trim();
+    if (updates.startDate !== undefined) cleanUpdates['startDate'] = updates.startDate;
+    if (updates.endDate !== undefined) cleanUpdates['endDate'] = updates.endDate;
+
+    const rooms = this.mockRooms$.getValue();
+    const r = rooms.get(code);
+    if (r) {
+      const updated = { ...r, ...cleanUpdates };
+      rooms.set(code, updated);
+      this.mockRooms$.next(new Map(rooms));
+      if (this.currentRoom()?.code === code) {
+        this.currentRoom.set(updated);
+      }
+    }
+
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await setDoc(roomRef, cleanUpdates, { merge: true });
+      } catch (err) {
+        console.warn('[Mati] Firebase updateRoomDetails error:', err);
+      }
+    }
+  }
+
+  /**
    * Duplicate room with all its polls and settings
    */
   async duplicateRoom(sourceCode: string, newTitle?: string, ownerId?: string, ownerEmail?: string): Promise<string> {
