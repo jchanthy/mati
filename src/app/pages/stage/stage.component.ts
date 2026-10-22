@@ -829,14 +829,12 @@ import QRCode from 'qrcode';
                   </div>
                 </div>
 
-                <!-- Live Total Vote Counter in QR Station -->
-                @if (pollStats()?.totalVotes) {
-                  <div class="w-full pt-2.5 border-t flex items-center justify-center gap-2 text-xs sm:text-sm 2xl:text-base font-bold"
-                    [ngClass]="isLight() ? 'border-slate-100 text-slate-600' : 'border-slate-800/80 text-slate-300'">
-                    <i class="pi pi-users text-emerald-500 text-sm"></i>
-                    <span>{{ pollStats()?.totalVotes }} votes</span>
-                  </div>
-                }
+                <!-- Live Total Vote Counter in QR Station (Always Visible) -->
+                <div class="w-full pt-2.5 border-t flex items-center justify-center gap-2 text-xs sm:text-sm 2xl:text-base font-bold transition-all"
+                  [ngClass]="isLight() ? 'border-slate-100 text-slate-600' : 'border-slate-800/80 text-slate-300'">
+                  <i class="pi pi-users text-emerald-500 text-sm"></i>
+                  <span>{{ pollStats()?.totalVotes || 0 }} {{ (pollStats()?.totalVotes === 1) ? 'vote' : 'votes' }}</span>
+                </div>
 
               </div>
             </div>
