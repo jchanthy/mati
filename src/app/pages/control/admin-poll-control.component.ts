@@ -15,6 +15,7 @@ import { MessageService } from 'primeng/api';
 import { MatiPollService } from '../../services/mati-poll.service';
 import { AuthService } from '../../services/auth.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
+import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser';
 
 @Component({
   selector: 'app-admin-poll-control',
@@ -113,15 +114,15 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
 
         <!-- Right: Present, Start/Finish Session, and Options Menu -->
         <div class="flex items-center gap-2 shrink-0">
-          <!-- Present Stage TV Button -->
-          <a 
-            [routerLink]="['/stage', roomCode()]" 
-            target="_blank" 
-            title="Launch Presenter Stage TV"
-            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 transition-all cursor-pointer no-underline">
+          <!-- Present Stage TV Button with Multi-Monitor Auto-Detection -->
+          <button 
+            type="button" 
+            (click)="presentOnSecondMonitor()" 
+            title="Launch Presenter Stage TV (Auto-detects second monitor/projector if connected)"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 transition-all cursor-pointer border-0">
             <i class="pi pi-desktop text-xs"></i>
             <span>Present</span>
-          </a>
+          </button>
 
           <!-- Session Lifecycle (Start / Finish / Restart) -->
           @if (room()?.status === 'completed') {
@@ -397,6 +398,37 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer">
                   <i class="pi pi-replay text-xs"></i>
                   <span>Restart (Q1)</span>
+                </button>
+              </div>
+            </div>
+          } @else if (polls().length === 0) {
+            <!-- Empty State when room has no questions -->
+            <div class="bg-white dark:bg-gray-900 p-8 sm:p-10 rounded-2xl border border-gray-200/90 dark:border-gray-800 shadow-2xs space-y-4 text-center animate-fadein">
+              <div class="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-2xl shadow-2xs">
+                <i class="pi pi-inbox"></i>
+              </div>
+              <div class="space-y-1.5 max-w-sm mx-auto">
+                <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                  No Questions in Room {{ roomCode() }}
+                </h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  You can create a new question manually or import existing questions from a CSV spreadsheet or Moodle XML file.
+                </p>
+              </div>
+              <div class="flex items-center justify-center gap-2.5 pt-2">
+                <button 
+                  type="button" 
+                  (click)="showNewPollDialog = true" 
+                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer transition-all">
+                  <i class="pi pi-plus text-xs"></i>
+                  <span>Add First Question</span>
+                </button>
+                <button 
+                  type="button" 
+                  (click)="openImportDialog()" 
+                  class="px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-800 shadow-2xs cursor-pointer transition-all">
+                  <i class="pi pi-upload text-xs"></i>
+                  <span>Import Questions (CSV / XML)</span>
                 </button>
               </div>
             </div>
@@ -676,13 +708,23 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   {{ polls().length }}
                 </span>
               </div>
-              <button 
-                type="button" 
-                (click)="showNewPollDialog = true" 
-                class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer shadow-2xs flex items-center gap-1">
-                <i class="pi pi-plus text-xs"></i>
-                <span>Add Question</span>
-              </button>
+              <div class="flex items-center gap-1.5">
+                <button 
+                  type="button" 
+                  (click)="openImportDialog()" 
+                  title="Import questions from CSV or Moodle XML"
+                  class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all cursor-pointer shadow-2xs flex items-center gap-1 border border-gray-200 dark:border-gray-700">
+                  <i class="pi pi-upload text-xs"></i>
+                  <span>Import</span>
+                </button>
+                <button 
+                  type="button" 
+                  (click)="showNewPollDialog = true" 
+                  class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer shadow-2xs flex items-center gap-1">
+                  <i class="pi pi-plus text-xs"></i>
+                  <span>Add Question</span>
+                </button>
+              </div>
             </div>
 
             <!-- Compact Search Filter -->
@@ -831,8 +873,15 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   </div>
                 </div>
               } @empty {
-                <div class="p-8 text-center text-xs text-gray-400 space-y-1">
+                <div class="p-6 text-center text-xs text-gray-400 space-y-3 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 my-1">
                   <div>No questions matching "{{ searchQuery }}".</div>
+                  @if (polls().length === 0) {
+                    <div class="flex items-center justify-center gap-2 pt-1">
+                      <button type="button" (click)="openImportDialog()" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold inline-flex items-center gap-1 border border-indigo-200 dark:border-indigo-800 cursor-pointer">
+                        <i class="pi pi-upload text-xs"></i> Import Questions
+                      </button>
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -1129,6 +1178,122 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
           </div>
         </ng-template>
       </p-dialog>
+
+      <!-- Import Questions Dialog (CSV & Moodle XML) -->
+      <p-dialog header="Import Questions (CSV / Moodle XML)" [(visible)]="showImportDialog" [modal]="true" [style]="{width: '740px'}" class="p-fluid">
+        <div class="space-y-4 pt-2">
+          <!-- Information Banner -->
+          <div class="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 text-xs text-indigo-950 dark:text-indigo-200 space-y-2">
+            <div class="font-bold flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400">
+              <i class="pi pi-file-excel text-sm"></i>
+              <span>Supported Formats: CSV, TSV, or Moodle XML</span>
+            </div>
+            <p class="leading-relaxed">
+              Upload a <strong>CSV spreadsheet</strong> or a <strong>Moodle XML</strong> export file. Mati automatically detects questions, answer options (2 to 8 choices), and marks correct answers.
+            </p>
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              <button 
+                type="button" 
+                (click)="downloadCsvTemplate()" 
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all cursor-pointer">
+                <i class="pi pi-download"></i>
+                <span>Download CSV Template</span>
+              </button>
+              <button 
+                type="button" 
+                (click)="loadSampleCsv()" 
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 transition-all cursor-pointer">
+                <i class="pi pi-file-edit"></i>
+                <span>Load Sample CSV</span>
+              </button>
+              <button 
+                type="button" 
+                (click)="loadSampleXml()" 
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 transition-all cursor-pointer">
+                <i class="pi pi-code"></i>
+                <span>Load Sample XML</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- File Upload Zone -->
+          <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-5 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/50">
+            <input type="file" #fileInput (change)="onFileSelected($event)" accept=".csv,.tsv,.xml,text/csv,text/xml,application/xml" class="hidden" />
+            <div class="space-y-1.5 cursor-pointer" (click)="fileInput.click()">
+              <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-lg">
+                <i class="pi pi-cloud-upload"></i>
+              </div>
+              <div class="text-sm font-bold text-gray-800 dark:text-gray-200">
+                Click to browse CSV or XML file
+              </div>
+              <div class="text-xs text-gray-500">
+                Supports .csv, .tsv, .xml • UTF-8 Unicode &amp; Khmer font supported
+              </div>
+              @if (uploadedFileName()) {
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium">
+                  <i class="pi pi-file"></i>
+                  <span>{{ uploadedFileName() }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold uppercase text-gray-600 dark:text-gray-300">Raw Content (CSV or XML)</label>
+              @if (parsedQuestions.length > 0) {
+                <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                  [ngClass]="detectedFormat() === 'csv' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300' : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300'">
+                  <i [class]="detectedFormat() === 'csv' ? 'pi pi-table' : 'pi pi-code'"></i>
+                  <span>{{ detectedFormat() === 'csv' ? 'CSV Format Detected' : 'Moodle XML Detected' }}</span>
+                </span>
+              }
+            </div>
+            <textarea [(ngModel)]="xmlContent" (ngModelChange)="onXmlContentChange()" rows="5" placeholder="Paste CSV or Moodle XML content here..." class="w-full p-3 font-mono text-xs rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"></textarea>
+          </div>
+
+          <!-- Parsed Preview -->
+          @if (parsedQuestions.length > 0) {
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                <span class="flex items-center gap-1.5">
+                  <i class="pi pi-check-circle"></i>
+                  <span>Ready to import {{ parsedQuestions.length }} question(s)</span>
+                </span>
+                <span class="text-gray-500 dark:text-gray-400 font-normal">
+                  Target Room: <strong class="text-indigo-600 dark:text-indigo-400 font-bold">{{ roomCode() }}</strong>
+                </span>
+              </div>
+              <div class="max-h-52 overflow-y-auto space-y-2 pr-1 border border-gray-200 dark:border-gray-800 rounded-xl p-2 bg-gray-50/60 dark:bg-gray-900/60">
+                @for (q of parsedQuestions; track q.question; let idx = $index) {
+                  <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-xs shadow-xs">
+                    <div class="font-bold text-gray-900 dark:text-white flex items-start gap-1.5">
+                      <span class="text-indigo-600 dark:text-indigo-400 font-black">{{ idx + 1 }}.</span>
+                      <span class="flex-1">{{ q.question }}</span>
+                    </div>
+                    <div class="text-gray-500 mt-2 flex flex-wrap gap-1.5">
+                      @for (opt of q.options; track opt; let optIdx = $index) {
+                        <span class="px-2 py-0.5 rounded-md flex items-center gap-1"
+                          [ngClass]="optIdx === q.correctOptionIndex ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
+                          @if (optIdx === q.correctOptionIndex) {
+                            <i class="pi pi-check text-[10px]"></i>
+                          }
+                          <span>{{ opt }}</span>
+                        </span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <ng-template pTemplate="footer">
+          <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showImportDialog = false"></button>
+          <button pButton [label]="'Import ' + parsedQuestions.length + ' Questions'" icon="pi pi-check" class="p-button-primary" [disabled]="parsedQuestions.length === 0 || isImporting" (click)="importParsedQuestions()"></button>
+        </ng-template>
+      </p-dialog>
     </div>
   `
 })
@@ -1141,6 +1306,152 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   currentUser = this.authService.currentUser;
   isAdmin = this.authService.isAdmin;
+
+  showImportDialog = false;
+  isImporting = false;
+  xmlContent = '';
+  parsedQuestions: ParsedQuestion[] = [];
+  uploadedFileName = signal<string | null>(null);
+  detectedFormat = signal<'csv' | 'xml' | null>(null);
+
+  openImportDialog() {
+    this.showImportDialog = true;
+    this.xmlContent = '';
+    this.parsedQuestions = [];
+    this.uploadedFileName.set(null);
+    this.detectedFormat.set(null);
+  }
+
+  onFileSelected(event: any) {
+    const file = event.target?.files?.[0];
+    if (!file) return;
+    this.uploadedFileName.set(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.xmlContent = (e.target?.result as string) || '';
+      this.onXmlContentChange();
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  onXmlContentChange() {
+    if (!this.xmlContent.trim()) {
+      this.parsedQuestions = [];
+      return;
+    }
+    try {
+      const result = QuestionImporter.parse(this.xmlContent, this.uploadedFileName() || undefined);
+      this.detectedFormat.set(result.format);
+      this.parsedQuestions = result.questions;
+    } catch (err: any) {
+      this.parsedQuestions = [];
+    }
+  }
+
+  loadSampleCsv() {
+    this.uploadedFileName.set('sample_questions.csv');
+    this.xmlContent = `"Question","Option A","Option B","Option C","Option D","Correct Answer"
+"What is the primary benefit of live audience polling?","Immediate comprehension check & real-time feedback","Midterm final exam scoring","Replacing instructors entirely","Passive listening","A"
+"Which language is primarily used for styling modern web applications?","CSS","Python","SQL","C++","CSS"
+"Is Mati designed for interactive classroom engagement?","True","False","","","True"`;
+    this.onXmlContentChange();
+  }
+
+  downloadCsvTemplate() {
+    const templateContent = `"Question","Option A","Option B","Option C","Option D","Correct Answer"\r\n` +
+      `"What is the capital of Cambodia?","Phnom Penh","Siem Reap","Battambang","Kampot","A"\r\n` +
+      `"Which technology powers real-time updates?","WebSockets / Cloud Firestore","Floppy Disks","Printed Paper","Static HTML","A"\r\n`;
+
+    const blob = new Blob(["\uFEFF" + templateContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'mati_questions_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  loadSampleXml() {
+    this.uploadedFileName.set('sample_moodle.xml');
+    this.xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="multichoice">
+    <name><text>Question 1</text></name>
+    <questiontext format="html">
+      <text><![CDATA[<p>What is the primary benefit of real-time polling during a live lecture?</p>]]></text>
+    </questiontext>
+    <answer fraction="100">
+      <text>Immediate understanding check &amp; high audience retention</text>
+    </answer>
+    <answer fraction="0">
+      <text>Grading formal midterm exams</text>
+    </answer>
+    <answer fraction="0">
+      <text>Replacing all instructor explanations</text>
+    </answer>
+  </question>
+</quiz>`;
+    this.onXmlContentChange();
+  }
+
+  async importParsedQuestions() {
+    if (this.parsedQuestions.length === 0 || this.isImporting) return;
+    this.isImporting = true;
+    try {
+      await this.pollService.createPollsBatch(this.roomCode(), this.parsedQuestions);
+      this.showImportDialog = false;
+      this.xmlContent = '';
+      this.parsedQuestions = [];
+    } catch (err: any) {
+      console.error('[Import] Failed:', err);
+    } finally {
+      this.isImporting = false;
+    }
+  }
+
+  async presentOnSecondMonitor() {
+    const url = `/stage/${this.roomCode()}`;
+
+    // 1. Check for modern Window Management API (Chrome, Edge)
+    if (typeof window !== 'undefined' && 'getScreenDetails' in window) {
+      try {
+        const screenDetails = await (window as any).getScreenDetails();
+        const screens = screenDetails.screens || [];
+        const currentScreen = screenDetails.currentScreen;
+
+        // Find a screen that is NOT the current controller screen
+        const secondScreen = screens.find((s: any) => s !== currentScreen) || (screens.length > 1 ? screens[1] : null);
+
+        if (secondScreen) {
+          const features = [
+            `left=${secondScreen.availLeft}`,
+            `top=${secondScreen.availTop}`,
+            `width=${secondScreen.availWidth}`,
+            `height=${secondScreen.availHeight}`,
+            'menubar=no',
+            'toolbar=no',
+            'location=no',
+            'status=no',
+            'resizable=yes',
+            'scrollbars=yes'
+          ].join(',');
+
+          const popup = window.open(url, `mati_stage_${this.roomCode()}`, features);
+          if (popup) {
+            popup.focus();
+            return;
+          }
+        }
+      } catch (err) {
+        console.info('[Presenter] Multi-screen detection not permitted or unavailable:', err);
+      }
+    }
+
+    // 2. Fallback: Open in new tab/window
+    window.open(url, '_blank');
+  }
 
   showSettingsPanel = signal<boolean>(false);
   showOverviewResultsDialog = signal<boolean>(false);
