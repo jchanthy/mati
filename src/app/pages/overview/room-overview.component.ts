@@ -240,7 +240,7 @@ import QRCode from 'qrcode';
                         Engaged participants
                       </h3>
                       <p class="text-xs text-gray-500 leading-snug">
-                        <strong class="text-gray-900">{{ engagedParticipantsCount() }} out of {{ totalParticipantsCount() }}</strong> participants engaged with polls or Q&amp;A.
+                        <strong class="text-gray-900">{{ totalParticipantsCount() }}</strong> participants voted · answered <strong class="text-gray-900">{{ averageAnsweredPerParticipant() }} of {{ totalQuestionsCount() }}</strong> questions on average.
                       </p>
                     </div>
 
@@ -257,16 +257,16 @@ import QRCode from 'qrcode';
                   @if (showDetails()) {
                     <div class="space-y-2.5 pt-2 text-xs text-gray-600 animate-fadein">
                       <div class="flex items-center justify-between">
-                        <span>Participants asking in Q&amp;A</span>
-                        <span class="font-mono font-bold text-gray-900">{{ qaParticipantsCount() }}</span>
-                      </div>
-                      <div class="flex items-center justify-between">
-                        <span>Participants up or down voting in Q&amp;A</span>
-                        <span class="font-mono font-bold text-gray-900">{{ qaVotesCount() }}</span>
-                      </div>
-                      <div class="flex items-center justify-between">
                         <span>Participants voting in polls</span>
                         <span class="font-mono font-bold text-gray-900">{{ pollParticipantsCount() }}</span>
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <span>Completed all questions</span>
+                        <span class="font-mono font-bold text-gray-900">{{ completedAllCount() }} / {{ totalParticipantsCount() }}</span>
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <span>Avg. questions answered</span>
+                        <span class="font-mono font-bold text-gray-900">{{ averageAnsweredPerParticipant() }} / {{ totalQuestionsCount() }}</span>
                       </div>
                     </div>
                   }
@@ -275,8 +275,8 @@ import QRCode from 'qrcode';
                 <!-- Bottom Score Bar (Indigo Tint with Indigo Score Badge) -->
                 <div class="flex items-center justify-between bg-[#EEF2FF] border-t border-indigo-100 overflow-hidden">
                   <div class="px-5 py-3 text-xs font-bold text-indigo-900 flex items-center gap-1.5 flex-1">
-                    <span>Engaged participants score</span>
-                    <i class="pi pi-info-circle text-[11px] text-indigo-600"></i>
+                    <span>Completion score</span>
+                    <i class="pi pi-info-circle text-[11px] text-indigo-600" title="Average share of questions each participant answered"></i>
                   </div>
                   <div class="bg-[#4F46E5] text-white px-4 py-3 text-xs font-black font-mono shrink-0">
                     {{ engagedScore() }}%
@@ -284,17 +284,21 @@ import QRCode from 'qrcode';
                 </div>
               </div>
 
-              <!-- Column 2: Q&A engagement (Violet #7C3AED) -->
+              <!-- Column 2: Quiz performance (Violet #7C3AED) -->
               <div class="flex flex-col justify-between">
                 <div class="p-5 sm:p-6 space-y-4">
                   <!-- Header: Title + Subtitle + Donut Ring -->
                   <div class="flex items-start justify-between gap-3">
                     <div class="space-y-1">
                       <h3 class="text-sm sm:text-base font-bold text-gray-900 leading-snug">
-                        Q&amp;A engagement
+                        Quiz performance
                       </h3>
                       <p class="text-xs text-gray-500 leading-snug">
-                        <strong class="text-gray-900">{{ qaParticipantsCount() }} out of {{ totalParticipantsCount() }}</strong> participants asked a question or voted in Q&amp;A.
+                        @if (scoredQuestionsCount() > 0) {
+                          <strong class="text-gray-900">{{ totalCorrectVotes() }} out of {{ totalScoredVotes() }}</strong> answers were correct.
+                        } @else {
+                          No questions have a correct answer set.
+                        }
                       </p>
                     </div>
 
@@ -302,7 +306,7 @@ import QRCode from 'qrcode';
                     <div class="relative w-12 h-12 shrink-0 flex items-center justify-center">
                       <svg viewBox="0 0 36 36" class="w-12 h-12 transform -rotate-90">
                         <path stroke="#F5F3FF" stroke-width="4.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path stroke="#7C3AED" stroke-width="4.5" [attr.stroke-dasharray]="qaScore() + ', 100'" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path stroke="#7C3AED" stroke-width="4.5" [attr.stroke-dasharray]="quizScore() + ', 100'" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                       </svg>
                     </div>
                   </div>
@@ -311,16 +315,16 @@ import QRCode from 'qrcode';
                   @if (showDetails()) {
                     <div class="space-y-2.5 pt-2 text-xs text-gray-600 animate-fadein">
                       <div class="flex items-center justify-between">
-                        <span>Anonymous / all questions</span>
-                        <span class="font-mono font-bold text-gray-900">{{ anonymousQuestions() }} / {{ totalQaQuestions() }}</span>
+                        <span>Scored / all questions</span>
+                        <span class="font-mono font-bold text-gray-900">{{ scoredQuestionsCount() }} / {{ totalQuestionsCount() }}</span>
                       </div>
                       <div class="flex items-center justify-between">
-                        <span>Answered / unanswered questions</span>
-                        <span class="font-mono font-bold text-gray-900">{{ answeredQuestions() }} / {{ unansweredQuestions() }}</span>
+                        <span>Correct / total scored answers</span>
+                        <span class="font-mono font-bold text-gray-900">{{ totalCorrectVotes() }} / {{ totalScoredVotes() }}</span>
                       </div>
                       <div class="flex items-center justify-between">
-                        <span>Upvotes / downvotes</span>
-                        <span class="font-mono font-bold text-gray-900">{{ totalUpvotes() }} / {{ totalDownvotes() }}</span>
+                        <span>Avg. time per answer</span>
+                        <span class="font-mono font-bold text-gray-900">{{ averageAnswerTime() }}s</span>
                       </div>
                     </div>
                   }
@@ -329,11 +333,11 @@ import QRCode from 'qrcode';
                 <!-- Bottom Score Bar (Violet Tint with Violet Score Badge) -->
                 <div class="flex items-center justify-between bg-[#F5F3FF] border-t border-violet-100 overflow-hidden">
                   <div class="px-5 py-3 text-xs font-bold text-violet-900 flex items-center gap-1.5 flex-1">
-                    <span>Q&amp;A engagement score</span>
-                    <i class="pi pi-info-circle text-[11px] text-violet-600"></i>
+                    <span>Accuracy score</span>
+                    <i class="pi pi-info-circle text-[11px] text-violet-600" title="Correct answers ÷ all answers on scored questions"></i>
                   </div>
                   <div class="bg-[#7C3AED] text-white px-4 py-3 text-xs font-black font-mono shrink-0">
-                    {{ qaScore() }}%
+                    {{ quizScore() }}%
                   </div>
                 </div>
               </div>
@@ -348,7 +352,7 @@ import QRCode from 'qrcode';
                         Poll engagement
                       </h3>
                       <p class="text-xs text-gray-500 leading-snug">
-                        <strong class="text-gray-900">{{ pollParticipantsCount() }} out of {{ totalParticipantsCount() }}</strong> participants voted in a poll.
+                        <strong class="text-gray-900">{{ pollsWithResponses() }} out of {{ totalQuestionsCount() }}</strong> polls received responses.
                       </p>
                     </div>
 
@@ -594,43 +598,72 @@ export class RoomOverviewComponent implements OnInit, OnDestroy {
   private pollsSub?: Subscription;
   private routeSub?: Subscription;
 
-  // Engagement computed metrics matching Slido
-  totalParticipantsCount = computed(() => {
-    const votes = this.sessionStats().totalVotes;
-    return votes > 0 ? 1 : 1;
+  // Engagement metrics computed from real vote data
+  private participants = computed(() => this.sessionStats().leaderboard || []);
+  totalQuestionsCount = computed(() => this.sessionStats().totalQuestions || 0);
+
+  /** Unique participants who voted at least once */
+  totalParticipantsCount = computed(() => this.participants().length);
+  pollParticipantsCount = computed(() => this.participants().length);
+
+  /** Participants who answered every question in the session */
+  completedAllCount = computed(() => {
+    const total = this.totalQuestionsCount();
+    if (total === 0) return 0;
+    return this.participants().filter(p => (p.answeredQuestions || 0) >= total).length;
   });
 
-  engagedParticipantsCount = computed(() => {
-    const votes = this.sessionStats().totalVotes;
-    return votes > 0 ? 1 : 1;
+  /** Average number of questions answered per participant */
+  averageAnsweredPerParticipant = computed(() => {
+    const list = this.participants();
+    if (list.length === 0) return 0;
+    const sum = list.reduce((acc, p) => acc + (p.answeredQuestions || 0), 0);
+    return Math.round((sum / list.length) * 10) / 10;
   });
 
-  pollParticipantsCount = computed(() => {
-    return this.sessionStats().totalVotes > 0 ? 1 : 1;
+  /** Engagement score = average completion rate across participants */
+  engagedScore = computed(() => {
+    const total = this.totalQuestionsCount();
+    if (total === 0 || this.participants().length === 0) return 0;
+    return Math.min(100, Math.round((this.averageAnsweredPerParticipant() / total) * 100));
   });
 
-  qaParticipantsCount = computed(() => 1);
-  qaVotesCount = computed(() => 0);
-  anonymousQuestions = computed(() => 1);
-  totalQaQuestions = computed(() => 1);
-  answeredQuestions = computed(() => 0);
-  unansweredQuestions = computed(() => 1);
-  totalUpvotes = computed(() => 0);
-  totalDownvotes = computed(() => 0);
+  // Quiz performance (scored questions only)
+  scoredQuestionResults = computed(() =>
+    this.sessionStats().questionResults.filter(q => q.correctOptionId !== undefined)
+  );
+  scoredQuestionsCount = computed(() => this.scoredQuestionResults().length);
+  totalCorrectVotes = computed(() =>
+    this.scoredQuestionResults().reduce((acc, q) => acc + q.correctVotes, 0)
+  );
+  totalScoredVotes = computed(() =>
+    this.scoredQuestionResults().reduce((acc, q) => acc + q.totalVotes, 0)
+  );
+  averageAnswerTime = computed(() => {
+    const list = this.participants();
+    const answered = list.reduce((acc, p) => acc + (p.answeredQuestions || 0), 0);
+    if (answered === 0) return 0;
+    const time = list.reduce((acc, p) => acc + p.totalTimeSeconds, 0);
+    return Math.round((time / answered) * 10) / 10;
+  });
+  quizScore = computed(() => this.sessionStats().overallAccuracy || 0);
 
+  // Poll engagement
   totalPollVotes = computed(() => this.sessionStats().totalVotes);
-  pollsWithResponses = computed(() => {
-    return this.sessionStats().questionResults.filter(q => q.totalVotes > 0).length || (this.sessionStats().totalVotes > 0 ? 1 : 1);
-  });
+  pollsWithResponses = computed(() =>
+    this.sessionStats().questionResults.filter(q => q.totalVotes > 0).length
+  );
   averageVotesPerPoll = computed(() => {
-    const count = this.polls().length;
-    if (count === 0) return 1;
-    return Math.max(1, Math.round(this.sessionStats().totalVotes / count));
+    const count = this.totalQuestionsCount();
+    if (count === 0) return 0;
+    return Math.round(this.sessionStats().totalVotes / count);
   });
-
-  engagedScore = computed(() => 100);
-  qaScore = computed(() => 100);
-  pollScore = computed(() => 100);
+  /** Poll score = share of polls that received at least one response */
+  pollScore = computed(() => {
+    const count = this.totalQuestionsCount();
+    if (count === 0) return 0;
+    return Math.round((this.pollsWithResponses() / count) * 100);
+  });
 
   ngOnInit() {
     this.routeSub = this.route.paramMap.subscribe(params => {

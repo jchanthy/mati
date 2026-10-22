@@ -123,30 +123,6 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 <span>Join Event</span>
                 <i class="pi pi-arrow-right"></i>
               </button>
-
-              @if (activeRooms().length > 0) {
-                <div class="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 text-left">
-                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Active Sessions ({{ activeRooms().length }})</span>
-                  </div>
-                  <div class="space-y-1.5 max-h-48 overflow-y-auto">
-                    @for (ar of activeRooms(); track ar.code) {
-                      <button
-                        type="button"
-                        (click)="joinQuick(ar.code)"
-                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 bg-slate-50/70 dark:bg-slate-800/60 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer">
-                        <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                          {{ ar.title || ('Mati #' + ar.code) }}
-                        </span>
-                        <span class="text-xs font-mono font-black text-indigo-600 dark:text-indigo-400 shrink-0">
-                          #{{ ar.code }}
-                        </span>
-                      </button>
-                    }
-                  </div>
-                </div>
-              }
             </div>
           </div>
         } @else {
@@ -1135,32 +1111,6 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
               class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/30 transition-all cursor-pointer">
               Connect to Room
             </button>
-
-            @if (activeRooms().length > 0) {
-              <div class="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
-                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Active Sessions ({{ activeRooms().length }})
-                </div>
-                <div class="space-y-1.5 max-h-40 overflow-y-auto">
-                  @for (ar of activeRooms(); track ar.code) {
-                    <button
-                      type="button"
-                      (click)="joinQuick(ar.code)"
-                      class="w-full px-3 py-2 rounded-xl border flex items-center justify-between gap-2 text-left transition-colors cursor-pointer"
-                      [ngClass]="ar.code === roomCode()
-                        ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/50'
-                        : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400 bg-slate-50 dark:bg-slate-800/50'">
-                      <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                        {{ ar.title || ('Mati #' + ar.code) }}
-                      </span>
-                      <span class="text-xs font-mono font-black text-indigo-600 dark:text-indigo-400 shrink-0">
-                        #{{ ar.code }}
-                      </span>
-                    </button>
-                  }
-                </div>
-              </div>
-            }
           </div>
         </div>
       }
@@ -1376,15 +1326,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   private pollSub?: Subscription;
   private roomSub?: Subscription;
   private pollsListSub?: Subscription;
-  private allRoomsSub?: Subscription;
   private currentActivePollIdOnStudent: string | null = null;
-
-  allRooms = signal<Room[]>([]);
-  activeRooms = computed(() =>
-    this.allRooms().filter(
-      r => r.code && !r.code.startsWith('_') && r.status !== 'inactive' && r.status !== 'closed' && r.status !== 'completed'
-    )
-  );
 
   openNameModal() {
     this.inputParticipantName.set(this.hasCustomName() ? this.participantName() : '');
@@ -1434,11 +1376,6 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     }
   }
 
-  joinQuick(code: string) {
-    this.inputJoinCode.set(code);
-    this.submitJoinCode();
-  }
-
   ngOnInit() {
     const vid = this.pollService.getOrCreateVoterId();
     this.voterId.set(vid);
@@ -1452,10 +1389,6 @@ export class StudentViewComponent implements OnInit, OnDestroy {
       this.participantName.set('Participant #' + vid.slice(-4));
       this.hasCustomName.set(false);
     }
-
-    this.allRoomsSub = this.pollService.listenToRooms().subscribe(rooms => {
-      this.allRooms.set(rooms);
-    });
 
     this.route.paramMap.subscribe(params => {
       let raw = params.get('roomCode');
@@ -1498,7 +1431,6 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.pollSub?.unsubscribe();
     this.roomSub?.unsubscribe();
     this.pollsListSub?.unsubscribe();
-    this.allRoomsSub?.unsubscribe();
     this.stopLocalTimer();
   }
 

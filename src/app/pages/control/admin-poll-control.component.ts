@@ -38,7 +38,6 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
   },
   template: `
     <div class="space-y-4 max-w-7xl mx-auto px-2 sm:px-4">
-      <p-toast></p-toast>
 
       <!-- 1. Sleek Presenter Header Bar -->
       <header class="bg-white dark:bg-gray-900 px-4 sm:px-6 py-3 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xs flex items-center justify-between gap-3 relative z-30">
@@ -232,25 +231,31 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     </div>
                   </div>
 
-                  <div class="flex items-center justify-between">
-                    <span class="font-medium text-gray-600 dark:text-gray-400">Leaderboard</span>
-                    <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700">
-                      <button 
-                        type="button" 
-                        (click)="setLeaderboardLimit(5)"
-                        [ngClass]="room()?.leaderboardLimit === 5 ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
-                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">Top 5</button>
-                      <button 
-                        type="button" 
-                        (click)="setLeaderboardLimit(10)"
-                        [ngClass]="room()?.leaderboardLimit === 10 ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
-                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">Top 10</button>
-                      <button 
-                        type="button" 
-                        (click)="setLeaderboardLimit('all')"
-                        [ngClass]="(!room()?.leaderboardLimit || room()?.leaderboardLimit === 'all') ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
-                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">All</button>
-                    </div>
+
+
+                  <!-- Hide Results by Default (Slido Mode) Toggle -->
+                  <div class="flex items-center justify-between pt-1">
+                    <span class="font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                      <i class="pi pi-eye-slash text-xs text-indigo-500"></i> Default Hide Results
+                    </span>
+                    <button 
+                      type="button" 
+                      (click)="toggleDefaultHideResults()"
+                      [ngClass]="room()?.defaultHideResults !== false ? 'bg-indigo-600 text-white font-bold' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'"
+                      class="px-2.5 py-0.5 rounded text-[11px] transition-all cursor-pointer">
+                      {{ room()?.defaultHideResults !== false ? 'ON (Slido)' : 'OFF' }}
+                    </button>
+                  </div>
+
+                  <!-- 1-Click Action: Hide Results on All Questions -->
+                  <div class="pt-2">
+                    <button 
+                      type="button" 
+                      (click)="hideAllResultsNow()"
+                      class="w-full flex items-center justify-center gap-1.5 p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition-all cursor-pointer border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+                      <i class="pi pi-eye-slash text-xs"></i>
+                      <span>Hide Results on All Questions</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -415,19 +420,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     </span>
                   }
 
-                  <!-- Show Answer Button (Placed with status on left so Prev/Next stay contiguous) -->
-                  @if (currentPoll()?.correctOptionId !== undefined) {
-                    <button 
-                      type="button" 
-                      (click)="toggleCorrectAnswer()" 
-                      [ngClass]="showCorrectAnswer 
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/20' 
-                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700'"
-                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
-                      <i class="pi" [ngClass]="showCorrectAnswer ? 'pi-check-circle' : 'pi-eye'"></i>
-                      <span>{{ showCorrectAnswer ? 'Answer Shown' : 'Show Answer' }}</span>
-                    </button>
-                  }
+
                 </div>
 
                 <!-- Right: Dedicated Prev / Next Navigation Controls (Always adjacent and stable) -->
@@ -440,13 +433,21 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     <i class="pi pi-arrow-left text-[10px]"></i> Prev
                   </button>
 
-                  <button 
-                    type="button"
-                    (click)="nextQuestion()" 
-                    [disabled]="isLastQuestion()"
-                    class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 shadow-sm shadow-indigo-600/20 cursor-pointer">
-                    Next <i class="pi pi-arrow-right text-[10px]"></i>
-                  </button>
+                  @if (!isLastQuestion()) {
+                    <button 
+                      type="button"
+                      (click)="nextQuestion()" 
+                      class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-1 shadow-sm shadow-indigo-600/20 cursor-pointer">
+                      Next <i class="pi pi-arrow-right text-[10px]"></i>
+                    </button>
+                  } @else {
+                    <button 
+                      type="button"
+                      (click)="finishSession()" 
+                      class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition-all flex items-center gap-1 shadow-sm shadow-amber-500/20 cursor-pointer animate-pulse">
+                      🏁 Finish &amp; Podium
+                    </button>
+                  }
                 </div>
               </div>
 
@@ -504,32 +505,63 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 }
               </div>
 
-              <!-- Streamlined Presenter Control Strip (Tactile buttons, no cluttered nested cards) -->
-              <div class="pt-3 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
-                  <!-- Lock / Unlock Voting Button -->
-                  <button 
-                    type="button" 
-                    (click)="isLocked = !isLocked; onLockChange()"
-                    [ngClass]="isLocked 
-                      ? 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 hover:bg-red-100' 
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50'"
-                    class="px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
-                    <i class="pi" [ngClass]="isLocked ? 'pi-lock text-red-600' : 'pi-lock-open text-gray-500'"></i>
-                    <span>{{ isLocked ? 'Voting Locked' : 'Lock Voting' }}</span>
-                  </button>
+              <!-- Slido-Style Presenter Control Strip (2 Clean, Dedicated Rows) -->
+              <div class="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                
+                <!-- ROW 1: Audience & Stage Presentation Controls -->
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <!-- Lock / Unlock Voting Button -->
+                    <button 
+                      type="button" 
+                      (click)="isLocked = !isLocked; onLockChange()"
+                      [ngClass]="isLocked 
+                        ? 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800 hover:bg-red-100' 
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50'"
+                      class="h-9 px-3.5 rounded-xl text-xs font-semibold border inline-flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer shadow-2xs">
+                      <i class="pi" [ngClass]="isLocked ? 'pi-lock text-red-600' : 'pi-lock-open text-gray-500'"></i>
+                      <span>{{ isLocked ? 'Voting Locked' : 'Lock Voting' }}</span>
+                    </button>
 
-                  <!-- Show / Hide Results on Stage Button -->
-                  <button 
-                    type="button" 
-                    (click)="showResults = !showResults; onShowResultsChange()"
-                    [ngClass]="showResults 
-                      ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100' 
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50'"
-                    class="px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
-                    <i class="pi" [ngClass]="showResults ? 'pi-chart-bar text-indigo-600 dark:text-indigo-400' : 'pi-eye-slash text-gray-500'"></i>
-                    <span>{{ showResults ? 'Results Visible' : 'Hide Results' }}</span>
-                  </button>
+                    <!-- Show / Hide Results on Stage Button -->
+                    <button 
+                      type="button" 
+                      (click)="showResults = !showResults; onShowResultsChange()"
+                      [ngClass]="showResults 
+                        ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800 hover:bg-indigo-100' 
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50'"
+                      class="h-9 px-3.5 rounded-xl text-xs font-semibold border inline-flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer shadow-2xs">
+                      <i class="pi" [ngClass]="showResults ? 'pi-chart-bar text-indigo-600 dark:text-indigo-400' : 'pi-eye-slash text-gray-500'"></i>
+                      <span>{{ showResults ? 'Results Visible' : 'Hide Results' }}</span>
+                    </button>
+
+                    <!-- Toggle TV Stage View: Question vs Leaderboard / Podium -->
+                    <button 
+                      type="button" 
+                      (click)="toggleStageView()"
+                      [ngClass]="room()?.stageView === 'leaderboard'
+                        ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-400 dark:border-amber-700 hover:bg-amber-100 ring-2 ring-amber-400/30' 
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50'"
+                      class="h-9 px-3.5 rounded-xl text-xs font-semibold border inline-flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer shadow-2xs"
+                      title="Toggle whether TV shows Question or Live Leaderboard / Podium">
+                      <i class="pi" [ngClass]="room()?.stageView === 'leaderboard' ? 'pi-trophy text-amber-500' : 'pi-desktop text-gray-500'"></i>
+                      <span>{{ room()?.stageView === 'leaderboard' ? 'TV: Showing Podium' : 'TV: Show Podium' }}</span>
+                    </button>
+
+                    <!-- Show / Hide Correct Answer (Presenter Action) -->
+                    @if (currentPoll()?.correctOptionId !== undefined) {
+                      <button 
+                        type="button" 
+                        (click)="toggleCorrectAnswer()"
+                        [ngClass]="showCorrectAnswer 
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-400 dark:border-emerald-700 hover:bg-emerald-100 ring-2 ring-emerald-500/30' 
+                          : 'bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50'"
+                        class="h-9 px-3.5 rounded-xl text-xs font-semibold border inline-flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer shadow-2xs">
+                        <i class="pi" [ngClass]="showCorrectAnswer ? 'pi-check-circle text-emerald-600' : 'pi-eye text-emerald-600'"></i>
+                        <span>{{ showCorrectAnswer ? 'Answer Revealed' : 'Reveal Answer' }}</span>
+                      </button>
+                    }
+                  </div>
 
                   <!-- Skip / Hide Current Question Button -->
                   @if (currentPoll(); as activeP) {
@@ -537,50 +569,33 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                       type="button"
                       (click)="toggleSkipQuestion(activeP)"
                       title="Skip and hide this question from participants"
-                      class="px-3 py-1.5 rounded-xl text-xs font-semibold border bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/50 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
-                      <i class="pi pi-eye-slash text-amber-600"></i>
-                      <span>Skip Question</span>
-                    </button>
-                  }
-
-                  <!-- Show / Hide Correct Answer (Presenter Action) -->
-                  @if (currentPoll()?.correctOptionId !== undefined) {
-                    <button 
-                      type="button" 
-                      (click)="toggleCorrectAnswer()"
-                      [ngClass]="showCorrectAnswer 
-                        ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 font-bold' 
-                        : 'bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50'"
-                      class="px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
-                      <i class="pi" [ngClass]="showCorrectAnswer ? 'pi-check-circle text-emerald-600' : 'pi-eye text-emerald-600'"></i>
-                      <span>{{ showCorrectAnswer ? 'Answer Revealed' : 'Reveal Answer' }}</span>
+                      class="h-9 px-3.5 rounded-xl text-xs font-semibold border bg-white dark:bg-gray-800 text-gray-500 hover:text-amber-700 dark:text-gray-400 dark:hover:text-amber-300 border-gray-200 dark:border-gray-700 hover:border-amber-300 inline-flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer shadow-2xs">
+                      <i class="pi pi-forward text-xs"></i>
+                      <span>Skip</span>
                     </button>
                   }
                 </div>
 
-                <div class="flex items-center gap-2">
-                  <!-- Timer & Auto-Advance Control Suite -->
-                  <div class="flex items-center gap-1.5 flex-wrap text-xs bg-gray-50 dark:bg-gray-800/80 p-1.5 px-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <!-- Timer Live Countdown Badge if active -->
+                <!-- ROW 2: Timer Suite & Question Advancement Bar -->
+                <div class="flex items-center justify-between flex-wrap gap-2.5 p-2 px-3 rounded-xl bg-gray-50/90 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/80">
+                  <!-- Left: Timer presets & Countdown -->
+                  <div class="flex items-center gap-2 flex-wrap">
                     @if (autoAdvanceEnabled || isTimerActive()) {
-                      <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg font-mono font-bold text-xs"
+                      <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-mono font-bold text-xs"
                         [ngClass]="countdownSeconds <= 5 
                           ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 animate-pulse border border-red-300 dark:border-red-800' 
                           : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'">
                         <i class="pi pi-clock text-[10px]"></i>
-                        <span>{{ countdownSeconds }}s</span>
-                        @if (autoAdvanceEnabled) {
-                          <span class="text-[10px] font-sans font-semibold text-indigo-600 dark:text-indigo-400">→ Auto-Next</span>
-                        }
+                        <span>{{ countdownSeconds }}s remaining</span>
                       </div>
                     } @else {
-                      <span class="text-gray-400 font-medium text-[11px] flex items-center gap-1">
-                        <i class="pi pi-clock text-[10px]"></i> Timer:
+                      <span class="text-gray-500 dark:text-gray-400 font-semibold text-xs flex items-center gap-1 whitespace-nowrap">
+                        <i class="pi pi-clock text-xs text-indigo-500"></i> Timer:
                       </span>
                     }
 
-                    <!-- Quick Timer Preset Buttons -->
-                    <div class="flex items-center gap-1">
+                    <!-- Preset Pills -->
+                    <div class="inline-flex items-center gap-1">
                       @for (sec of [15, 20, 30, 45, 60]; track sec) {
                         <button 
                           type="button" 
@@ -588,7 +603,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                           [class.bg-indigo-600]="autoAdvanceEnabled && timerDuration === sec"
                           [class.text-white]="autoAdvanceEnabled && timerDuration === sec"
                           [class.font-bold]="autoAdvanceEnabled && timerDuration === sec"
-                          class="px-2 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer border"
+                          class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer border"
                           [ngClass]="autoAdvanceEnabled && timerDuration === sec 
                             ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' 
                             : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:text-indigo-600 hover:border-indigo-300'">
@@ -597,44 +612,54 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                       }
                     </div>
 
-                    <!-- Auto Advance Toggle Switch / Pill -->
-                    <button
-                      type="button"
-                      (click)="toggleAutoAdvance()"
-                      title="Automatically continue to next question when timer runs out"
-                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border"
-                      [ngClass]="autoAdvanceEnabled 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' 
-                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:text-gray-800'">
-                      <i class="pi" [ngClass]="autoAdvanceEnabled ? 'pi-check text-emerald-600' : 'pi-sync text-gray-400'"></i>
-                      <span>Auto-Next {{ autoAdvanceEnabled ? 'ON' : 'OFF' }}</span>
-                    </button>
-
-                    <!-- Stop Button -->
+                    <!-- Stop Timer Button -->
                     @if (autoAdvanceEnabled || isTimerActive()) {
                       <button 
                         type="button" 
                         (click)="clearQuestionTimer()" 
                         title="Stop timer and auto-advance" 
-                        class="px-2 py-1 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 hover:bg-red-100 border border-red-200 dark:border-red-800 font-bold transition-colors cursor-pointer text-xs flex items-center gap-1">
-                        <i class="pi pi-times text-[10px]"></i>
+                        class="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 hover:bg-red-100 border border-red-200 dark:border-red-800 font-bold transition-colors cursor-pointer text-xs flex items-center gap-1">
+                        <i class="pi pi-times text-[9px]"></i>
                         <span>Stop</span>
                       </button>
                     }
                   </div>
 
-                  <span class="h-4 w-px bg-gray-200 dark:bg-gray-700"></span>
+                  <!-- Right: Auto-Advance & Next Action -->
+                  <div class="flex items-center gap-2">
+                    <!-- Auto-Next Switch Pill -->
+                    <button
+                      type="button"
+                      (click)="toggleAutoAdvance()"
+                      title="Automatically continue to next question when timer runs out"
+                      class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border whitespace-nowrap"
+                      [ngClass]="autoAdvanceEnabled 
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-bold' 
+                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:text-gray-800'">
+                      <i class="pi" [ngClass]="autoAdvanceEnabled ? 'pi-bolt text-emerald-600' : 'pi-sync text-gray-400'"></i>
+                      <span>Auto-Next {{ autoAdvanceEnabled ? 'ON' : 'OFF' }}</span>
+                    </button>
 
-                  <!-- Quick Next Button in footer for effortless advancement -->
-                  <button 
-                    type="button" 
-                    (click)="nextQuestion()" 
-                    [disabled]="isLastQuestion()"
-                    class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 shadow-sm shadow-indigo-600/20 cursor-pointer">
-                    <span>Next</span>
-                    <i class="pi pi-arrow-right text-[10px]"></i>
-                  </button>
+                    <!-- Quick Next / Finish Button -->
+                    @if (!isLastQuestion()) {
+                      <button 
+                        type="button" 
+                        (click)="nextQuestion()" 
+                        class="px-4 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer whitespace-nowrap">
+                        <span>Next</span>
+                        <i class="pi pi-arrow-right text-[10px]"></i>
+                      </button>
+                    } @else {
+                      <button 
+                        type="button" 
+                        (click)="finishSession()" 
+                        class="px-4 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition-all flex items-center gap-1.5 shadow-sm shadow-amber-500/20 cursor-pointer whitespace-nowrap animate-pulse">
+                        <span>🏁 Finish &amp; Podium</span>
+                      </button>
+                    }
+                  </div>
                 </div>
+
               </div>
             </div>
           }
@@ -1189,7 +1214,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   });
 
   isLocked = false;
-  showResults = true;
+  showResults = false;
   showCorrectAnswer = false;
 
   autoAdvanceEnabled = false;
@@ -1491,13 +1516,6 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   async setLeaderboardLimit(limit: 5 | 10 | 'all') {
     await this.pollService.setRoomLeaderboardLimit(this.roomCode(), limit);
-    this.messageService.add({
-      severity: 'info',
-      summary: limit === 'all' ? '🏆 Leaderboard: Show All' : `🏆 Leaderboard: Top ${limit}`,
-      detail: limit === 'all'
-        ? 'Showing Podium (1–3) and all remaining participants on TV Stage.'
-        : `Showing Podium (1–3) and ranks 4–${limit} on TV Stage.`
-    });
   }
 
   async createNewRoom() {
@@ -1753,6 +1771,36 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     }
   }
 
+  async toggleDefaultHideResults() {
+    const current = this.room()?.defaultHideResults !== false;
+    const nextVal = !current;
+    await this.pollService.setRoomDefaultHideResults(this.roomCode(), nextVal);
+    this.messageService.add({
+      severity: 'info',
+      summary: nextVal ? 'Default Hide Results: ON (Slido Mode)' : 'Default Hide Results: OFF',
+      detail: nextVal 
+        ? 'Questions will start with results hidden until you click Results Visible.' 
+        : 'Questions will show results by default.'
+    });
+  }
+
+  async hideAllResultsNow() {
+    await this.pollService.setAllPollsShowResults(this.roomCode(), false);
+    this.showResults = false;
+    this.showSettingsPanel.set(false);
+    this.messageService.add({
+      severity: 'success',
+      summary: 'All Questions Set to Hide Results! 🔒',
+      detail: 'Live bars and percentages on all questions are now hidden like Slido until revealed.'
+    });
+  }
+
+  async toggleStageView() {
+    const current = this.room()?.stageView || 'question';
+    const next = current === 'leaderboard' ? 'question' : 'leaderboard';
+    await this.pollService.setRoomStageView(this.roomCode(), next);
+  }
+
   async finishSession() {
     this.autoAdvanceEnabled = false;
     this.stopTimer();
@@ -1875,6 +1923,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       await this.pollService.toggleSkipPoll(this.roomCode(), pollId, false);
     }
     this.showCorrectAnswer = false;
+    if (this.room()?.defaultHideResults !== false) { this.showResults = false; }
     const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
     if (this.autoAdvanceEnabled) {
       this.resetTimer(false);

@@ -54,50 +54,48 @@ import QRCode from 'qrcode';
               </div>
             </div>
           </div>
-        } @else if (room()?.status === 'completed' || isOverviewMode()) {
+        } @else if (room()?.status === 'completed' || room()?.stageView === 'leaderboard' || isOverviewMode()) {
           <!-- Complete Grand Finale & Overview Results Screen for Big TV / Projector -->
           <div class="w-full h-full flex flex-col min-h-0 overflow-hidden animate-fadein py-1">
             
-            <!-- 1. Header Bar: Room PIN, Title, and Tab Switchers -->
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 shrink-0 border-b"
-              [ngClass]="isLight() ? 'border-slate-200' : 'border-slate-800/80'">
+            <!-- 1. Sleek, Unified Header Bar -->
+            <div class="flex items-center justify-between gap-4 pb-3 mb-2 shrink-0 border-b"
+              [ngClass]="isLight() ? 'border-slate-200/80' : 'border-slate-800/80'">
               
-              <!-- Left: Title & Room Badge -->
-              <div class="flex items-center gap-3 text-left">
-                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center text-lg sm:text-xl shrink-0 shadow-md"
+              <!-- Left: Title, Trophy & Room PIN -->
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-sm"
                   [ngClass]="sessionStats().hasScoredQuestions 
-                    ? (isLight() ? 'bg-amber-100 text-amber-700' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40')
-                    : (isLight() ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40')">
+                    ? (isLight() ? 'bg-amber-100 text-amber-600 border border-amber-200' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30')
+                    : (isLight() ? 'bg-indigo-100 text-indigo-600 border border-indigo-200' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30')">
                   <span>{{ sessionStats().hasScoredQuestions ? '🏆' : '📊' }}</span>
                 </div>
                 <div>
                   <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider border font-mono"
-                      [ngClass]="isLight() ? 'bg-white text-slate-700 border-slate-200 shadow-2xs' : 'bg-slate-900 text-slate-300 border-slate-700'">
-                      PIN: <span [ngClass]="isLight() ? 'text-amber-600' : 'text-amber-400'">{{ roomCode() }}</span>
-                    </span>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                      [ngClass]="sessionStats().hasScoredQuestions 
-                        ? (isLight() ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-300') 
-                        : (isLight() ? 'bg-indigo-100 text-indigo-800' : 'bg-indigo-500/20 text-indigo-300')">
-                      {{ sessionStats().hasScoredQuestions ? '🎯 Quiz Mode Finale' : '📋 Survey Feedback Finale' }}
+                    <h1 class="text-lg sm:text-xl font-black tracking-tight"
+                      [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
+                      {{ sessionStats().hasScoredQuestions ? 'Quiz Leaderboard' : 'Survey Results' }}
+                    </h1>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold font-mono border"
+                      [ngClass]="isLight() ? 'bg-slate-50 text-slate-600 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'">
+                      PIN: <span [ngClass]="isLight() ? 'text-amber-600 font-black' : 'text-amber-400 font-black'">{{ roomCode() }}</span>
                     </span>
                   </div>
-                  <h1 class="text-lg sm:text-xl md:text-2xl font-black tracking-tight leading-snug"
-                    [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
-                    {{ sessionStats().hasScoredQuestions ? 'ទិដ្ឋភាពទូទៅនៃលទ្ធផលប្រឡង • Quiz Overview Results' : 'ទិដ្ឋភាពទូទៅនៃការស្ទង់មតិ • Survey Overview Results' }}
-                  </h1>
+                  <p class="text-[11px] font-medium" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
+                    {{ sessionStats().totalQuestions }} questions • {{ sessionStats().totalVotes }} answers recorded
+                  </p>
                 </div>
               </div>
 
-              <!-- Right: Navigation View Tabs -->
-              <div class="flex items-center gap-2 shrink-0">
+              <!-- Right: Filter Selector & Back to Live Button -->
+              <div class="flex items-center gap-2.5 shrink-0">
 
-                @if (isOverviewMode() && room()?.status !== 'completed') {
+
+                @if ((isOverviewMode() || room()?.stageView === 'leaderboard') && room()?.status !== 'completed') {
                   <button
                     type="button"
                     (click)="toggleOverviewMode()"
-                    class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                    class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
                     <i class="pi pi-arrow-left"></i>
                     <span>Live Poll</span>
                   </button>
@@ -126,46 +124,7 @@ import QRCode from 'qrcode';
                       </p>
                     </div>
                   } @else {
-                    <!-- Leaderboard Top Filter Selector (Top 5 / Top 10 / Show All) -->
-                    <div class="flex items-center justify-between flex-wrap gap-2 px-2 sm:px-6 pt-2">
-                      <div class="flex items-center gap-2">
-                        <span class="text-xs sm:text-sm font-black uppercase tracking-wider"
-                          [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">
-                          🏆 Winners Podium (1st, 2nd &amp; 3rd) + Top Contenders
-                        </span>
-                      </div>
-                      <div class="inline-flex items-center gap-1 p-1 rounded-xl border text-xs font-bold"
-                        [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-2xs' : 'bg-slate-900 border-slate-800'">
-                        <span class="px-2 text-[11px] font-semibold text-slate-400">Show:</span>
-                        <button
-                          type="button"
-                          (click)="setLeaderboardLimit(5)"
-                          [ngClass]="leaderboardLimit() === 5
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : (isLight() ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800')"
-                          class="px-3 py-1 rounded-lg transition-all cursor-pointer">
-                          Top 5
-                        </button>
-                        <button
-                          type="button"
-                          (click)="setLeaderboardLimit(10)"
-                          [ngClass]="leaderboardLimit() === 10
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : (isLight() ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800')"
-                          class="px-3 py-1 rounded-lg transition-all cursor-pointer">
-                          Top 10
-                        </button>
-                        <button
-                          type="button"
-                          (click)="setLeaderboardLimit('all')"
-                          [ngClass]="leaderboardLimit() === 'all'
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : (isLight() ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800')"
-                          class="px-3 py-1 rounded-lg transition-all cursor-pointer">
-                          All ({{ (sessionStats().leaderboard || []).length }})
-                        </button>
-                      </div>
-                    </div>
+
 
                     <!-- 3-TIER GRAND PODIUM DISPLAY -->
                     <div class="pt-6 sm:pt-10 px-2 sm:px-6">
@@ -308,7 +267,7 @@ import QRCode from 'qrcode';
                               Honorable Contenders & Top Finishers
                             </span>
                             <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                              Ranks 4 - {{ leaderboardLimit() === 'all' ? (sessionStats().leaderboard || []).length : leaderboardLimit() }} ({{ leaderboardLimit() === 'all' ? 'All' : 'Top ' + leaderboardLimit() }})
+                              Ranks 4 – {{ (sessionStats().leaderboard || []).length }} (All Contenders)
                             </span>
                           </div>
                           <span class="text-xs text-slate-400 font-mono">
@@ -952,42 +911,22 @@ import QRCode from 'qrcode';
                   }
                 </div>
 
-                <!-- Hidden Results Overlay Mode -->
-                @if (!stats.poll.showResults) {
-                  <div class="max-w-lg sm:max-w-xl mx-auto p-5 sm:p-6 rounded-2xl text-center space-y-2.5 sm:space-y-3 border shadow-xl w-full transition-colors my-2"
-                    [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-slate-200/40' : 'bg-slate-900/90 border-slate-800 shadow-slate-950/60'">
-                    <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center mx-auto text-lg sm:text-xl animate-soft-pulse shadow-md"
-                      [ngClass]="isLight() ? 'bg-indigo-50 text-indigo-600' : 'bg-indigo-600/20 text-indigo-400'">
-                      <i class="pi pi-eye-slash"></i>
-                    </div>
-                    <div class="space-y-1">
-                      <h3 class="text-base sm:text-lg font-bold tracking-tight" [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
-                        Voting in progress...
-                      </h3>
-                      <p class="text-xs sm:text-sm max-w-md mx-auto" [ngClass]="isLight() ? 'text-slate-500' : 'text-slate-400'">
-                        Audience answers are being recorded live. Results will appear on this screen once revealed by host.
-                      </p>
-                    </div>
-                    <div class="pt-1 flex items-center justify-center gap-2 font-bold text-xs sm:text-sm text-indigo-600 dark:text-indigo-400">
-                      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>{{ stats.totalVotes }} participant{{ stats.totalVotes === 1 ? '' : 's' }} answered</span>
-                    </div>
-                  </div>
-                } @else {
-                  <!-- Fixed Screen Poll Results Options (No Scrolling, Compact) -->
-                  <div class="w-full max-w-4xl mx-auto overflow-hidden my-auto grid gap-2 sm:gap-2.5"
-                    [ngClass]="stats.poll.options.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-xl'">
-                    @for (opt of stats.poll.options; track opt.id; let last = $last) {
-                      <div class="p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl border relative overflow-hidden transition-all duration-300 shadow-2xs flex items-center justify-between gap-2.5 min-h-[2.75rem] sm:min-h-[3rem]"
-                        [class.sm:col-span-2]="stats.poll.options.length % 2 !== 0 && last"
-                        [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
-                          ? (isLight() ? 'border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-50/90 shadow-emerald-500/10' : 'border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-950/70 shadow-emerald-500/20')
-                          : (stats.poll.showCorrectAnswer && stats.poll.correctOptionId !== undefined && stats.poll.correctOptionId !== opt.id
-                            ? (isLight() ? 'bg-white/60 border-slate-200/60 opacity-60' : 'bg-slate-900/60 border-slate-800/60 opacity-50')
-                            : (isLeadingOption(stats, opt.id) && stats.totalVotes > 0
-                              ? (isLight() ? 'border-amber-400/90 ring-1 ring-amber-400/30 bg-amber-50/20' : 'border-amber-400/60 ring-1 ring-amber-400/30 bg-slate-900/95') 
-                              : (isLight() ? 'bg-white border-slate-200/90 shadow-slate-100' : 'bg-slate-900/90 border-slate-800')))">
-                        <!-- Animated Progress bar background -->
+                <!-- Fixed Screen Poll Results Options (Always visible for audience) -->
+                <div class="w-full max-w-4xl mx-auto overflow-hidden my-auto grid gap-2 sm:gap-2.5"
+                  [ngClass]="stats.poll.options.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-xl'">
+                  @for (opt of stats.poll.options; track opt.id; let last = $last) {
+                    <div class="p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl border relative overflow-hidden transition-all duration-300 shadow-2xs flex items-center justify-between gap-2.5 min-h-[2.75rem] sm:min-h-[3rem]"
+                      [class.sm:col-span-2]="stats.poll.options.length % 2 !== 0 && last"
+                      [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                        ? (isLight() ? 'border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-50/90 shadow-emerald-500/10' : 'border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-950/70 shadow-emerald-500/20')
+                        : (stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId !== undefined && stats.poll.correctOptionId !== opt.id
+                          ? (isLight() ? 'bg-white/60 border-slate-200/60 opacity-60' : 'bg-slate-900/60 border-slate-800/60 opacity-50')
+                          : (stats.poll.showResults && isLeadingOption(stats, opt.id) && stats.totalVotes > 0
+                            ? (isLight() ? 'border-amber-400/90 ring-1 ring-amber-400/30 bg-amber-50/20' : 'border-amber-400/60 ring-1 ring-amber-400/30 bg-slate-900/95') 
+                            : (isLight() ? 'bg-white border-slate-200/90 shadow-slate-100' : 'bg-slate-900/90 border-slate-800')))">
+                      
+                      <!-- Animated Progress bar background (Only when results are revealed) -->
+                      @if (stats.poll.showResults) {
                         <div 
                           class="absolute top-0 bottom-0 left-0 transition-all duration-700 ease-out" 
                           [style.width.%]="stats.percentages[opt.id] || 0"
@@ -997,37 +936,39 @@ import QRCode from 'qrcode';
                               ? (isLight() ? 'bg-amber-300/35' : 'bg-gradient-to-r from-amber-500/35 via-amber-400/25 to-yellow-500/15') 
                               : (isLight() ? 'bg-indigo-100/70' : 'bg-gradient-to-r from-indigo-600/30 via-indigo-500/20 to-blue-500/15'))">
                         </div>
+                      }
 
-                        <!-- Option Number & Text -->
-                        <div class="relative z-10 flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
-                          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border shadow-2xs"
-                            [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : (isLeadingOption(stats, opt.id) && stats.totalVotes > 0
-                                ? (isLight() ? 'bg-amber-500 text-white border-amber-600' : 'bg-amber-400/30 text-amber-200 border-amber-400/40') 
-                                : (isLight() ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'))">
-                            {{ opt.id }}
-                          </div>
-                          <div class="text-xs sm:text-sm font-semibold leading-snug break-words flex-1"
-                            [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
-                              ? (isLight() ? 'text-emerald-950 font-bold' : 'text-emerald-100 font-bold')
-                              : (isLight() ? 'text-slate-800' : 'text-slate-100')">
-                            {{ opt.text }}
-                          </div>
-                          @if (stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id) {
-                            <span class="px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1 shrink-0 bg-emerald-600 text-white shadow-2xs">
-                              <i class="pi pi-check text-[10px]"></i> Correct
-                            </span>
-                          } @else if (isLeadingOption(stats, opt.id) && stats.totalVotes > 0) {
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 shrink-0 shadow-2xs"
-                              [ngClass]="isLight() ? 'bg-amber-100 border border-amber-300 text-amber-800' : 'bg-amber-400/20 border border-amber-400/40 text-amber-300'">
-                              🏆
-                            </span>
-                          }
+                      <!-- Option Number & Text -->
+                      <div class="relative z-10 flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+                        <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border shadow-2xs"
+                          [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : (stats.poll.showResults && isLeadingOption(stats, opt.id) && stats.totalVotes > 0
+                              ? (isLight() ? 'bg-amber-500 text-white border-amber-600' : 'bg-amber-400/30 text-amber-200 border-amber-400/40') 
+                              : (isLight() ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'))">
+                          {{ opt.id }}
                         </div>
+                        <div class="text-xs sm:text-sm font-semibold leading-snug break-words flex-1"
+                          [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                            ? (isLight() ? 'text-emerald-950 font-bold' : 'text-emerald-100 font-bold')
+                            : (isLight() ? 'text-slate-800' : 'text-slate-100')">
+                          {{ opt.text }}
+                        </div>
+                        @if (stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id) {
+                          <span class="px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1 shrink-0 bg-emerald-600 text-white shadow-2xs">
+                            <i class="pi pi-check text-[10px]"></i> Correct
+                          </span>
+                        } @else if (stats.poll.showResults && isLeadingOption(stats, opt.id) && stats.totalVotes > 0) {
+                          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 shrink-0 shadow-2xs"
+                            [ngClass]="isLight() ? 'bg-amber-100 border border-amber-300 text-amber-800' : 'bg-amber-400/20 border border-amber-400/40 text-amber-300'">
+                            🏆
+                          </span>
+                        }
+                      </div>
 
-                        <!-- Percentage & Votes count -->
-                        <div class="relative z-10 text-right shrink-0 pl-2 flex flex-col items-end justify-center">
+                      <!-- Percentage & Votes count OR Hidden Indicator -->
+                      <div class="relative z-10 text-right shrink-0 pl-2 flex flex-col items-end justify-center">
+                        @if (stats.poll.showResults) {
                           <div class="text-base sm:text-lg md:text-xl font-bold font-mono leading-none"
                             [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
                               ? (isLight() ? 'text-emerald-800 font-black' : 'text-emerald-300 font-black')
@@ -1042,11 +983,19 @@ import QRCode from 'qrcode';
                               : 'text-slate-400 dark:text-slate-500'">
                             {{ stats.votesPerOption[opt.id] || 0 }} votes
                           </div>
-                        </div>
+                        } @else {
+                          <div class="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border"
+                            [ngClass]="isLight() ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-slate-800/80 text-slate-400 border-slate-700'">
+                            <i class="pi pi-lock text-[10px]"></i>
+                            <span>Hidden</span>
+                          </div>
+                        }
                       </div>
-                    }
-                  </div>
-                }
+                    </div>
+                  }
+                </div>
+
+
               } @else {
                 <!-- Waiting Screen on Right Side -->
                 <div class="text-center py-10 sm:py-14 space-y-4 sm:space-y-5 rounded-3xl sm:rounded-4xl p-8 sm:p-12 border shadow-2xl max-w-xl 2xl:max-w-2xl mx-auto w-full transition-colors my-auto"
@@ -1527,11 +1476,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
           } catch {}
         }
       }
-      if (roomData?.leaderboardLimit === 5 || roomData?.leaderboardLimit === 10 || roomData?.leaderboardLimit === 'all') {
-        this.leaderboardLimit.set(roomData.leaderboardLimit);
-      } else {
-        this.leaderboardLimit.set('all');
-      }
+      this.leaderboardLimit.set('all');
       if (roomData?.status === 'completed') {
         this.fetchSessionSummary(code);
       }
@@ -1542,7 +1487,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       const summary = await this.pollService.getSessionSummary(code);
       this.sessionStats.set(summary);
-      if (summary.hasScoredQuestions && this.room()?.status === 'completed' && this.overviewTab() === 'breakdown') {
+      if (summary.hasScoredQuestions && (this.room()?.status === 'completed' || this.room()?.stageView === 'leaderboard') && this.overviewTab() === 'breakdown') {
         this.overviewTab.set('leaderboard');
       }
     } catch (err) {

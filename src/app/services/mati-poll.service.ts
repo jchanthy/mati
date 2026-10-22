@@ -16,7 +16,8 @@ import {
   orderBy,
   onSnapshot,
   Unsubscribe,
-  deleteField
+  deleteField,
+  writeBatch
 } from '@angular/fire/firestore';
 import { Observable, BehaviorSubject, of, combineLatest, map } from 'rxjs';
 import { Room, Poll, Vote, PollStats, DetailedSessionSummary, QuestionResultSummary, QuizLeaderboardEntry } from '../models/poll.model';
@@ -677,7 +678,7 @@ export class MatiPollService {
       order: poll.order ?? 1,
       isLocked: poll.isLocked ?? false,
       isSkipped: poll.isSkipped ?? false,
-      showResults: poll.showResults ?? true,
+      showResults: poll.showResults ?? false,
       showCorrectAnswer: poll.showCorrectAnswer ?? false,
       options: cleanOptions
     };
@@ -797,7 +798,7 @@ export class MatiPollService {
       type: 'multiple_choice',
       order,
       isLocked: false,
-      showResults: true,
+      showResults: false,
       showCorrectAnswer: false,
       options: optionTexts.map((text, idx) => ({ 
         id: idx + 1, 
@@ -871,19 +872,24 @@ export class MatiPollService {
       }
     }
 
-    const sanitizedActivePoll = activePoll
-      ? this.sanitizePollForFirestore({ ...activePoll, showCorrectAnswer: false })
-      : null;
-
     // 1. Update local state optimistically FIRST so consecutive "Next" clicks and UI react in 0ms
     const rooms = this.mockRooms$.getValue();
     const room = rooms.get(code);
+    const hideByDefault = room ? room.defaultHideResults !== false : true;
+    const sanitizedActivePoll = activePoll
+      ? this.sanitizePollForFirestore({
+          ...activePoll,
+          showCorrectAnswer: false,
+          showResults: hideByDefault ? false : (activePoll.showResults ?? false)
+        })
+      : null;
     if (room) {
       const updatedRoom: Room = {
         ...room,
         activePollId: pollId,
         activePoll: sanitizedActivePoll,
         status: 'active',
+        stageView: 'question',
         timerDuration: timerDuration ?? undefined,
         timerEndsAt
       };
@@ -906,6 +912,7 @@ export class MatiPollService {
             activePollId: pollId,
             activePoll: sanitizedActivePoll,
             status: 'active',
+            stageView: 'question',
             timerDuration,
             timerEndsAt
           })
@@ -1027,6 +1034,69 @@ export class MatiPollService {
    * Step 2: toggleShowResults(roomCode: string, pollId: string, show: boolean)
    * Toggles bar chart visibility on stage.
    */
+  /**
+   * Configure room-level default hide results (Slido mode).
+   */
+  async setRoomDefaultHideResults(roomCode: string, hideByDefault: boolean): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+    const rooms = this.mockRooms$.getValue();
+    const r = rooms.get(code);
+    if (r) {
+      r.defaultHideResults = hideByDefault;
+      rooms.set(code, { ...r });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...r });
+    }
+    if (this.firestore) {
+      try {
+        await updateDoc(doc(this.firestore, `rooms/${code}`), { defaultHideResults: hideByDefault });
+      } catch (e) {
+        console.warn('[Mati] setRoomDefaultHideResults error:', e);
+      }
+    }
+  }
+
+  /**
+   * Batch hide (or show) results for ALL questions in a room in 1 click (Slido mode).
+   */
+  async setAllPollsShowResults(roomCode: string, show: boolean): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+    
+    // 1. Update mock local polls
+    const pollsMap = this.mockPolls$.getValue();
+    const list = pollsMap.get(code) || [];
+    list.forEach(p => p.showResults = show);
+    pollsMap.set(code, [...list]);
+    this.mockPolls$.next(new Map(pollsMap));
+
+    // 2. Update active poll if present
+    const rooms = this.mockRooms$.getValue();
+    const r = rooms.get(code);
+    if (r && r.activePoll) {
+      r.activePoll = { ...r.activePoll, showResults: show };
+      rooms.set(code, { ...r });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...r });
+    }
+
+    // 3. Update Firestore in a single batch
+    if (this.firestore) {
+      try {
+        const pollsSnap = await getDocs(collection(this.firestore, `rooms/${code}/polls`));
+        const batch = writeBatch(this.firestore);
+        pollsSnap.docs.forEach(docSnap => {
+          batch.update(docSnap.ref, { showResults: show });
+        });
+        if (r && r.activePoll) {
+          batch.update(doc(this.firestore, `rooms/${code}`), { 'activePoll.showResults': show });
+        }
+        await batch.commit();
+      } catch (err) {
+        console.warn('[Mati] Firebase setAllPollsShowResults error:', err);
+      }
+    }
+  }
+
   async toggleShowResults(roomCode: string, pollId: string, show: boolean): Promise<void> {
     const code = normalizeRoomCode(roomCode);
 
@@ -1264,6 +1334,30 @@ export class MatiPollService {
   }
 
   /**
+   * Sets what TV Stage displays during live session: 'question' or 'leaderboard' (podium).
+   */
+  async setRoomStageView(roomCode: string, stageView: 'question' | 'leaderboard'): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, { stageView });
+      } catch (err) {
+        console.warn('[Mati] Firebase setRoomStageView error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room) {
+      room.stageView = stageView;
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+  }
+
+  /**
    * Updates a participant's display name across all existing votes in a room.
    */
   async updateVoterNameInRoom(roomCode: string, voterId: string, voterName: string): Promise<void> {
@@ -1342,6 +1436,7 @@ export class MatiPollService {
         const roomRef = doc(this.firestore, `rooms/${code}`);
         await updateDoc(roomRef, {
           status: 'completed',
+          stageView: 'leaderboard',
           timerEndsAt: null,
           timerDuration: null
         });
@@ -1354,6 +1449,7 @@ export class MatiPollService {
     const room = rooms.get(code);
     if (room) {
       room.status = 'completed';
+      room.stageView = 'leaderboard';
       room.timerEndsAt = null;
       room.timerDuration = undefined;
       rooms.set(code, { ...room });
@@ -1561,6 +1657,7 @@ export class MatiPollService {
         voterName: p.voterName,
         correctAnswers: p.correctAnswers,
         totalQuestions: polls.length,
+        answeredQuestions: p.totalAnswered,
         accuracy,
         totalTimeSeconds: roundedTotalTime,
         avgTimeSeconds: avgTime
@@ -2177,7 +2274,7 @@ export class MatiPollService {
         type: 'multiple_choice',
         order: 1,
         isLocked: false,
-        showResults: true,
+        showResults: false,
         correctOptionId: 1,
         options: [
           { id: 1, text: 'Agentic AI Workflows (ភ្នាក់ងារឆ្លាតវៃ)', isCorrect: true },
@@ -2192,7 +2289,7 @@ export class MatiPollService {
         type: 'multiple_choice',
         order: 2,
         isLocked: false,
-        showResults: true,
+        showResults: false,
         correctOptionId: 1,
         options: [
           { id: 1, text: 'Essential for modern lectures & conferences', isCorrect: true },

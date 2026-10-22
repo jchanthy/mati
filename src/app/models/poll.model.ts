@@ -31,7 +31,9 @@ export interface Room {
   timerDuration?: number;
   timerEndsAt?: number | null;
   autoAdvance?: boolean;
+  stageView?: 'question' | 'leaderboard';
   leaderboardLimit?: 5 | 10 | 'all';
+  defaultHideResults?: boolean;
   selectedPollIds?: string[];
   ownerId?: string;
   ownerEmail?: string;
@@ -82,6 +84,7 @@ export interface QuizLeaderboardEntry {
   voterName: string;
   correctAnswers: number;
   totalQuestions: number;
+  answeredQuestions?: number;
   accuracy: number;
   totalTimeSeconds: number;
   avgTimeSeconds: number;
@@ -97,4 +100,3 @@ export interface DetailedSessionSummary {
   questionResults: QuestionResultSummary[];
   leaderboard?: QuizLeaderboardEntry[];
 }
-
