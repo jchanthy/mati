@@ -231,6 +231,27 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                         class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">☀️ Light</button>
                     </div>
                   </div>
+
+                  <div class="flex items-center justify-between">
+                    <span class="font-medium text-gray-600 dark:text-gray-400">Leaderboard</span>
+                    <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <button 
+                        type="button" 
+                        (click)="setLeaderboardLimit(5)"
+                        [ngClass]="room()?.leaderboardLimit === 5 ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">Top 5</button>
+                      <button 
+                        type="button" 
+                        (click)="setLeaderboardLimit(10)"
+                        [ngClass]="room()?.leaderboardLimit === 10 ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">Top 10</button>
+                      <button 
+                        type="button" 
+                        (click)="setLeaderboardLimit('all')"
+                        [ngClass]="(!room()?.leaderboardLimit || room()?.leaderboardLimit === 'all') ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded text-[11px] transition-all cursor-pointer">All</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             }
@@ -277,11 +298,35 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
 
               <!-- Top Quiz Champions & Speed Leaders Strip in Controller -->
               @if (sessionSummary()?.hasScoredQuestions && (sessionSummary()?.leaderboard || []).length > 0) {
-                <div class="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-2 text-left max-w-md mx-auto">
-                  <div class="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400">
-                    <span>🏆 Quiz Leaderboard Podium</span>
-                    <span class="text-[10px] font-mono">Ranked by score & speed</span>
+                <div class="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-2.5 text-left max-w-md mx-auto">
+                  <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <span class="text-xs font-bold text-gray-700 dark:text-gray-200">🏆 Quiz Leaderboard</span>
+                    <div class="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700 text-[10px] font-bold">
+                      <button
+                        type="button"
+                        (click)="setLeaderboardLimit(5)"
+                        [ngClass]="room()?.leaderboardLimit === 5 ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded cursor-pointer transition-colors">
+                        Top 5
+                      </button>
+                      <button
+                        type="button"
+                        (click)="setLeaderboardLimit(10)"
+                        [ngClass]="room()?.leaderboardLimit === 10 ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded cursor-pointer transition-colors">
+                        Top 10
+                      </button>
+                      <button
+                        type="button"
+                        (click)="setLeaderboardLimit('all')"
+                        [ngClass]="(!room()?.leaderboardLimit || room()?.leaderboardLimit === 'all') ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-400'"
+                        class="px-2 py-0.5 rounded cursor-pointer transition-colors">
+                        All
+                      </button>
+                    </div>
                   </div>
+
+                  <!-- Podium Top 1, 2, 3 -->
                   <div class="space-y-1.5">
                     @for (winner of (sessionSummary()?.leaderboard || []).slice(0, 3); track winner.voterId) {
                       <div class="flex items-center justify-between px-3 py-2 rounded-xl border text-xs"
@@ -298,6 +343,38 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                       </div>
                     }
                   </div>
+
+                  <!-- Ranks 4 to 5 / 10 / All -->
+                  @if (controllerRestLeaderboard().length > 0) {
+                    <div class="pt-1 space-y-1">
+                      <div class="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
+                        @if (room()?.leaderboardLimit === 5) {
+                          Ranks 4 – 5 (Top 5)
+                        } @else if (room()?.leaderboardLimit === 10) {
+                          Ranks 4 – 10 (Top 10)
+                        } @else {
+                          Ranks 4 – {{ (sessionSummary()?.leaderboard || []).length }} (All)
+                        }
+                      </div>
+                      <div class="space-y-1 max-h-48 overflow-y-auto pr-0.5">
+                        @for (entry of controllerRestLeaderboard(); track entry.voterId) {
+                          <div class="flex items-center justify-between px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs">
+                            <div class="flex items-center gap-2 min-w-0">
+                              <span class="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-mono font-bold text-[10px] flex items-center justify-center shrink-0">
+                                #{{ entry.rank }}
+                              </span>
+                              <span class="font-semibold text-gray-800 dark:text-gray-200 truncate">{{ entry.voterName }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 font-mono text-[11px] text-gray-500">
+                              <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ entry.correctAnswers }}/{{ sessionSummary()?.totalScoredQuestions }}</span>
+                              <span>•</span>
+                              <span>⏱️ {{ entry.totalTimeSeconds }}s</span>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
                 </div>
               }
 
@@ -1401,6 +1478,25 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       severity: 'info',
       summary: theme === 'light' ? '☀️ TV Light Mode' : '🌙 TV Dark Mode',
       detail: `Projector / Stage screen switched to ${theme} mode presentation.`
+    });
+  }
+
+  controllerRestLeaderboard = computed(() => {
+    const list = this.sessionSummary()?.leaderboard || [];
+    const limit = this.room()?.leaderboardLimit || 'all';
+    if (limit === 5) return list.slice(3, 5);
+    if (limit === 10) return list.slice(3, 10);
+    return list.slice(3);
+  });
+
+  async setLeaderboardLimit(limit: 5 | 10 | 'all') {
+    await this.pollService.setRoomLeaderboardLimit(this.roomCode(), limit);
+    this.messageService.add({
+      severity: 'info',
+      summary: limit === 'all' ? '🏆 Leaderboard: Show All' : `🏆 Leaderboard: Top ${limit}`,
+      detail: limit === 'all'
+        ? 'Showing Podium (1–3) and all remaining participants on TV Stage.'
+        : `Showing Podium (1–3) and ranks 4–${limit} on TV Stage.`
     });
   }
 

@@ -1236,6 +1236,79 @@ export class MatiPollService {
   }
 
   /**
+   * Sets leaderboard display limit for the room: 5 (Top 5), 10 (Top 10), or 'all' (Show all).
+   */
+  async setRoomLeaderboardLimit(roomCode: string, limit: 5 | 10 | 'all'): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+    if (this.isBrowser) {
+      localStorage.setItem(`mati_leaderboard_limit_${code}`, String(limit));
+    }
+
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        await updateDoc(roomRef, { leaderboardLimit: limit });
+      } catch (err) {
+        console.warn('[Mati] Firebase setRoomLeaderboardLimit error:', err);
+      }
+    }
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room) {
+      room.leaderboardLimit = limit;
+      rooms.set(code, { ...room });
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set({ ...room });
+    }
+  }
+
+  /**
+   * Updates a participant's display name across all existing votes in a room.
+   */
+  async updateVoterNameInRoom(roomCode: string, voterId: string, voterName: string): Promise<void> {
+    const code = normalizeRoomCode(roomCode);
+    const cleanName = voterName.trim();
+    if (!cleanName || !voterId) return;
+
+    if (this.isBrowser) {
+      localStorage.setItem('mati_voter_name', cleanName);
+    }
+
+    const polls = await this.getPollsForRoom(code);
+    const votesMap = this.mockVotes$.getValue();
+    let updatedLocal = false;
+
+    for (const p of polls) {
+      const voteKey = `${code}_${p.id}`;
+      const list = votesMap.get(voteKey);
+      if (list) {
+        const existing = list.find(v => v.voterId === voterId);
+        if (existing) {
+          existing.voterName = cleanName;
+          updatedLocal = true;
+        }
+      }
+    }
+    if (updatedLocal) {
+      this.mockVotes$.next(new Map(votesMap));
+    }
+
+    if (this.firestore) {
+      const db = this.firestore;
+      await Promise.allSettled(
+        polls.map(async p => {
+          const votedOpt = this.getVotedOption(code, p.id);
+          if (votedOpt !== null) {
+            const voteRef = doc(db, `rooms/${code}/polls/${p.id}/votes/${voterId}`);
+            await setDoc(voteRef, { voterName: cleanName }, { merge: true });
+          }
+        })
+      );
+    }
+  }
+
+  /**
    * Synchronously retrieves in-memory or persisted cached room
    */
   getCachedRoom(roomCode: string): Room | null {
@@ -1466,7 +1539,7 @@ export class MatiPollService {
           };
           participantMap.set(v.voterId, entry);
         }
-        if (v.voterName && (!entry.voterName || entry.voterName.startsWith('Participant #'))) {
+        if (v.voterName && (!entry.voterName || !v.voterName.startsWith('Participant #'))) {
           entry.voterName = v.voterName;
         }
         entry.totalAnswered++;

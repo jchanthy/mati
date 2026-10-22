@@ -126,6 +126,47 @@ import QRCode from 'qrcode';
                       </p>
                     </div>
                   } @else {
+                    <!-- Leaderboard Top Filter Selector (Top 5 / Top 10 / Show All) -->
+                    <div class="flex items-center justify-between flex-wrap gap-2 px-2 sm:px-6 pt-2">
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs sm:text-sm font-black uppercase tracking-wider"
+                          [ngClass]="isLight() ? 'text-slate-600' : 'text-slate-300'">
+                          🏆 Winners Podium (1st, 2nd &amp; 3rd) + Top Contenders
+                        </span>
+                      </div>
+                      <div class="inline-flex items-center gap-1 p-1 rounded-xl border text-xs font-bold"
+                        [ngClass]="isLight() ? 'bg-white border-slate-200 shadow-2xs' : 'bg-slate-900 border-slate-800'">
+                        <span class="px-2 text-[11px] font-semibold text-slate-400">Show:</span>
+                        <button
+                          type="button"
+                          (click)="setLeaderboardLimit(5)"
+                          [ngClass]="leaderboardLimit() === 5
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : (isLight() ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800')"
+                          class="px-3 py-1 rounded-lg transition-all cursor-pointer">
+                          Top 5
+                        </button>
+                        <button
+                          type="button"
+                          (click)="setLeaderboardLimit(10)"
+                          [ngClass]="leaderboardLimit() === 10
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : (isLight() ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800')"
+                          class="px-3 py-1 rounded-lg transition-all cursor-pointer">
+                          Top 10
+                        </button>
+                        <button
+                          type="button"
+                          (click)="setLeaderboardLimit('all')"
+                          [ngClass]="leaderboardLimit() === 'all'
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : (isLight() ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800')"
+                          class="px-3 py-1 rounded-lg transition-all cursor-pointer">
+                          All ({{ (sessionStats().leaderboard || []).length }})
+                        </button>
+                      </div>
+                    </div>
+
                     <!-- 3-TIER GRAND PODIUM DISPLAY -->
                     <div class="pt-6 sm:pt-10 px-2 sm:px-6">
                       <div class="flex items-end justify-center gap-2 sm:gap-4 md:gap-6 max-w-3xl mx-auto">
@@ -267,7 +308,7 @@ import QRCode from 'qrcode';
                               Honorable Contenders & Top Finishers
                             </span>
                             <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                              Ranks 4 - {{ (sessionStats().leaderboard || []).length }}
+                              Ranks 4 - {{ leaderboardLimit() === 'all' ? (sessionStats().leaderboard || []).length : leaderboardLimit() }} ({{ leaderboardLimit() === 'all' ? 'All' : 'Top ' + leaderboardLimit() }})
                             </span>
                           </div>
                           <span class="text-xs text-slate-400 font-mono">
@@ -1137,6 +1178,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   overviewTab = signal<'leaderboard' | 'breakdown' | 'spotlight' | 'insights'>('leaderboard');
   spotlightIndex = signal<number>(0);
   overviewFilter = signal<string>('all');
+  leaderboardLimit = signal<5 | 10 | 'all'>('all');
 
   leaderboardTop3 = computed(() => {
     const list = this.sessionStats().leaderboard || [];
@@ -1149,6 +1191,9 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   leaderboardRest = computed(() => {
     const list = this.sessionStats().leaderboard || [];
+    const limit = this.leaderboardLimit();
+    if (limit === 5) return list.slice(3, 5);
+    if (limit === 10) return list.slice(3, 10);
     return list.slice(3);
   });
 
@@ -1482,6 +1527,11 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
           } catch {}
         }
       }
+      if (roomData?.leaderboardLimit === 5 || roomData?.leaderboardLimit === 10 || roomData?.leaderboardLimit === 'all') {
+        this.leaderboardLimit.set(roomData.leaderboardLimit);
+      } else {
+        this.leaderboardLimit.set('all');
+      }
       if (roomData?.status === 'completed') {
         this.fetchSessionSummary(code);
       }
@@ -1591,6 +1641,11 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (maxVotes === 0) return false;
     return (stats.votesPerOption[optionId] || 0) === maxVotes;
+  }
+
+  setLeaderboardLimit(limit: 5 | 10 | 'all') {
+    this.leaderboardLimit.set(limit);
+    this.pollService.setRoomLeaderboardLimit(this.roomCode(), limit);
   }
 
   toggleOverviewMode() {

@@ -46,6 +46,15 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
               </span>
             }
           }
+          <button
+            type="button"
+            (click)="openNameModal()"
+            title="Click to set or change your name"
+            class="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer max-w-[130px]">
+            <i class="pi pi-user text-[10px] text-indigo-600 dark:text-indigo-400 shrink-0"></i>
+            <span class="truncate">{{ hasCustomName() ? participantName() : 'Set Name' }}</span>
+            <i class="pi pi-pencil text-[9px] opacity-70 shrink-0"></i>
+          </button>
           <button 
             type="button" 
             (click)="openChangeRoomModal()" 
@@ -75,15 +84,36 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
             </div>
 
             <div class="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl space-y-4">
-              <div class="relative">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 font-bold font-mono text-xl">#</span>
-                <input
-                  type="text"
-                  [ngModel]="inputJoinCode()"
-                  (ngModelChange)="inputJoinCode.set($event)"
-                  (keyup.enter)="submitJoinCode()"
-                  placeholder="e.g. 482915"
-                  class="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-2xl text-slate-900 dark:text-white font-mono font-black text-xl uppercase tracking-wider outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400 placeholder:normal-case placeholder:font-normal placeholder:text-base text-center" />
+              <div class="text-left space-y-1.5">
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
+                  Your Name (shown on Leaderboard)
+                </label>
+                <div class="relative">
+                  <i class="pi pi-user absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 text-sm"></i>
+                  <input
+                    type="text"
+                    [ngModel]="inputParticipantName()"
+                    (ngModelChange)="inputParticipantName.set($event)"
+                    (keyup.enter)="submitJoinCode()"
+                    placeholder="Enter your name..."
+                    class="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-2xl text-slate-900 dark:text-white font-bold text-sm outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400 placeholder:font-normal" />
+                </div>
+              </div>
+
+              <div class="text-left space-y-1.5">
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
+                  Event PIN Code
+                </label>
+                <div class="relative">
+                  <span class="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 font-bold font-mono text-xl">#</span>
+                  <input
+                    type="text"
+                    [ngModel]="inputJoinCode()"
+                    (ngModelChange)="inputJoinCode.set($event)"
+                    (keyup.enter)="submitJoinCode()"
+                    placeholder="e.g. 482915"
+                    class="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-2xl text-slate-900 dark:text-white font-mono font-black text-xl uppercase tracking-wider outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400 placeholder:normal-case placeholder:font-normal placeholder:text-base text-center" />
+                </div>
               </div>
 
               <button
@@ -120,6 +150,40 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
             </div>
           </div>
         } @else {
+        <!-- Prompt participant to set their name if they haven't set one yet -->
+        @if (!hasCustomName() && !dismissedNameBanner()) {
+          <div class="mb-4 p-3.5 bg-indigo-50/90 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-2xl shadow-xs space-y-2.5 animate-fadein">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                <span class="text-base">👋</span>
+                <span>Set your name for the Top Leaderboard!</span>
+              </div>
+              <button
+                type="button"
+                (click)="dismissedNameBanner.set(true)"
+                title="Dismiss"
+                class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer">
+                <i class="pi pi-times text-[10px]"></i>
+              </button>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                [ngModel]="inputParticipantName()"
+                (ngModelChange)="inputParticipantName.set($event)"
+                (keyup.enter)="saveParticipantName()"
+                placeholder="Enter your name..."
+                class="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-700 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+              <button
+                type="button"
+                (click)="saveParticipantName()"
+                [disabled]="!inputParticipantName().trim()"
+                class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0">
+                Save
+              </button>
+            </div>
+          </div>
+        }
         @if (room()?.status === 'inactive' || room()?.status === 'closed') {
           <!-- Session Inactive Screen for Participant Mobile -->
           <div class="w-full my-auto py-10 animate-fadein">
@@ -219,9 +283,16 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                       You Finished #{{ myRank() }}! 🎯
                     }
                   </h2>
-                  <p class="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-300">
-                    Well done, {{ participantName() }}!
-                  </p>
+                  <div class="flex items-center justify-center gap-1.5 text-sm sm:text-base font-bold text-slate-700 dark:text-slate-300">
+                    <span>Well done, {{ participantName() }}!</span>
+                    <button
+                      type="button"
+                      (click)="openNameModal()"
+                      title="Edit your display name"
+                      class="p-1 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer inline-flex items-center">
+                      <i class="pi pi-pencil text-xs"></i>
+                    </button>
+                  </div>
                 </div>
 
                 <!-- Primary Stats Table -->
@@ -253,15 +324,38 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 </div>
 
                 <!-- Real Class Leaderboard Cards -->
-                <div class="space-y-2 pt-2 max-w-sm mx-auto text-left">
-                  <div class="flex items-center justify-between px-1">
+                <div class="space-y-2.5 pt-2 max-w-sm mx-auto text-left">
+                  <div class="flex items-center justify-between px-1 gap-2 flex-wrap">
                     <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       🏆 Class Leaderboard
                     </span>
-                    <span class="text-[10px] text-slate-400 font-medium">Ranked by score & speed</span>
+                    <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-bold">
+                      <button
+                        type="button"
+                        (click)="studentLeaderboardLimit.set(5)"
+                        [ngClass]="effectiveLeaderboardLimit() === 5 ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 dark:text-slate-400'"
+                        class="px-2 py-0.5 rounded cursor-pointer transition-colors">
+                        Top 5
+                      </button>
+                      <button
+                        type="button"
+                        (click)="studentLeaderboardLimit.set(10)"
+                        [ngClass]="effectiveLeaderboardLimit() === 10 ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 dark:text-slate-400'"
+                        class="px-2 py-0.5 rounded cursor-pointer transition-colors">
+                        Top 10
+                      </button>
+                      <button
+                        type="button"
+                        (click)="studentLeaderboardLimit.set('all')"
+                        [ngClass]="effectiveLeaderboardLimit() === 'all' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 dark:text-slate-400'"
+                        class="px-2 py-0.5 rounded cursor-pointer transition-colors">
+                        All
+                      </button>
+                    </div>
                   </div>
 
-                  @for (entry of (sessionStats().leaderboard || []); track entry.voterId; let lIdx = $index) {
+                  <!-- Top 1, 2, 3 -->
+                  @for (entry of displayedTop3Leaderboard(); track entry.voterId) {
                     <div class="flex items-center justify-between px-3.5 py-2.5 rounded-2xl border transition-all text-sm"
                       [ngClass]="entry.voterId === voterId() 
                         ? 'bg-indigo-600 text-white font-bold shadow-md border-indigo-700 ring-2 ring-indigo-400/50' 
@@ -273,8 +367,8 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                         <span class="w-6 h-6 rounded-full text-xs font-black flex items-center justify-center shrink-0"
                           [ngClass]="entry.voterId === voterId()
                             ? 'bg-white text-indigo-700 shadow-xs'
-                            : (entry.rank === 1 ? 'bg-amber-400 text-amber-950' : (entry.rank === 2 ? 'bg-slate-300 text-slate-900' : (entry.rank === 3 ? 'bg-amber-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300')))">
-                          {{ entry.rank }}
+                            : (entry.rank === 1 ? 'bg-amber-400 text-amber-950' : (entry.rank === 2 ? 'bg-slate-300 text-slate-900' : 'bg-amber-600 text-white'))">
+                          {{ entry.rank === 1 ? '🥇' : (entry.rank === 2 ? '🥈' : '🥉') }}
                         </span>
                         <div class="truncate">
                           <span class="font-bold">{{ entry.voterName }}</span>
@@ -292,6 +386,50 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                         <span>•</span>
                         <span>⏱️ {{ entry.totalTimeSeconds }}s</span>
                       </div>
+                    </div>
+                  }
+
+                  <!-- Ranks 4 to 5 / 10 / All -->
+                  @if (displayedRestLeaderboard().length > 0) {
+                    <div class="pt-1.5 space-y-1.5">
+                      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                        @if (effectiveLeaderboardLimit() === 5) {
+                          Ranks 4 – 5
+                        } @else if (effectiveLeaderboardLimit() === 10) {
+                          Ranks 4 – 10
+                        } @else {
+                          Ranks 4 – {{ (sessionStats().leaderboard || []).length }} (All)
+                        }
+                      </div>
+                      @for (entry of displayedRestLeaderboard(); track entry.voterId) {
+                        <div class="flex items-center justify-between px-3.5 py-2 rounded-xl border transition-all text-xs"
+                          [ngClass]="entry.voterId === voterId() 
+                            ? 'bg-indigo-600 text-white font-bold shadow-md border-indigo-700 ring-2 ring-indigo-400/50' 
+                            : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200'">
+                          <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="w-5 h-5 rounded-full text-[11px] font-black font-mono flex items-center justify-center shrink-0"
+                              [ngClass]="entry.voterId === voterId()
+                                ? 'bg-white text-indigo-700'
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'">
+                              {{ entry.rank }}
+                            </span>
+                            <div class="truncate">
+                              <span class="font-bold">{{ entry.voterName }}</span>
+                              @if (entry.voterId === voterId()) {
+                                <span class="ml-1 text-[10px] opacity-90 px-1.5 py-0.5 bg-white/25 rounded-md">you</span>
+                              }
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-2 shrink-0 font-mono text-[11px]"
+                            [ngClass]="entry.voterId === voterId() ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'">
+                            <span class="font-bold" [ngClass]="entry.voterId === voterId() ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'">
+                              {{ entry.correctAnswers }}/{{ studentScoredQuestionsCount() }}
+                            </span>
+                            <span>•</span>
+                            <span>⏱️ {{ entry.totalTimeSeconds }}s</span>
+                          </div>
+                        </div>
+                      }
                     </div>
                   }
                 </div>
@@ -924,6 +1062,45 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
       }
       </main>
 
+      <!-- Set / Edit Participant Name Modal -->
+      @if (showNameModal()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadein">
+          <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-sm border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-base font-black text-slate-900 dark:text-white">Set Your Name</h3>
+                <p class="text-[11px] text-slate-500">Shown on the class leaderboard when you win</p>
+              </div>
+              <button
+                type="button"
+                (click)="showNameModal.set(false)"
+                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer">
+                <i class="pi pi-times text-xs"></i>
+              </button>
+            </div>
+
+            <div class="relative">
+              <i class="pi pi-user absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-500 text-sm"></i>
+              <input
+                type="text"
+                [ngModel]="inputParticipantName()"
+                (ngModelChange)="inputParticipantName.set($event)"
+                (keyup.enter)="saveParticipantName()"
+                placeholder="Enter your name..."
+                class="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+
+            <button
+              type="button"
+              (click)="saveParticipantName()"
+              [disabled]="!inputParticipantName().trim()"
+              class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/30 transition-all cursor-pointer">
+              Save Name
+            </button>
+          </div>
+        </div>
+      }
+
       <!-- Switch Room Modal -->
       @if (showChangeRoomModal()) {
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadein">
@@ -1008,8 +1185,34 @@ export class StudentViewComponent implements OnInit, OnDestroy {
 
   showEnterCodeCard = signal<boolean>(false);
   showChangeRoomModal = signal<boolean>(false);
+  showNameModal = signal<boolean>(false);
+  dismissedNameBanner = signal<boolean>(false);
+  hasCustomName = signal<boolean>(false);
+  inputParticipantName = signal<string>('');
   inputJoinCode = signal<string>('');
   activeBroadcastRoom = signal<string | null>(null);
+  studentLeaderboardLimit = signal<5 | 10 | 'all' | null>(null);
+
+  effectiveLeaderboardLimit = computed<5 | 10 | 'all'>(() => {
+    const localOverride = this.studentLeaderboardLimit();
+    if (localOverride !== null) return localOverride;
+    const roomLimit = this.room()?.leaderboardLimit;
+    if (roomLimit === 5 || roomLimit === 10 || roomLimit === 'all') return roomLimit;
+    return 'all';
+  });
+
+  displayedTop3Leaderboard = computed(() => {
+    const list = this.sessionStats().leaderboard || [];
+    return list.slice(0, 3);
+  });
+
+  displayedRestLeaderboard = computed(() => {
+    const list = this.sessionStats().leaderboard || [];
+    const limit = this.effectiveLeaderboardLimit();
+    if (limit === 5) return list.slice(3, 5);
+    if (limit === 10) return list.slice(3, 10);
+    return list.slice(3);
+  });
 
   roomCode = signal<string>('MATI01');
   pollStats = signal<PollStats | null>(null);
@@ -1183,12 +1386,44 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     )
   );
 
+  openNameModal() {
+    this.inputParticipantName.set(this.hasCustomName() ? this.participantName() : '');
+    this.showNameModal.set(true);
+  }
+
+  async saveParticipantName() {
+    const cleanName = this.inputParticipantName().trim();
+    if (!cleanName) return;
+    this.participantName.set(cleanName);
+    this.hasCustomName.set(true);
+    this.showNameModal.set(false);
+    this.dismissedNameBanner.set(true);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('mati_voter_name', cleanName);
+    }
+    if (this.roomCode() && this.voterId()) {
+      await this.pollService.updateVoterNameInRoom(this.roomCode(), this.voterId(), cleanName);
+      if (this.room()?.status === 'completed' || this.showSurveyCompletedOverview()) {
+        const summary = await this.pollService.getSessionSummary(this.roomCode());
+        this.sessionStats.set(summary);
+      }
+    }
+  }
+
   openChangeRoomModal() {
     this.inputJoinCode.set(this.roomCode());
     this.showChangeRoomModal.set(true);
   }
 
   submitJoinCode() {
+    const customName = this.inputParticipantName().trim();
+    if (customName) {
+      this.participantName.set(customName);
+      this.hasCustomName.set(true);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('mati_voter_name', customName);
+      }
+    }
     const raw = this.inputJoinCode();
     const clean = normalizeRoomCode(raw);
     if (clean) {
@@ -1209,10 +1444,13 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.voterId.set(vid);
     this.voterIdShort.set(vid.substring(0, 16) + '...');
     const savedName = typeof localStorage !== 'undefined' ? localStorage.getItem('mati_voter_name') : null;
-    if (savedName) {
-      this.participantName.set(savedName);
+    if (savedName && savedName.trim()) {
+      this.participantName.set(savedName.trim());
+      this.inputParticipantName.set(savedName.trim());
+      this.hasCustomName.set(true);
     } else {
       this.participantName.set('Participant #' + vid.slice(-4));
+      this.hasCustomName.set(false);
     }
 
     this.allRoomsSub = this.pollService.listenToRooms().subscribe(rooms => {

@@ -31,6 +31,7 @@ export interface Room {
   timerDuration?: number;
   timerEndsAt?: number | null;
   autoAdvance?: boolean;
+  leaderboardLimit?: 5 | 10 | 'all';
   selectedPollIds?: string[];
   ownerId?: string;
   ownerEmail?: string;
