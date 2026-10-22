@@ -22,71 +22,17 @@ import { MatiPollService } from '../services/mati-poll.service';
           <span>My matis</span>
         </a>
 
-        <!-- Team -->
-        <a 
-          [routerLink]="isAdmin() ? '/dashboard/users' : '/dashboard'" 
-          routerLinkActive="bg-indigo-50 text-indigo-700 font-bold border-r-2 border-indigo-600" 
-          class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
-          <i class="pi pi-users text-base text-gray-500"></i>
-          <span>Team</span>
-        </a>
-
-        <!-- Organization analytics -->
-        <a 
-          routerLink="/dashboard" 
-          class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
-          <i class="pi pi-chart-line text-base text-gray-500"></i>
-          <span>Organization analytics</span>
-        </a>
-
-        <!-- Tutorials -->
-        <a 
-          routerLink="/dashboard" 
-          class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
-          <i class="pi pi-graduation-cap text-base text-gray-500"></i>
-          <span>Tutorials</span>
-        </a>
-
-        <!-- Integrations Header -->
-        <div class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 font-medium">
-          <i class="pi pi-th-large text-base text-gray-500"></i>
-          <span>Integrations</span>
-        </div>
-
-        <!-- Sub-integrations list (matching Slido screenshot) -->
-        <div class="pl-7 flex flex-col gap-1 text-xs text-gray-600">
-          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
-            <span class="w-4 h-4 rounded-sm bg-orange-600 text-white font-bold text-[9px] flex items-center justify-center shrink-0">P</span>
-            <span>PowerPoint</span>
+        <!-- Team (Admin User Management) -->
+        @if (isAdmin()) {
+          <a 
+            routerLink="/dashboard/users" 
+            routerLinkActive="bg-indigo-50 text-indigo-700 font-bold border-r-2 border-indigo-600" 
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-100/80 transition-colors">
+            <i class="pi pi-users text-base text-gray-500"></i>
+            <span>Team</span>
           </a>
-          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
-            <span class="w-4 h-4 rounded-sm bg-amber-500 text-white font-bold text-[9px] flex items-center justify-center shrink-0">S</span>
-            <span>Google Slides</span>
-          </a>
-          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
-            <span class="w-4 h-4 rounded-sm bg-indigo-600 text-white font-bold text-[9px] flex items-center justify-center shrink-0">T</span>
-            <span>Microsoft Teams</span>
-          </a>
-          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
-            <span class="w-4 h-4 rounded-sm bg-cyan-600 text-white font-bold text-[9px] flex items-center justify-center shrink-0">W</span>
-            <span>Webex</span>
-          </a>
-          <a [routerLink]="['/stage', activeRoomCode()]" target="_blank" class="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-gray-100/70 hover:text-gray-900 transition-colors">
-            <span class="w-4 h-4 rounded-sm bg-blue-500 text-white font-bold text-[9px] flex items-center justify-center shrink-0">Z</span>
-            <span>Zoom</span>
-          </a>
-        </div>
+        }
       </nav>
-
-      <!-- Bottom: Help (?) circle icon matching Slido screenshot -->
-      <div class="pt-4 border-t border-gray-100">
-        <button 
-          type="button" 
-          title="Help &amp; Support"
-          class="w-8 h-8 rounded-full border border-gray-300 text-gray-700 font-bold text-sm flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer">
-          ?
-        </button>
-      </div>
     </aside>
   `,
   styles: [`

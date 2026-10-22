@@ -43,11 +43,6 @@ import { MatiPollService } from '../services/mati-poll.service';
           <span class="text-[10px] font-mono font-bold px-1 rounded bg-indigo-50 text-indigo-600 border border-indigo-200">{{ activeRoomCode() }}</span>
         </a>
 
-        <!-- What's new link -->
-        <span class="text-xs font-medium text-gray-600 hover:text-gray-900 hidden sm:inline-block cursor-pointer">
-          What's new
-        </span>
-
         <!-- User Profile Avatar (Indigo circular border with initials) -->
         @if (currentUser(); as user) {
           <div class="relative">

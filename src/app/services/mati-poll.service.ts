@@ -181,6 +181,7 @@ export class MatiPollService {
   async broadcastActiveRoom(roomCode: string, updatedBy?: string): Promise<void> {
     const code = normalizeRoomCode(roomCode);
     if (!code) return;
+    if (this.activeBroadcastRoom$.getValue() === code) return;
     this.activeBroadcastRoom$.next(code);
     if (this.isBrowser) {
       localStorage.setItem('mati_active_room', code);
@@ -482,6 +483,12 @@ export class MatiPollService {
    */
   async deletePoll(roomCode: string, pollId: string): Promise<void> {
     const code = normalizeRoomCode(roomCode);
+    const pollsMap = this.mockPolls$.getValue();
+    const list = pollsMap.get(code) || [];
+    const filtered = list.filter(p => p.id !== pollId);
+    pollsMap.set(code, filtered);
+    this.mockPolls$.next(new Map(pollsMap));
+
     if (this.firestore) {
       try {
         const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
@@ -490,12 +497,6 @@ export class MatiPollService {
         console.warn('[Mati] Firebase deletePoll error:', err);
       }
     }
-
-    const pollsMap = this.mockPolls$.getValue();
-    const list = pollsMap.get(code) || [];
-    const filtered = list.filter(p => p.id !== pollId);
-    pollsMap.set(code, filtered);
-    this.mockPolls$.next(new Map(pollsMap));
   }
 
   /**
@@ -530,6 +531,36 @@ export class MatiPollService {
     this.mockPolls$.next(new Map(pollsMap));
   }
 
+  /** Strip undefined fields from a Poll and its options so Firestore never rejects the payload. */
+  private sanitizePollForFirestore(poll: Poll): Poll {
+    const cleanOptions = (poll.options || []).map((o, idx) => {
+      const opt: { id: number; text: string; isCorrect?: boolean } = {
+        id: o.id ?? (idx + 1),
+        text: o.text ?? ''
+      };
+      if (o.isCorrect !== undefined) {
+        opt.isCorrect = o.isCorrect;
+      } else if (poll.correctOptionId !== undefined) {
+        opt.isCorrect = opt.id === poll.correctOptionId;
+      }
+      return opt;
+    });
+    const clean: Poll = {
+      id: poll.id,
+      question: poll.question ?? '',
+      type: poll.type || 'multiple_choice',
+      order: poll.order ?? 1,
+      isLocked: poll.isLocked ?? false,
+      showResults: poll.showResults ?? true,
+      showCorrectAnswer: poll.showCorrectAnswer ?? false,
+      options: cleanOptions
+    };
+    if (poll.correctOptionId !== undefined && poll.correctOptionId !== null) {
+      clean.correctOptionId = poll.correctOptionId;
+    }
+    return clean;
+  }
+
   /** Copy a question (appended at the end, never auto-activated). */
   async duplicatePoll(roomCode: string, pollId: string): Promise<void> {
     const code = normalizeRoomCode(roomCode);
@@ -537,7 +568,7 @@ export class MatiPollService {
     const src = polls.find(p => p.id === pollId);
     if (!src) return;
     const newId = 'poll_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
-    const copy: Poll = {
+    const copy: Poll = this.sanitizePollForFirestore({
       ...src,
       id: newId,
       question: src.question,
@@ -545,10 +576,10 @@ export class MatiPollService {
       isLocked: false,
       showCorrectAnswer: false,
       options: src.options.map(o => ({ ...o }))
-    };
+    });
     if (this.firestore) {
       try {
-        await setDoc(doc(this.firestore, `rooms/${code}/polls/${newId}`), JSON.parse(JSON.stringify(copy)));
+        await setDoc(doc(this.firestore, `rooms/${code}/polls/${newId}`), copy);
       } catch (err) {
         console.warn('[Mati] Firebase duplicatePoll error:', err);
       }
@@ -574,18 +605,21 @@ export class MatiPollService {
    */
   async updatePoll(roomCode: string, pollId: string, question: string, optionTexts: string[], correctOptionId?: number): Promise<void> {
     const code = normalizeRoomCode(roomCode);
-    const options = optionTexts.map((text, idx) => ({
-      id: idx + 1,
-      text,
-      isCorrect: correctOptionId !== undefined ? (idx + 1 === correctOptionId) : undefined
-    }));
-    const changes: any = { question, options, correctOptionId: correctOptionId !== undefined ? correctOptionId : null };
+    const cleanOptions = optionTexts.map((text, idx) => {
+      const opt: { id: number; text: string; isCorrect?: boolean } = {
+        id: idx + 1,
+        text
+      };
+      if (correctOptionId !== undefined) {
+        opt.isCorrect = (idx + 1 === correctOptionId);
+      }
+      return opt;
+    });
+    const changes: any = { question, options: cleanOptions, correctOptionId: correctOptionId !== undefined ? correctOptionId : deleteField() };
 
     if (this.firestore) {
       try {
-        // Firestore rejects undefined values, so strip isCorrect when unset
-        const cleanOptions = options.map(o => o.isCorrect === undefined ? { id: o.id, text: o.text } : o);
-        await updateDoc(doc(this.firestore, `rooms/${code}/polls/${pollId}`), { ...changes, options: cleanOptions });
+        await updateDoc(doc(this.firestore, `rooms/${code}/polls/${pollId}`), changes);
         const room = await this.getRoom(code);
         if (room?.activePollId === pollId) {
           await updateDoc(doc(this.firestore, `rooms/${code}`), {
@@ -600,7 +634,7 @@ export class MatiPollService {
     }
 
     const applyLocal = (p: Poll): Poll => {
-      const next: Poll = { ...p, question, options };
+      const next: Poll = { ...p, question, options: cleanOptions };
       if (correctOptionId !== undefined) next.correctOptionId = correctOptionId;
       else delete next.correctOptionId;
       return next;
@@ -631,7 +665,7 @@ export class MatiPollService {
     const existing = await this.getPollsForRoom(code);
     const order = existing.length + 1;
 
-    const newPoll: Poll = {
+    const newPoll: Poll = this.sanitizePollForFirestore({
       id: pollId,
       question,
       type: 'multiple_choice',
@@ -642,10 +676,10 @@ export class MatiPollService {
       options: optionTexts.map((text, idx) => ({ 
         id: idx + 1, 
         text,
-        isCorrect: correctOptionId !== undefined ? (idx + 1 === correctOptionId) : undefined
+        ...(correctOptionId !== undefined ? { isCorrect: idx + 1 === correctOptionId } : {})
       })),
       ...(correctOptionId !== undefined ? { correctOptionId } : {})
-    };
+    });
 
     if (this.firestore) {
       try {
@@ -711,44 +745,53 @@ export class MatiPollService {
       }
     }
 
-    if (this.firestore) {
-      try {
-        const roomRef = doc(this.firestore, `rooms/${code}`);
-        await updateDoc(roomRef, { 
-          activePollId: pollId,
-          activePoll: activePoll ? {
-            id: activePoll.id,
-            question: activePoll.question,
-            options: activePoll.options,
-            isLocked: activePoll.isLocked ?? false,
-            showResults: activePoll.showResults ?? true,
-            showCorrectAnswer: false,
-            order: activePoll.order ?? 1,
-            ...(activePoll.correctOptionId !== undefined ? { correctOptionId: activePoll.correctOptionId } : {})
-          } : null,
-          status: 'active',
-          timerDuration,
-          timerEndsAt
-        });
-      } catch (err) {
-        console.warn('[Mati] Firebase setActivePoll error:', err);
-      }
-    }
+    const sanitizedActivePoll = activePoll
+      ? this.sanitizePollForFirestore({ ...activePoll, showCorrectAnswer: false })
+      : null;
 
+    // 1. Update local state optimistically FIRST so consecutive "Next" clicks and UI react in 0ms
     const rooms = this.mockRooms$.getValue();
     const room = rooms.get(code);
     if (room) {
-      if (activePoll) {
-        activePoll = { ...activePoll, showCorrectAnswer: false };
-      }
-      room.activePollId = pollId;
-      room.activePoll = activePoll;
-      room.status = 'active';
-      room.timerDuration = timerDuration ?? undefined;
-      room.timerEndsAt = timerEndsAt;
-      rooms.set(code, { ...room });
+      const updatedRoom: Room = {
+        ...room,
+        activePollId: pollId,
+        activePoll: sanitizedActivePoll,
+        status: 'active',
+        timerDuration: timerDuration ?? undefined,
+        timerEndsAt
+      };
+      rooms.set(code, updatedRoom);
       this.mockRooms$.next(new Map(rooms));
-      this.currentRoom.set({ ...room });
+      this.currentRoom.set(updatedRoom);
+    }
+    if (sanitizedActivePoll) {
+      this.currentPoll.set(sanitizedActivePoll);
+      const votes = this.mockVotes$.getValue().get(`${code}_${sanitizedActivePoll.id}`) || [];
+      this.currentStats.set(this.computeStats(sanitizedActivePoll, votes, timerDuration ?? undefined, timerEndsAt));
+    }
+
+    // 2. Persist to Firestore with sanitized payload (never contains undefined)
+    if (this.firestore) {
+      try {
+        const roomRef = doc(this.firestore, `rooms/${code}`);
+        const writes: Promise<any>[] = [
+          updateDoc(roomRef, { 
+            activePollId: pollId,
+            activePoll: sanitizedActivePoll,
+            status: 'active',
+            timerDuration,
+            timerEndsAt
+          })
+        ];
+        if (pollId && sanitizedActivePoll) {
+          const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
+          writes.push(setDoc(pollRef, sanitizedActivePoll, { merge: true }));
+        }
+        await Promise.all(writes);
+      } catch (err) {
+        console.warn('[Mati] Firebase setActivePoll error:', err);
+      }
     }
   }
 
@@ -1037,7 +1080,27 @@ export class MatiPollService {
     const polls = roomData?.selectedPollIds && roomData.selectedPollIds.length > 0
       ? allPolls.filter(p => roomData.selectedPollIds!.includes(p.id))
       : allPolls;
-    const firstPollId = polls.length > 0 ? polls[0].id : null;
+    const firstPoll = polls.length > 0 ? polls[0] : null;
+    const firstPollId = firstPoll ? firstPoll.id : null;
+    const sanitizedFirstPoll = firstPoll
+      ? this.sanitizePollForFirestore({ ...firstPoll, showCorrectAnswer: false })
+      : null;
+
+    const rooms = this.mockRooms$.getValue();
+    const room = rooms.get(code);
+    if (room) {
+      const updatedRoom: Room = {
+        ...room,
+        status: 'active',
+        activePollId: firstPollId,
+        activePoll: sanitizedFirstPoll,
+        timerEndsAt: null,
+        timerDuration: undefined
+      };
+      rooms.set(code, updatedRoom);
+      this.mockRooms$.next(new Map(rooms));
+      this.currentRoom.set(updatedRoom);
+    }
 
     if (this.firestore) {
       try {
@@ -1045,24 +1108,13 @@ export class MatiPollService {
         await updateDoc(roomRef, {
           status: 'active',
           activePollId: firstPollId,
+          activePoll: sanitizedFirstPoll,
           timerEndsAt: null,
           timerDuration: null
         });
       } catch (err) {
         console.warn('[Mati] Firebase restartSession error:', err);
       }
-    }
-
-    const rooms = this.mockRooms$.getValue();
-    const room = rooms.get(code);
-    if (room) {
-      room.status = 'active';
-      room.activePollId = firstPollId;
-      room.timerEndsAt = null;
-      room.timerDuration = undefined;
-      rooms.set(code, { ...room });
-      this.mockRooms$.next(new Map(rooms));
-      this.currentRoom.set({ ...room });
     }
   }
 
@@ -1323,6 +1375,7 @@ export class MatiPollService {
       let unsubPoll: Unsubscribe | null = null;
       let unsubVotes: Unsubscribe | null = null;
       let currentActivePollId: string | null = null;
+      let optimisticPollId: string | null = null;
       let latestRoomData: Room | null = null;
       let latestPollData: Poll | null = null;
       let latestVotes: Vote[] = [];
@@ -1342,7 +1395,7 @@ export class MatiPollService {
         subscriber.next(stats);
       };
 
-      // Local subscription fallback
+      // Local subscription for offline fallback and 0ms optimistic updates on the presenter
       const localSub = combineLatest([
         this.mockRooms$,
         this.mockPolls$,
@@ -1355,7 +1408,9 @@ export class MatiPollService {
         }
 
         const pollList = pollsMap.get(code) || [];
-        const poll = pollList.find(p => p.id === room.activePollId);
+        const poll = room.activePoll?.id === room.activePollId
+          ? room.activePoll
+          : pollList.find(p => p.id === room.activePollId);
         if (!poll) {
           if (!this.firestore) subscriber.next(null);
           return;
@@ -1364,7 +1419,13 @@ export class MatiPollService {
         const voteKey = `${code}_${poll.id}`;
         const votes = votesMap.get(voteKey) || [];
         const stats = this.computeStats(poll, votes, room.timerDuration, room.timerEndsAt);
-        if (!this.firestore) {
+        if (!this.firestore || room.activePollId !== currentActivePollId) {
+          optimisticPollId = room.activePollId;
+          if (unsubPoll) { unsubPoll(); unsubPoll = null; }
+          if (unsubVotes) { unsubVotes(); unsubVotes = null; }
+          latestRoomData = room;
+          latestPollData = poll;
+          latestVotes = votes;
           this.currentPoll.set(poll);
           this.currentStats.set(stats);
           subscriber.next(stats);
@@ -1385,22 +1446,34 @@ export class MatiPollService {
             const activeId = latestRoomData?.activePollId || null;
 
             if (!activeId) {
+              currentActivePollId = null;
+              optimisticPollId = null;
               latestPollData = null;
               latestVotes = [];
               subscriber.next(null);
-              if (unsubPoll) unsubPoll();
-              if (unsubVotes) unsubVotes();
+              if (unsubPoll) { unsubPoll(); unsubPoll = null; }
+              if (unsubVotes) { unsubVotes(); unsubVotes = null; }
+              return;
+            }
+
+            if (optimisticPollId && activeId === optimisticPollId) {
+              optimisticPollId = null;
+            } else if (optimisticPollId && activeId !== optimisticPollId) {
+              // Ignore stale snapshot while optimistic switch is in flight
               return;
             }
 
             if (activeId !== currentActivePollId) {
               currentActivePollId = activeId;
-              if (unsubPoll) unsubPoll();
-              if (unsubVotes) unsubVotes();
+              latestVotes = [];
+              if (unsubPoll) { unsubPoll(); unsubPoll = null; }
+              if (unsubVotes) { unsubVotes(); unsubVotes = null; }
 
-              // FAST PATH: Check if room document already has embedded activePoll (0ms latency!)
-              if (latestRoomData?.activePoll && latestRoomData.activePoll.id === activeId) {
-                latestPollData = latestRoomData.activePoll;
+              const hasEmbeddedPoll = Boolean(latestRoomData?.activePoll && latestRoomData.activePoll.id === activeId);
+
+              // FAST PATH: Check if room document already has embedded activePoll (0ms single-hop latency!)
+              if (hasEmbeddedPoll) {
+                latestPollData = latestRoomData!.activePoll!;
                 this.currentPoll.set(latestPollData);
                 emitCurrentStats();
               } else {
@@ -1415,27 +1488,33 @@ export class MatiPollService {
                 }
               }
 
-              const pollRef = doc(this.firestore!, `rooms/${code}/polls/${activeId}`);
-              unsubPoll = onSnapshot(pollRef, (pollSnap) => {
-                if (pollSnap.exists()) {
-                  latestPollData = { id: pollSnap.id, ...pollSnap.data() } as Poll;
-                } else if (!latestPollData) {
-                  const localPolls = this.mockPolls$.getValue().get(code) || [];
-                  latestPollData = localPolls.find(p => p.id === activeId) || null;
-                }
+              // Mobile voters (includeVotes === false) already get all updates via embedded activePoll on rooms/${code}.
+              // Only attach a sub-document listener if includeVotes is true OR embedded activePoll was missing.
+              if (includeVotes || !hasEmbeddedPoll) {
+                const pollRef = doc(this.firestore!, `rooms/${code}/polls/${activeId}`);
+                unsubPoll = onSnapshot(pollRef, (pollSnap) => {
+                  if (currentActivePollId !== activeId) return;
+                  if (pollSnap.exists()) {
+                    latestPollData = { id: pollSnap.id, ...pollSnap.data() } as Poll;
+                  } else if (!latestPollData) {
+                    const localPolls = this.mockPolls$.getValue().get(code) || [];
+                    latestPollData = localPolls.find(p => p.id === activeId) || null;
+                  }
 
-                if (latestPollData) {
-                  this.currentPoll.set(latestPollData);
-                }
-                emitCurrentStats();
-              }, (err) => {
-                console.warn('[Mati] Poll listener error:', err);
-              });
+                  if (latestPollData) {
+                    this.currentPoll.set(latestPollData);
+                  }
+                  emitCurrentStats();
+                }, (err) => {
+                  console.warn('[Mati] Poll listener error:', err);
+                });
+              }
 
               // Listen to votes subcollection ONLY if requested (TV stage & controller)
               if (includeVotes) {
                 const votesCol = collection(this.firestore!, `rooms/${code}/polls/${activeId}/votes`);
                 unsubVotes = onSnapshot(votesCol, (votesSnap) => {
+                  if (currentActivePollId !== activeId) return;
                   if (!votesSnap.empty) {
                     latestVotes = votesSnap.docs.map(d => d.data() as Vote);
                   } else {
@@ -1443,16 +1522,16 @@ export class MatiPollService {
                   }
                   emitCurrentStats();
                 }, (err) => {
+                  if (currentActivePollId !== activeId) return;
                   latestVotes = this.mockVotes$.getValue().get(`${code}_${activeId}`) || [];
                   emitCurrentStats();
                 });
-              } else {
-                // Mobile voter: do not flood with thousands of vote snapshots
+              } else if (!hasEmbeddedPoll) {
                 latestVotes = [];
                 emitCurrentStats();
               }
             } else {
-              // Same active poll, update if embedded activePoll changed (e.g. isLocked or showResults)
+              // Same active poll, update if embedded activePoll changed (e.g. isLocked, showResults, showCorrectAnswer)
               if (latestRoomData?.activePoll && latestRoomData.activePoll.id === activeId) {
                 latestPollData = { ...latestPollData, ...latestRoomData.activePoll };
                 this.currentPoll.set(latestPollData);
@@ -1493,17 +1572,25 @@ export class MatiPollService {
     const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       return new Observable<Poll[]>((subscriber) => {
-        // Emit in-memory polls first for instant UI response
-        const initialMock = this.mockPolls$.getValue().get(code) || [];
-        if (initialMock.length > 0) {
-          subscriber.next(initialMock);
-        }
+        const localSub = this.mockPolls$.subscribe(mapData => {
+          const list = mapData.get(code);
+          if (list) subscriber.next(list);
+        });
 
         const pollsCol = collection(this.firestore!, `rooms/${code}/polls`);
         // Listen without requiring complex compound indices
         const unsub = onSnapshot(pollsCol, (snapshot) => {
           const firestoreList = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Poll));
+          const firestoreIds = new Set(firestoreList.map(p => p.id));
           const localList = this.mockPolls$.getValue().get(code) || [];
+
+          // Auto-heal any in-memory polls that were not yet saved to Firestore
+          for (const p of localList) {
+            if (!firestoreIds.has(p.id) && p.question && Array.isArray(p.options) && p.options.length > 0) {
+              const clean = this.sanitizePollForFirestore(p);
+              setDoc(doc(this.firestore!, `rooms/${code}/polls/${p.id}`), clean, { merge: true }).catch(() => {});
+            }
+          }
 
           // Merge by ID to guarantee nothing disappears
           const map = new Map<string, Poll>();
@@ -1518,7 +1605,10 @@ export class MatiPollService {
           subscriber.next(this.mockPolls$.getValue().get(code) || []);
         });
 
-        return () => unsub();
+        return () => {
+          localSub.unsubscribe();
+          unsub();
+        };
       });
     }
 
@@ -1537,11 +1627,11 @@ export class MatiPollService {
     const code = normalizeRoomCode(roomCode);
     if (this.firestore) {
       return new Observable<Room | null>((subscriber) => {
-        // Emit in-memory cached room first for 0ms instant UI response
-        const cached = this.getCachedRoom(code);
-        if (cached) {
-          subscriber.next(cached);
-        }
+        // Subscribe to local optimistic updates for 0ms instant UI response
+        const localSub = this.mockRooms$.subscribe(rooms => {
+          const r = rooms.get(code);
+          if (r) subscriber.next(r);
+        });
 
         const roomRef = doc(this.firestore!, `rooms/${code}`);
         const unsub = onSnapshot(roomRef, (snap) => {
@@ -1556,7 +1646,10 @@ export class MatiPollService {
           console.warn('[Mati] Firestore listenToRoom error:', err);
           subscriber.next(this.mockRooms$.getValue().get(code) || null);
         });
-        return () => unsub();
+        return () => {
+          localSub.unsubscribe();
+          unsub();
+        };
       });
     }
 

@@ -33,6 +33,9 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
     ToastModule
   ],
   providers: [MessageService],
+  host: {
+    '(document:click)': 'showSettingsPanel.set(false)'
+  },
   template: `
     <div class="space-y-4 max-w-7xl mx-auto px-2 sm:px-4">
       <p-toast></p-toast>
@@ -152,7 +155,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
           <div class="relative">
             <button 
               type="button" 
-              (click)="toggleSettingsPanel()" 
+              (click)="toggleSettingsPanel(); $event.stopPropagation()" 
               class="p-2 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors cursor-pointer"
               title="More Session Options">
               <i class="pi pi-ellipsis-h text-sm"></i>
@@ -170,6 +173,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 <!-- Overview Results & Analytics -->
                 <a 
                   [routerLink]="['/overview', roomCode()]" 
+                  (click)="showSettingsPanel.set(false)"
                   class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs font-semibold transition-colors no-underline">
                   <i class="pi pi-chart-bar text-indigo-600 dark:text-indigo-400"></i>
                   <span>Overview & Analytics</span>
@@ -179,6 +183,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 <a 
                   [routerLink]="['/vote', roomCode()]" 
                   target="_blank" 
+                  (click)="showSettingsPanel.set(false)"
                   class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 text-xs font-semibold transition-colors no-underline">
                   <i class="pi pi-mobile text-gray-500"></i>
                   <span>Participant Mobile View</span>
@@ -597,87 +602,95 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
             <div class="space-y-2 max-h-[520px] overflow-y-auto pr-1">
               @for (p of filteredPolls(); track p.id; let idx = $index) {
                 <div 
-                  class="p-3 rounded-xl border transition-all flex items-center justify-between gap-3 cursor-pointer group"
+                  class="p-3 rounded-xl border transition-all space-y-2 cursor-pointer group"
                   (click)="onSelectQuestion(p.id)"
                   [ngClass]="currentPoll()?.id === p.id 
                     ? 'bg-indigo-50/40 dark:bg-indigo-950/40 border-indigo-600 dark:border-indigo-500 shadow-2xs ring-1 ring-indigo-500' 
                     : 'bg-white dark:bg-gray-850 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'">
                   
-                  <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                    <input
-                      type="checkbox"
-                      class="w-3.5 h-3.5 shrink-0 cursor-pointer accent-indigo-600"
-                      [checked]="bulkSelected().has(p.id)"
-                      (click)="$event.stopPropagation()"
-                      (change)="toggleBulk(p.id)" />
-                    <span 
-                      class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 border"
-                      [ngClass]="currentPoll()?.id === p.id 
-                        ? 'bg-indigo-600 text-white border-indigo-600' 
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'">
-                      {{ p.order || (idx + 1) }}
-                    </span>
-                    <div class="min-w-0 flex-1">
-                      <div class="text-xs font-bold text-gray-900 dark:text-white truncate">
+                  <!-- Top row: Checkbox, Question Number, Full Question Title, and Live/Present Pill -->
+                  <div class="flex items-start justify-between gap-2.5">
+                    <div class="flex items-start gap-2.5 min-w-0 flex-1">
+                      <input
+                        type="checkbox"
+                        class="w-3.5 h-3.5 mt-1 shrink-0 cursor-pointer accent-indigo-600"
+                        [checked]="bulkSelected().has(p.id)"
+                        (click)="$event.stopPropagation()"
+                        (change)="toggleBulk(p.id)" />
+                      <span 
+                        class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 border"
+                        [ngClass]="currentPoll()?.id === p.id 
+                          ? 'bg-indigo-600 text-white border-indigo-600' 
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'">
+                        {{ idx + 1 }}
+                      </span>
+                      <div class="text-xs font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 break-words min-w-0 flex-1">
                         {{ p.question }}
                       </div>
-                      <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                        {{ p.options.length }} options {{ p.correctOptionId ? '• Scored' : '' }}
-                      </div>
+                    </div>
+
+                    <div class="shrink-0" (click)="$event.stopPropagation()">
+                      @if (currentPoll()?.id === p.id) {
+                        <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold text-[10px] flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Live
+                        </span>
+                      } @else {
+                        <button 
+                          type="button" 
+                          (click)="onSelectQuestion(p.id)"
+                          class="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950 group-hover:text-indigo-600 text-gray-700 dark:text-gray-300 rounded-md text-[10px] font-semibold transition-colors cursor-pointer">
+                          Present
+                        </button>
+                      }
                     </div>
                   </div>
 
-                  <div class="flex items-center gap-1.5 shrink-0" (click)="$event.stopPropagation()">
-                    @if (currentPoll()?.id === p.id) {
-                      <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold text-[10px] flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Live
-                      </span>
-                    } @else {
-                      <button 
-                        type="button" 
-                        (click)="onSelectQuestion(p.id)"
-                        class="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950 group-hover:text-indigo-600 text-gray-700 dark:text-gray-300 rounded-md text-[10px] font-semibold transition-colors cursor-pointer">
-                        Present
+                  <!-- Bottom row: Metadata on left + Action icons on right -->
+                  <div class="flex items-center justify-between gap-2 pl-8">
+                    <div class="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                      {{ (p.options || []).length }} options {{ p.correctOptionId !== undefined ? '• Scored' : '' }}
+                    </div>
+
+                    <div class="flex items-center gap-1 shrink-0" (click)="$event.stopPropagation()">
+                      <button
+                        type="button"
+                        (click)="moveQuestion(p.id, -1)"
+                        [disabled]="idx === 0 || !!searchQuery.trim()"
+                        title="Move Up"
+                        class="p-1 text-gray-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors cursor-pointer">
+                        <i class="pi pi-arrow-up text-[11px]"></i>
                       </button>
-                    }
-                    <button
-                      type="button"
-                      (click)="moveQuestion(p.id, -1)"
-                      [disabled]="idx === 0 || !!searchQuery.trim()"
-                      title="Move Up"
-                      class="p-1 text-gray-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors cursor-pointer">
-                      <i class="pi pi-arrow-up text-[11px]"></i>
-                    </button>
-                    <button
-                      type="button"
-                      (click)="moveQuestion(p.id, 1)"
-                      [disabled]="idx === filteredPolls().length - 1 || !!searchQuery.trim()"
-                      title="Move Down"
-                      class="p-1 text-gray-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors cursor-pointer">
-                      <i class="pi pi-arrow-down text-[11px]"></i>
-                    </button>
-                    <button
-                      type="button"
-                      (click)="duplicateQuestion(p.id)"
-                      title="Duplicate Question"
-                      class="p-1 text-gray-400 hover:text-indigo-600 rounded transition-colors cursor-pointer">
-                      <i class="pi pi-copy text-[11px]"></i>
-                    </button>
-                    <button
-                      type="button"
-                      (click)="openEditPoll(p)"
-                      title="Edit Question"
-                      class="p-1 text-gray-400 hover:text-indigo-600 rounded transition-colors cursor-pointer">
-                      <i class="pi pi-pencil text-[11px]"></i>
-                    </button>
-                    <button
-                      type="button"
-                      (click)="deletePoll(p.id)"
-                      title="Delete Question"
-                      class="p-1 text-gray-400 hover:text-red-600 rounded transition-colors cursor-pointer">
-                      <i class="pi pi-trash text-[11px]"></i>
-                    </button>
+                      <button
+                        type="button"
+                        (click)="moveQuestion(p.id, 1)"
+                        [disabled]="idx === filteredPolls().length - 1 || !!searchQuery.trim()"
+                        title="Move Down"
+                        class="p-1 text-gray-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors cursor-pointer">
+                        <i class="pi pi-arrow-down text-[11px]"></i>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="duplicateQuestion(p.id)"
+                        title="Duplicate Question"
+                        class="p-1 text-gray-400 hover:text-indigo-600 rounded transition-colors cursor-pointer">
+                        <i class="pi pi-copy text-[11px]"></i>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="openEditPoll(p)"
+                        title="Edit Question"
+                        class="p-1 text-gray-400 hover:text-indigo-600 rounded transition-colors cursor-pointer">
+                        <i class="pi pi-pencil text-[11px]"></i>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="deletePoll(p.id)"
+                        title="Delete Question"
+                        class="p-1 text-gray-400 hover:text-red-600 rounded transition-colors cursor-pointer">
+                        <i class="pi pi-trash text-[11px]"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
               } @empty {
@@ -1541,11 +1554,13 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     });
   }
 
-  resetTimer() {
+  resetTimer(syncToServer: boolean = true) {
     this.countdownSeconds = this.timerDuration;
     if (this.autoAdvanceEnabled) {
       this.timerEndsAt = this.pollService.now() + this.timerDuration * 1000;
-      this.pollService.setPollTimer(this.roomCode(), this.timerDuration, true);
+      if (syncToServer) {
+        this.pollService.setPollTimer(this.roomCode(), this.timerDuration, true);
+      }
       this.startTimerTicker();
     }
   }
@@ -1684,7 +1699,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   isFirstQuestion(): boolean {
     const list = this.polls();
     if (list.length === 0) return true;
-    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     if (!activeId) return false;
     const idx = list.findIndex(p => p.id === activeId);
     return idx <= 0;
@@ -1693,7 +1708,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   isLastQuestion(): boolean {
     const list = this.polls();
     if (list.length === 0) return true;
-    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     if (!activeId) return false;
     const idx = list.findIndex(p => p.id === activeId);
     return idx !== -1 && idx === list.length - 1;
@@ -1702,7 +1717,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   getCurrentQuestionIndex(): number {
     const list = this.polls();
     if (list.length === 0) return 0;
-    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     const idx = list.findIndex(p => p.id === activeId);
     return idx >= 0 ? idx + 1 : 0;
   }
@@ -1711,10 +1726,10 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     if (!pollId) return;
     this.showCorrectAnswer = false;
     const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
-    await this.pollService.setActivePoll(this.roomCode(), pollId, timerSec);
     if (this.autoAdvanceEnabled) {
-      this.resetTimer();
+      this.resetTimer(false);
     }
+    await this.pollService.setActivePoll(this.roomCode(), pollId, timerSec);
     this.messageService.add({
       severity: 'success',
       summary: 'Question Switched',
@@ -1725,40 +1740,40 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   async prevQuestion() {
     const list = this.polls();
     if (list.length === 0) return;
-    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     const idx = list.findIndex(p => p.id === activeId);
     if (idx > 0) {
       this.showCorrectAnswer = false;
       const prevPoll = list[idx - 1];
       const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
-      await this.pollService.setActivePoll(this.roomCode(), prevPoll.id, timerSec);
       if (this.autoAdvanceEnabled) {
-        this.resetTimer();
+        this.resetTimer(false);
       }
+      await this.pollService.setActivePoll(this.roomCode(), prevPoll.id, timerSec);
     }
   }
 
   async nextQuestion() {
     const list = this.polls();
     if (list.length === 0) return;
-    const activeId = this.room()?.activePollId || this.currentPoll()?.id;
+    const activeId = this.currentPoll()?.id || this.room()?.activePollId;
     const idx = list.findIndex(p => p.id === activeId);
     if (idx >= 0 && idx < list.length - 1) {
       this.showCorrectAnswer = false;
       const nextPoll = list[idx + 1];
       const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
-      await this.pollService.setActivePoll(this.roomCode(), nextPoll.id, timerSec);
       if (this.autoAdvanceEnabled) {
-        this.resetTimer();
+        this.resetTimer(false);
       }
+      await this.pollService.setActivePoll(this.roomCode(), nextPoll.id, timerSec);
     } else if (idx === -1 && list.length > 0) {
       this.showCorrectAnswer = false;
       const nextPoll = list[0];
       const timerSec = this.autoAdvanceEnabled ? this.timerDuration : null;
-      await this.pollService.setActivePoll(this.roomCode(), nextPoll.id, timerSec);
       if (this.autoAdvanceEnabled) {
-        this.resetTimer();
+        this.resetTimer(false);
       }
+      await this.pollService.setActivePoll(this.roomCode(), nextPoll.id, timerSec);
     }
   }
 }

@@ -704,8 +704,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   #startDateInput
                   type="date" 
                   [(ngModel)]="newRoomStartDate"
-                  (click)="$event.stopPropagation(); openDatePicker(startDateInput)"
-                  class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" />
+                  class="absolute inset-0 opacity-0 pointer-events-none w-full h-full" />
               </div>
             </div>
 
@@ -726,8 +725,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   type="date" 
                   [(ngModel)]="newRoomEndDate"
                   [min]="newRoomStartDate"
-                  (click)="$event.stopPropagation(); openDatePicker(endDateInput)"
-                  class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" />
+                  class="absolute inset-0 opacity-0 pointer-events-none w-full h-full" />
               </div>
             </div>
           </div>
@@ -1403,7 +1401,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         (input as any).showPicker();
       } else {
         input.focus();
-        input.click();
       }
     } catch {
       input.focus();
