@@ -834,17 +834,89 @@ export class MatiPollService {
   }
 
   /**
-   * Batch append multiple parsed questions to a room.
+   * Batch append multiple parsed questions to a room with high-performance writeBatch
+   * and live progress callback for large question sets (CSV / Moodle XML).
    */
-  async createPollsBatch(roomCode: string, questions: { question: string; options: string[]; correctOptionIndex?: number }[]): Promise<number> {
+  async createPollsBatch(
+    roomCode: string, 
+    questions: { question: string; options: string[]; correctOptionIndex?: number }[],
+    onProgress?: (current: number, total: number) => void
+  ): Promise<number> {
     const code = normalizeRoomCode(roomCode);
-    let count = 0;
-    for (const q of questions) {
-      const correctOptionId = (q.correctOptionIndex !== undefined) ? q.correctOptionIndex + 1 : undefined;
-      await this.createPoll(code, q.question, q.options, correctOptionId);
-      count++;
+    const total = questions.length;
+    if (total === 0) return 0;
+
+    const existing = await this.getPollsForRoom(code);
+    let order = existing.length + 1;
+    const room = await this.getRoom(code);
+    let firstPollId: string | null = null;
+    const newPolls: Poll[] = [];
+
+    // Process questions in chunks of 10 for rapid Firestore commit & smooth progress rendering
+    const chunkSize = 10;
+    let completedCount = 0;
+
+    for (let i = 0; i < questions.length; i += chunkSize) {
+      const chunk = questions.slice(i, i + chunkSize);
+      const batch = this.firestore ? writeBatch(this.firestore) : null;
+
+      for (const q of chunk) {
+        const pollId = 'poll_' + Math.random().toString(36).substring(2, 9);
+        if (!firstPollId) firstPollId = pollId;
+        const correctOptionId = (q.correctOptionIndex !== undefined) ? q.correctOptionIndex + 1 : undefined;
+
+        const newPoll: Poll = this.sanitizePollForFirestore({
+          id: pollId,
+          question: q.question,
+          type: 'multiple_choice',
+          order: order++,
+          isLocked: false,
+          showResults: false,
+          showCorrectAnswer: false,
+          options: q.options.map((text, idx) => ({
+            id: idx + 1,
+            text,
+            ...(correctOptionId !== undefined ? { isCorrect: idx + 1 === correctOptionId } : {})
+          })),
+          ...(correctOptionId !== undefined ? { correctOptionId } : {})
+        });
+
+        newPolls.push(newPoll);
+
+        if (this.firestore && batch) {
+          const pollRef = doc(this.firestore, `rooms/${code}/polls/${pollId}`);
+          batch.set(pollRef, newPoll);
+        }
+      }
+
+      if (this.firestore && batch) {
+        try {
+          await batch.commit();
+        } catch (err) {
+          console.warn('[Mati] Firebase createPollsBatch batch.commit error:', err);
+        }
+      }
+
+      completedCount += chunk.length;
+      if (onProgress) {
+        onProgress(completedCount, total);
+      }
+      // Small pause to allow the browser UI thread to smoothly paint the progress bar
+      await new Promise(res => setTimeout(res, 30));
     }
-    return count;
+
+    // Update local state in one atomic update
+    const currentPolls = this.mockPolls$.getValue();
+    const list = currentPolls.get(code) || [];
+    currentPolls.set(code, [...list, ...newPolls]);
+    this.mockPolls$.next(new Map(currentPolls));
+
+    // If room has no active poll, activate the first imported poll
+    if (room && !room.activePollId && firstPollId) {
+      await this.setActivePoll(code, firstPollId);
+    }
+
+    return total;
   }
 
   /**

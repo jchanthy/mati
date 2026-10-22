@@ -1180,8 +1180,29 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
       </p-dialog>
 
       <!-- Import Questions Dialog (CSV & Moodle XML) -->
-      <p-dialog header="Import Questions (CSV / Moodle XML)" [(visible)]="showImportDialog" [modal]="true" [style]="{width: '740px'}" class="p-fluid">
+      <p-dialog header="Import Questions (CSV / Moodle XML)" [(visible)]="showImportDialog" [modal]="true" [style]="{width: '740px'}" [closable]="!isImporting" class="p-fluid">
         <div class="space-y-4 pt-2">
+          <!-- Live Import Progress Bar -->
+          @if (isImporting) {
+            <div class="p-4 bg-emerald-50 dark:bg-emerald-950/60 rounded-2xl border-2 border-emerald-400 dark:border-emerald-600 shadow-sm space-y-2.5">
+              <div class="flex items-center justify-between text-xs sm:text-sm font-bold text-emerald-950 dark:text-emerald-100">
+                <span class="flex items-center gap-2">
+                  <i class="pi pi-spin pi-spinner text-emerald-600 dark:text-emerald-400 text-sm"></i>
+                  <span>Importing questions... ({{ importCurrent }} of {{ importTotal }})</span>
+                </span>
+                <span class="font-mono text-emerald-700 dark:text-emerald-300 font-extrabold text-sm">{{ importProgressPercent }}%</span>
+              </div>
+              <div class="w-full bg-emerald-200/70 dark:bg-emerald-900/60 rounded-full h-3.5 overflow-hidden p-0.5 shadow-inner">
+                <div 
+                  class="bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-400 h-full rounded-full transition-all duration-300 ease-out shadow-xs"
+                  [style.width.%]="importProgressPercent"></div>
+              </div>
+              <div class="flex items-center justify-between text-[11px] text-emerald-700 dark:text-emerald-300 font-medium pt-0.5">
+                <span>Saving to room <strong class="font-bold underline decoration-emerald-400">{{ roomCode() }}</strong></span>
+                <span>Please do not close this window</span>
+              </div>
+            </div>
+          }
           <!-- Information Banner -->
           <div class="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 text-xs text-indigo-950 dark:text-indigo-200 space-y-2">
             <div class="font-bold flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400">
@@ -1290,8 +1311,14 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
         </div>
 
         <ng-template pTemplate="footer">
-          <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showImportDialog = false"></button>
-          <button pButton [label]="'Import ' + parsedQuestions.length + ' Questions'" icon="pi pi-check" class="p-button-primary" [disabled]="parsedQuestions.length === 0 || isImporting" (click)="importParsedQuestions()"></button>
+          <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" [disabled]="isImporting" (click)="showImportDialog = false"></button>
+          <button pButton 
+            [label]="isImporting ? ('Importing ' + importCurrent + ' / ' + importTotal + ' (' + importProgressPercent + '%)') : ('Import ' + parsedQuestions.length + ' Questions')" 
+            [icon]="isImporting ? 'pi pi-spin pi-spinner' : 'pi pi-check'" 
+            class="p-button-primary" 
+            [disabled]="parsedQuestions.length === 0 || isImporting" 
+            (click)="importParsedQuestions()">
+          </button>
         </ng-template>
       </p-dialog>
     </div>
@@ -1341,6 +1368,9 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   showImportDialog = false;
   isImporting = false;
+  importCurrent = 0;
+  importTotal = 0;
+  importProgressPercent = 0;
   xmlContent = '';
   parsedQuestions: ParsedQuestion[] = [];
   uploadedFileName = signal<string | null>(null);
@@ -1431,8 +1461,21 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   async importParsedQuestions() {
     if (this.parsedQuestions.length === 0 || this.isImporting) return;
     this.isImporting = true;
+    this.importCurrent = 0;
+    this.importTotal = this.parsedQuestions.length;
+    this.importProgressPercent = 0;
     try {
-      await this.pollService.createPollsBatch(this.roomCode(), this.parsedQuestions);
+      await this.pollService.createPollsBatch(
+        this.roomCode(), 
+        this.parsedQuestions,
+        (current, total) => {
+          this.importCurrent = current;
+          this.importTotal = total;
+          this.importProgressPercent = Math.min(100, Math.round((current / total) * 100));
+        }
+      );
+      this.importProgressPercent = 100;
+      await new Promise(res => setTimeout(res, 350));
       this.showImportDialog = false;
       this.xmlContent = '';
       this.parsedQuestions = [];
@@ -1440,6 +1483,9 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       console.error('[Import] Failed:', err);
     } finally {
       this.isImporting = false;
+      this.importCurrent = 0;
+      this.importTotal = 0;
+      this.importProgressPercent = 0;
     }
   }
 
