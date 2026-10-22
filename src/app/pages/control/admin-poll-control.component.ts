@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
@@ -1306,6 +1306,38 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   currentUser = this.authService.currentUser;
   isAdmin = this.authService.isAdmin;
+
+  @HostListener('window:keydown', ['$event'])
+  handleKeyboardRemote(e: KeyboardEvent) {
+    const target = e.target as HTMLElement;
+    // Don't intercept when user is typing in dialogs or search inputs
+    if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || this.showNewPollDialog || this.showImportDialog || this.showPickQuestionsDialog || this.showNewRoomDialog) {
+      return;
+    }
+
+    // Presentation Clicker Next keys: PageDown, ArrowRight, ArrowDown, Space, 'N'
+    if (e.key === 'PageDown' || e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'n' || e.key === 'N') {
+      e.preventDefault();
+      if (this.isLastQuestion()) {
+        this.finishSession();
+      } else {
+        this.nextQuestion();
+      }
+    }
+    // Presentation Clicker Prev keys: PageUp, ArrowLeft, ArrowUp, Backspace, 'P'
+    else if (e.key === 'PageUp' || e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'Backspace' || e.key === 'p' || e.key === 'P') {
+      e.preventDefault();
+      this.prevQuestion();
+    }
+    // Presentation Clicker Blank / Black screen: 'B' or '.'
+    else if (e.key === 'b' || e.key === 'B' || e.key === '.') {
+      const poll = this.currentPoll();
+      if (poll) {
+        this.showResults = !this.showResults;
+        this.onShowResultsChange();
+      }
+    }
+  }
 
   showImportDialog = false;
   isImporting = false;

@@ -1278,10 +1278,29 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
         this.onUserInteraction();
       };
       this.keydownListener = (e: KeyboardEvent) => {
-        if (e.key === 'f' || e.key === 'F') {
-          const target = e.target as HTMLElement;
-          if (target?.tagName !== 'INPUT' && target?.tagName !== 'TEXTAREA') {
-            this.toggleFullscreen();
+        const target = e.target as HTMLElement;
+        if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+
+        // Remote Clicker / Keyboard Presentation Controls:
+        // Next Question: PageDown, ArrowRight, ArrowDown, Space, 'N'
+        if (e.key === 'PageDown' || e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'n' || e.key === 'N') {
+          e.preventDefault();
+          this.nextQuestion();
+        }
+        // Previous Question: PageUp, ArrowLeft, ArrowUp, Backspace, 'P'
+        else if (e.key === 'PageUp' || e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'Backspace' || e.key === 'p' || e.key === 'P') {
+          e.preventDefault();
+          this.prevQuestion();
+        }
+        // Fullscreen Toggle: 'F'
+        else if (e.key === 'f' || e.key === 'F') {
+          this.toggleFullscreen();
+        }
+        // Black Screen / Blank / Toggle Results: 'B' or '.'
+        else if (e.key === 'b' || e.key === 'B' || e.key === '.') {
+          const stats = this.pollStats();
+          if (stats?.poll) {
+            this.pollService.toggleShowResults(this.roomCode(), stats.poll.id, !stats.poll.showResults);
           }
         }
         this.onUserInteraction();
@@ -1634,6 +1653,31 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
       window.history.back();
     } else {
       this.router.navigate(['/control', this.roomCode()]);
+    }
+  }
+
+  async nextQuestion() {
+    const list = this.polls();
+    if (list.length === 0) return;
+    const activeId = this.pollStats()?.poll?.id || this.room()?.activePollId;
+    const idx = list.findIndex((p: Poll) => p.id === activeId);
+    if (idx >= 0 && idx < list.length - 1) {
+      await this.pollService.setActivePoll(this.roomCode(), list[idx + 1].id);
+    } else if (idx === list.length - 1) {
+      // Last question -> auto show final podium!
+      await this.pollService.completeSession(this.roomCode());
+    } else if (idx === -1 && list.length > 0) {
+      await this.pollService.setActivePoll(this.roomCode(), list[0].id);
+    }
+  }
+
+  async prevQuestion() {
+    const list = this.polls();
+    if (list.length === 0) return;
+    const activeId = this.pollStats()?.poll?.id || this.room()?.activePollId;
+    const idx = list.findIndex((p: Poll) => p.id === activeId);
+    if (idx > 0) {
+      await this.pollService.setActivePoll(this.roomCode(), list[idx - 1].id);
     }
   }
 
