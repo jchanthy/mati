@@ -105,7 +105,11 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
             </div>
 
             <div class="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
-              <span>{{ polls().length }} of {{ allRawPolls().length }} questions active</span>
+              @if (skippedCount() > 0) {
+                <span class="font-semibold text-indigo-600 dark:text-indigo-400">{{ playablePolls().length }}/{{ polls().length }} questions on stage ({{ skippedCount() }} skipped)</span>
+              } @else {
+                <span>{{ polls().length }} of {{ allRawPolls().length }} questions active</span>
+              }
               <span>•</span>
               <span class="font-semibold text-indigo-600 dark:text-indigo-400">{{ stats()?.totalVotes || 0 }} total votes</span>
             </div>
@@ -117,8 +121,8 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
           <!-- Present Stage TV Button with Multi-Monitor Auto-Detection -->
           <button 
             type="button" 
-            (click)="presentOnSecondMonitor()" 
-            title="Launch Presenter Stage TV (Auto-detects second monitor/projector if connected)"
+            (click)="openPresentDialog()" 
+            title="Choose display or projector to present Stage TV"
             class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 transition-all cursor-pointer border-0">
             <i class="pi pi-desktop text-xs"></i>
             <span>Present</span>
@@ -704,9 +708,19 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
             <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
               <div class="flex items-center gap-2">
                 <h3 class="text-sm font-bold text-gray-900 dark:text-white">Questions</h3>
-                <span class="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold text-xs">
-                  {{ polls().length }}
-                </span>
+                @if (skippedCount() > 0) {
+                  <span class="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800"
+                    title="{{ playablePolls().length }} of {{ polls().length }} questions will show on TV stage">
+                    {{ playablePolls().length }}/{{ polls().length }} on TV
+                  </span>
+                  <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300">
+                    {{ skippedCount() }} skipped
+                  </span>
+                } @else {
+                  <span class="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold text-xs">
+                    {{ polls().length }}
+                  </span>
+                }
               </div>
               <div class="flex items-center gap-1.5">
                 <button 
@@ -1321,6 +1335,160 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
           </button>
         </ng-template>
       </p-dialog>
+
+      <!-- Present to Display / Projector Dialog -->
+      <p-dialog 
+        header="Present to Screen / Projector" 
+        [(visible)]="showPresentDialog" 
+        [modal]="true" 
+        [style]="{width: '640px', maxWidth: '95vw'}" 
+        class="p-fluid">
+        <div class="space-y-4 pt-2">
+          
+          <!-- Header explanation -->
+          <div class="flex items-center justify-between text-xs text-slate-500 pb-1 border-b border-slate-100 dark:border-slate-800">
+            <span>Room PIN: <strong class="text-indigo-600 dark:text-indigo-400 font-black">{{ roomCode() }}</strong></span>
+            <span>Stage Live View</span>
+          </div>
+
+          <!-- Section 1: Detected Displays via Window Management API -->
+          @if (detectedScreens.length > 0) {
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span class="flex items-center gap-1.5">
+                  <i class="pi pi-desktop text-indigo-600"></i>
+                  <span>Connected Displays ({{ detectedScreens.length }})</span>
+                </span>
+                <span class="text-emerald-600 text-[11px] font-semibold flex items-center gap-1">
+                  <i class="pi pi-check-circle"></i> Auto-detection active
+                </span>
+              </div>
+
+              <div class="space-y-2">
+                @for (scr of detectedScreens; track scr.label || $index; let idx = $index) {
+                  <div class="p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    [ngClass]="!scr.isPrimary ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 shadow-xs' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'">
+                    
+                    <div class="flex items-center gap-3 min-w-0">
+                      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+                        [ngClass]="!scr.isPrimary ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200'">
+                        <i [class]="!scr.isPrimary ? 'pi pi-video' : 'pi pi-desktop'"></i>
+                      </div>
+                      <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                            {{ scr.label || ('Screen ' + (idx + 1)) }}
+                          </span>
+                          @if (!scr.isPrimary) {
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 uppercase tracking-wider">
+                              Recommended for TV / Projector
+                            </span>
+                          } @else {
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              Primary (Laptop)
+                            </span>
+                          }
+                        </div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Resolution: {{ scr.width }} × {{ scr.height }}
+                          @if (scr.isInternal !== undefined) {
+                            • {{ scr.isInternal ? 'Built-in Screen' : 'External Screen / TV' }}
+                          }
+                        </div>
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      (click)="launchOnScreen(scr)"
+                      class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
+                      [ngClass]="!scr.isPrimary ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30' : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200'">
+                      <i class="pi pi-external-link text-xs"></i>
+                      <span>{{ !scr.isPrimary ? 'Present on Screen ' + (idx + 1) : 'Present Here' }}</span>
+                    </button>
+
+                  </div>
+                }
+              </div>
+            </div>
+          } @else {
+            <!-- Request Permission Card -->
+            <div class="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 space-y-3">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg shrink-0">
+                  <i class="pi pi-desktop"></i>
+                </div>
+                <div class="text-xs space-y-1">
+                  <div class="font-bold text-indigo-950 dark:text-indigo-100 text-sm">
+                    Detect Second Monitor or Projector
+                  </div>
+                  <p class="text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed">
+                    Browser needs permission once to detect your connected monitors. Click below and select <strong>"Allow"</strong> when prompted.
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                <button 
+                  type="button" 
+                  (click)="detectConnectedScreens(true)"
+                  [disabled]="isDetectingScreens"
+                  class="py-2.5 px-4 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all">
+                  <i [class]="isDetectingScreens ? 'pi pi-spin pi-spinner' : 'pi pi-search'" class="text-xs"></i>
+                  <span>{{ isDetectingScreens ? 'Detecting Displays...' : 'Detect Displays & Ask Permission' }}</span>
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Section 2: Quick Launch Options (Works everywhere without permission) -->
+          <div class="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Quick Launch Options
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <!-- Send to Extended Screen (Right) -->
+              <button 
+                type="button" 
+                (click)="launchOnExtendedRight()"
+                class="p-3.5 rounded-2xl border border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40 text-left transition-all cursor-pointer group">
+                <div class="flex items-center gap-2 font-bold text-xs text-emerald-800 dark:text-emerald-300">
+                  <i class="pi pi-arrow-right text-emerald-600 text-sm group-hover:translate-x-1 transition-transform"></i>
+                  <span>Send to 2nd Screen (Right)</span>
+                </div>
+                <p class="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 mt-1 leading-snug">
+                  Uses Windows Extend mode coordinates to place Stage directly on your external monitor.
+                </p>
+              </button>
+
+              <!-- Open Popout Window -->
+              <button 
+                type="button" 
+                (click)="launchPopoutWindow()"
+                class="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-left transition-all cursor-pointer">
+                <div class="flex items-center gap-2 font-bold text-xs text-slate-800 dark:text-slate-200">
+                  <i class="pi pi-window-maximize text-indigo-600 text-sm"></i>
+                  <span>Open Popout Window</span>
+                </div>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                  Clean presenter window. Drag it to your TV/projector and press <kbd class="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">F11</kbd> for fullscreen.
+                </p>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <ng-template pTemplate="footer">
+          <div class="w-full flex items-center justify-between">
+            <span class="text-[11px] text-slate-400 flex items-center gap-1">
+              <i class="pi pi-info-circle"></i> Press F11 on the stage screen for borderless presentation
+            </span>
+            <button pButton label="Close" icon="pi pi-times" class="p-button-text" (click)="showPresentDialog = false"></button>
+          </div>
+        </ng-template>
+      </p-dialog>
     </div>
   `
 })
@@ -1338,7 +1506,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   handleKeyboardRemote(e: KeyboardEvent) {
     const target = e.target as HTMLElement;
     // Don't intercept when user is typing in dialogs or search inputs
-    if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || this.showNewPollDialog || this.showImportDialog || this.showPickQuestionsDialog || this.showNewRoomDialog) {
+    if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || this.showNewPollDialog || this.showImportDialog || this.showPickQuestionsDialog || this.showNewRoomDialog || this.showPresentDialog) {
       return;
     }
 
@@ -1489,46 +1657,128 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     }
   }
 
-  async presentOnSecondMonitor() {
-    const url = `/stage/${this.roomCode()}`;
+  showPresentDialog = false;
+  detectedScreens: any[] = [];
+  hasScreenApi = false;
+  screenPermissionState: 'prompt' | 'granted' | 'denied' | 'unsupported' = 'prompt';
+  isDetectingScreens = false;
 
-    // 1. Check for modern Window Management API (Chrome, Edge)
-    if (typeof window !== 'undefined' && 'getScreenDetails' in window) {
+  async openPresentDialog() {
+    this.showPresentDialog = true;
+    await this.detectConnectedScreens(false);
+  }
+
+  async detectConnectedScreens(requestPermission = false) {
+    if (typeof window === 'undefined') return;
+
+    if (!('getScreenDetails' in window)) {
+      this.hasScreenApi = false;
+      this.screenPermissionState = 'unsupported';
+      return;
+    }
+
+    this.hasScreenApi = true;
+    this.isDetectingScreens = true;
+
+    if ('permissions' in navigator && (navigator.permissions as any).query) {
       try {
-        const screenDetails = await (window as any).getScreenDetails();
-        const screens = screenDetails.screens || [];
-        const currentScreen = screenDetails.currentScreen;
-
-        // Find a screen that is NOT the current controller screen
-        const secondScreen = screens.find((s: any) => s !== currentScreen) || (screens.length > 1 ? screens[1] : null);
-
-        if (secondScreen) {
-          const features = [
-            `left=${secondScreen.availLeft}`,
-            `top=${secondScreen.availTop}`,
-            `width=${secondScreen.availWidth}`,
-            `height=${secondScreen.availHeight}`,
-            'menubar=no',
-            'toolbar=no',
-            'location=no',
-            'status=no',
-            'resizable=yes',
-            'scrollbars=yes'
-          ].join(',');
-
-          const popup = window.open(url, `mati_stage_${this.roomCode()}`, features);
-          if (popup) {
-            popup.focus();
-            return;
-          }
+        const status = await (navigator.permissions as any).query({ name: 'window-management' });
+        this.screenPermissionState = status.state;
+      } catch {
+        try {
+          const status = await (navigator.permissions as any).query({ name: 'window-placement' });
+          this.screenPermissionState = status.state;
+        } catch {
+          this.screenPermissionState = 'prompt';
         }
-      } catch (err) {
-        console.info('[Presenter] Multi-screen detection not permitted or unavailable:', err);
       }
     }
 
-    // 2. Fallback: Open in new tab/window
+    if (this.screenPermissionState === 'granted' || requestPermission) {
+      try {
+        const screenDetails = await (window as any).getScreenDetails();
+        this.detectedScreens = screenDetails.screens || [];
+        this.screenPermissionState = 'granted';
+      } catch (err: any) {
+        if (err.name === 'NotAllowedError') {
+          this.screenPermissionState = 'denied';
+        } else {
+          console.warn('[Presenter] getScreenDetails error:', err);
+        }
+      } finally {
+        this.isDetectingScreens = false;
+      }
+    } else {
+      this.isDetectingScreens = false;
+    }
+  }
+
+  launchOnScreen(targetScreen?: any) {
+    const url = `/stage/${this.roomCode()}`;
+    if (targetScreen) {
+      const features = [
+        `left=${targetScreen.availLeft}`,
+        `top=${targetScreen.availTop}`,
+        `width=${targetScreen.availWidth}`,
+        `height=${targetScreen.availHeight}`,
+        'menubar=no',
+        'toolbar=no',
+        'location=no',
+        'status=no',
+        'resizable=yes',
+        'scrollbars=yes'
+      ].join(',');
+      const popup = window.open(url, `mati_stage_${this.roomCode()}`, features);
+      if (popup) {
+        popup.focus();
+        this.showPresentDialog = false;
+        return;
+      }
+    }
     window.open(url, '_blank');
+    this.showPresentDialog = false;
+  }
+
+  launchOnExtendedRight() {
+    const url = `/stage/${this.roomCode()}`;
+    const screenWidth = typeof window !== 'undefined' ? (window.screen.availWidth || window.screen.width || 1920) : 1920;
+    const screenHeight = typeof window !== 'undefined' ? (window.screen.availHeight || window.screen.height || 1080) : 1080;
+    const features = [
+      `left=${screenWidth + 20}`,
+      `top=0`,
+      `width=${screenWidth}`,
+      `height=${screenHeight}`,
+      'menubar=no',
+      'toolbar=no',
+      'location=no',
+      'status=no',
+      'resizable=yes',
+      'scrollbars=yes'
+    ].join(',');
+    const popup = window.open(url, `mati_stage_${this.roomCode()}`, features);
+    if (popup) {
+      popup.focus();
+    } else {
+      window.open(url, '_blank');
+    }
+    this.showPresentDialog = false;
+  }
+
+  launchPopoutWindow() {
+    const url = `/stage/${this.roomCode()}`;
+    const features = 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes';
+    const popup = window.open(url, `mati_stage_${this.roomCode()}`, features);
+    if (popup) {
+      popup.focus();
+    } else {
+      window.open(url, '_blank');
+    }
+    this.showPresentDialog = false;
+  }
+
+  // Backwards compatibility
+  async presentOnSecondMonitor() {
+    await this.openPresentDialog();
   }
 
   showSettingsPanel = signal<boolean>(false);
@@ -1572,6 +1822,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   // Non-skipped questions used for Next/Prev navigation and live count
   playablePolls = computed(() => this.polls().filter(p => !p.isSkipped));
+  skippedCount = computed(() => this.polls().filter(p => p.isSkipped).length);
 
   selectedQuestionCount = computed(() => {
     const sel = this.room()?.selectedPollIds;

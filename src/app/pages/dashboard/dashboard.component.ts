@@ -251,7 +251,20 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
                   <span>{{ formatRoomDate(r) }}</span>
                   <span>•</span>
-                  <span>{{ selectedRoomCode() === r.code ? polls().length + ' polls' : 'Session ready' }}</span>
+                  @if (getRoomPollStats(r); as stats) {
+                    @if (stats.skipped > 0) {
+                      <span class="font-bold text-indigo-600 dark:text-indigo-400">
+                        {{ stats.active }}/{{ stats.total }} polls
+                      </span>
+                      <span class="text-[11px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">
+                        {{ stats.skipped }} skipped
+                      </span>
+                    } @else {
+                      <span>{{ stats.total }} {{ stats.total === 1 ? 'poll' : 'polls' }}</span>
+                    }
+                  } @else {
+                    <span>{{ selectedRoomCode() === r.code ? (polls().length + ' polls') : 'Session ready' }}</span>
+                  }
                 </div>
               </div>
 
@@ -545,7 +558,7 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
         <!-- Slido Question Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-gray-200">
           <div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <h2 class="text-lg font-bold text-gray-900">
                 Questions in {{ getSelectedRoomTitle() }}
               </h2>
@@ -559,6 +572,22 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
               <span class="text-xs font-mono font-bold px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
                 #{{ selectedRoomCode() }}
               </span>
+              @if (totalPollCount() > 0) {
+                @if (skippedPollCount() > 0) {
+                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1"
+                    title="{{ activePlayableCount() }} polls will show on TV stage out of {{ totalPollCount() }} total">
+                    <i class="pi pi-desktop text-[10px]"></i>
+                    <span>{{ activePlayableCount() }}/{{ totalPollCount() }} on TV</span>
+                  </span>
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                    {{ skippedPollCount() }} skipped
+                  </span>
+                } @else {
+                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                    {{ totalPollCount() }} polls
+                  </span>
+                }
+              }
             </div>
             <p class="text-xs text-gray-500 mt-0.5">
               Select or activate polls live on stage, pick subsets, or import questions.
@@ -1280,6 +1309,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return raw;
   });
 
+  activePlayableCount = computed(() => this.polls().filter(p => !p.isSkipped).length);
+  skippedPollCount = computed(() => this.polls().filter(p => p.isSkipped).length);
+  totalPollCount = computed(() => this.polls().length);
+
   selectedQuestionCount = computed(() => {
     const sel = this.currentRoom()?.selectedPollIds;
     return sel && sel.length > 0 ? sel.length : 0;
@@ -1709,6 +1742,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.roomsSub = this.pollService.listenToRooms().subscribe(list => {
       const validRooms = list.filter(r => r.code && !r.code.startsWith('_'));
       this.rooms.set(validRooms);
+      this.primeRoomPollCounts(validRooms);
       const visible = this.filteredRooms();
       if (visible.length > 0) {
         if (!this.selectedRoomCode() || this.selectedRoomCode().startsWith('_') || !visible.some(r => r.code === this.selectedRoomCode())) {
@@ -1724,6 +1758,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.roomsSub?.unsubscribe();
     this.pollsSub?.unsubscribe();
+  }
+
+  roomPollCounts = signal<Map<string, { total: number; active: number; skipped: number }>>(new Map());
+
+  getRoomPollStats(r: Room): { total: number; active: number; skipped: number } | null {
+    if (this.selectedRoomCode() === r.code) {
+      const list = this.polls();
+      const total = list.length;
+      const active = list.filter(p => !p.isSkipped).length;
+      const skipped = list.filter(p => p.isSkipped).length;
+      return { total, active, skipped };
+    }
+    const fromMap = this.roomPollCounts().get(r.code);
+    if (fromMap) return fromMap;
+    return this.pollService.getCachedPollsCount(r.code);
+  }
+
+  private primeRoomPollCounts(rooms: Room[]) {
+    rooms.forEach(async (r) => {
+      if (r.code && !this.roomPollCounts().has(r.code)) {
+        try {
+          const polls = await this.pollService.getPollsForRoom(r.code);
+          const total = polls.length;
+          const active = polls.filter(p => !p.isSkipped).length;
+          const skipped = polls.filter(p => p.isSkipped).length;
+          this.roomPollCounts.update(m => {
+            const next = new Map(m);
+            next.set(r.code, { total, active, skipped });
+            return next;
+          });
+        } catch {}
+      }
+    });
   }
 
   canManageRoom(r: Room): boolean {
@@ -1751,6 +1818,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.pollsSub?.unsubscribe();
     this.pollsSub = this.pollService.listenToRoomPolls(code).subscribe(list => {
       this.allRawPolls.set(list);
+      const total = list.length;
+      const active = list.filter(p => !p.isSkipped).length;
+      const skipped = list.filter(p => p.isSkipped).length;
+      this.roomPollCounts.update(m => {
+        const next = new Map(m);
+        next.set(code, { total, active, skipped });
+        return next;
+      });
     });
   }
 

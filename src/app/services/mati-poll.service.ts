@@ -2245,6 +2245,19 @@ export class MatiPollService {
   }
 
   /**
+   * Returns cached count statistics (total, active, skipped) for a given room if loaded.
+   */
+  getCachedPollsCount(roomCode: string): { total: number; active: number; skipped: number } | null {
+    const code = normalizeRoomCode(roomCode);
+    const local = this.mockPolls$.getValue().get(code);
+    if (!local || local.length === 0) return null;
+    const total = local.length;
+    const active = local.filter(p => !p.isSkipped).length;
+    const skipped = local.filter(p => p.isSkipped).length;
+    return { total, active, skipped };
+  }
+
+  /**
    * Real-time observable of all rooms in Firestore and local store (excluding internal system documents)
    */
   listenToRooms(): Observable<Room[]> {
