@@ -34,7 +34,12 @@ import { PollAnswer } from '../utils/poll-answer';
                   : 'border-slate-300 dark:border-slate-600 text-transparent'">
                 <i class="pi pi-check"></i>
               </span>
-              <span class="text-sm font-bold text-slate-800 dark:text-slate-100 flex-1">{{ opt.text }}</span>
+              <div class="flex-1 min-w-0 flex flex-col gap-2">
+                @if (opt.imageUrl) {
+                  <img [src]="opt.imageUrl" alt="" class="max-h-28 w-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white p-1 object-contain self-start" />
+                }
+                <span class="text-sm font-bold text-slate-800 dark:text-slate-100">{{ opt.text }}</span>
+              </div>
             </button>
           }
         }
@@ -57,10 +62,32 @@ import { PollAnswer } from '../utils/poll-answer';
           <p class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 px-1">
             Match each item with its answer
           </p>
+          @if (hasOptionImages()) {
+            <div class="p-3 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">
+                ជម្រើសរូបភាព (Image Choices)
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                @for (opt of poll().options; track opt.id) {
+                  @if (opt.imageUrl) {
+                    <div class="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                      <img [src]="opt.imageUrl" alt="" class="w-12 h-12 object-contain rounded bg-white p-0.5 border border-slate-100 shrink-0" />
+                      <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{{ opt.text }}</span>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
           @for (pair of poll().matchPairs || []; track pair.id) {
             <div class="p-3.5 rounded-2xl border-2 bg-white dark:bg-slate-900 space-y-2 transition-colors"
               [ngClass]="matches()[pair.id] ? 'border-indigo-300 dark:border-indigo-800' : 'border-slate-200 dark:border-slate-800'">
-              <div class="text-sm font-bold text-slate-800 dark:text-slate-100">{{ pair.prompt }}</div>
+              <div class="flex items-center gap-3">
+                @if (pair.imageUrl) {
+                  <img [src]="pair.imageUrl" alt="" class="max-h-20 max-w-28 w-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white p-1 object-contain shrink-0" />
+                }
+                <div class="text-sm font-bold text-slate-800 dark:text-slate-100 whitespace-pre-line">{{ pair.prompt }}</div>
+              </div>
               <select
                 [disabled]="disabled()"
                 (change)="setMatch(pair.id, $any($event.target).value)"
@@ -93,6 +120,7 @@ export class AnswerInputComponent {
   private selected = signal<number[]>([]);
   text = signal<string>('');
   matches = signal<{ [pairId: number]: string }>({});
+  hasOptionImages = computed(() => (this.poll().options || []).some(o => !!o.imageUrl));
 
   canSubmit = computed(() => {
     const p = this.poll();

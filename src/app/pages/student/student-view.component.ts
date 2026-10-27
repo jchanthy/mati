@@ -7,7 +7,7 @@ import { Subscription } from 'rxjs';
 import { MatiPollService, normalizeRoomCode } from '../../services/mati-poll.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
 import { AnswerInputComponent } from '../../components/answer-input.component';
-import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCorrectOption, isScoredPoll } from '../../utils/poll-answer';
+import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCorrectOption, isScoredPoll, pollTypeLabel } from '../../utils/poll-answer';
 
 
 @Component({
@@ -488,9 +488,14 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
                           <span class="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono">
                             #{{ idx + 1 }}
                           </span>
-                          <span class="text-xs font-bold text-slate-900 dark:text-white leading-snug">
-                            {{ p.question }}
-                          </span>
+                          <div class="space-y-1 flex-1 min-w-0">
+                            <span class="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                              {{ pollTypeLabel(p.type, p.moodleType) }}
+                            </span>
+                            <div class="text-xs font-bold text-slate-900 dark:text-white leading-snug whitespace-pre-line">
+                              {{ p.question }}
+                            </div>
+                          </div>
                         </div>
                         @if (isScored(p) && hasVotedFor(p.id)) {
                           <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase shrink-0 border"
@@ -503,6 +508,12 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
                           </span>
                         }
                       </div>
+
+                      @if (p.imageUrl) {
+                        <div class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 flex justify-center">
+                          <img [src]="p.imageUrl" alt="Question image" class="max-h-48 w-auto object-contain rounded-lg" />
+                        </div>
+                      }
 
                       <!-- Options List Review -->
                       @if (p.type === 'short_answer' || p.type === 'matching') {
@@ -525,6 +536,9 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
                             }">
                             <div class="flex items-center gap-1.5 min-w-0">
                               <span class="font-bold">{{ opt.id }}.</span>
+                              @if (opt.imageUrl) {
+                                <img [src]="opt.imageUrl" alt="" class="h-7 w-auto object-contain rounded bg-white p-0.5 border border-slate-200 shrink-0" />
+                              }
                               <span class="truncate">{{ opt.text }}</span>
                             </div>
                             <div class="flex items-center gap-1 shrink-0 font-bold">
@@ -554,14 +568,25 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
                           <span class="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono">
                             Q{{ q.order || (qIdx + 1) }}
                           </span>
-                          <span class="text-xs font-bold text-slate-900 dark:text-white leading-snug">
-                            {{ q.question }}
-                          </span>
+                          <div class="space-y-1 flex-1 min-w-0">
+                            <span class="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                              {{ pollTypeLabel(q.type, q.moodleType) }}
+                            </span>
+                            <div class="text-xs font-bold text-slate-900 dark:text-white leading-snug whitespace-pre-line">
+                              {{ q.question }}
+                            </div>
+                          </div>
                         </div>
                         <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700">
                           👥 {{ q.totalVotes }} votes
                         </span>
                       </div>
+
+                      @if (q.imageUrl) {
+                        <div class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 flex justify-center">
+                          <img [src]="q.imageUrl" alt="Question image" class="max-h-48 w-auto object-contain rounded-lg" />
+                        </div>
+                      }
 
                       <!-- Options with Distribution Bars -->
                       <div class="space-y-1.5 pt-1">
@@ -575,6 +600,9 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
                             <div class="flex items-center justify-between gap-1">
                               <div class="flex items-center gap-1.5 min-w-0">
                                 <span class="font-bold text-slate-500">{{ opt.id }}.</span>
+                                @if (opt.imageUrl) {
+                                  <img [src]="opt.imageUrl" alt="" class="h-7 w-auto object-contain rounded bg-white p-0.5 border border-slate-200 shrink-0" />
+                                }
                                 <span class="truncate font-medium text-slate-800 dark:text-slate-200" [ngClass]="opt.isCorrect ? 'font-bold text-emerald-900 dark:text-emerald-200' : ''">
                                   {{ opt.text }}
                                 </span>
@@ -679,10 +707,15 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
             <!-- Active Selected Question Card -->
             @if (activeSurveyPoll(); as sPoll) {
               <div class="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 shadow-sm animate-fadein">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                    Question #{{ getSurveyIndex(sPoll.id) + 1 }} of {{ polls().length }}
-                  </span>
+                <div class="flex items-center justify-between flex-wrap gap-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                      Question #{{ getSurveyIndex(sPoll.id) + 1 }} of {{ polls().length }}
+                    </span>
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                      {{ pollTypeLabel(sPoll.type, sPoll.moodleType) }}
+                    </span>
+                  </div>
                   @if (sPoll.isLocked) {
                     <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
                       <i class="pi pi-lock text-[10px]"></i> Voting Locked
@@ -698,9 +731,15 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
                   }
                 </div>
 
-                <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug">
+                <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug whitespace-pre-line">
                   {{ sPoll.question }}
                 </h2>
+
+                @if (sPoll.imageUrl) {
+                  <div class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2 flex justify-center">
+                    <img [src]="sPoll.imageUrl" alt="Question image" class="max-h-60 w-auto object-contain rounded-xl" />
+                  </div>
+                }
 
                 <!-- Multi-answer / short answer / matching -->
                 @if (isComplexPoll(sPoll)) {
@@ -734,6 +773,9 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'">
                           {{ opt.id }}
                         </span>
+                        @if (opt.imageUrl) {
+                          <img [src]="opt.imageUrl" alt="" class="h-10 w-auto object-contain rounded-lg bg-white p-0.5 border border-slate-200 shrink-0" />
+                        }
                         <span class="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
                           {{ opt.text }}
                         </span>
@@ -849,11 +891,16 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
           }
 
           <!-- Question Header Card -->
-          <div class="mb-6 space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs uppercase font-extrabold tracking-wider text-indigo-600 dark:text-indigo-400">
-                Question #{{ stats.poll.order }}
-              </span>
+          <div class="mb-6 space-y-2.5">
+            <div class="flex items-center justify-between flex-wrap gap-1.5">
+              <div class="flex items-center gap-2">
+                <span class="text-xs uppercase font-extrabold tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Question #{{ stats.poll.order }}
+                </span>
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  {{ pollTypeLabel(stats.poll.type, stats.poll.moodleType) }}
+                </span>
+              </div>
               @if (stats.poll.isLocked || isTimeUp()) {
                 <span class="text-[11px] font-bold text-red-500 bg-red-50 dark:bg-red-950/50 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-800 flex items-center gap-1">
                   <i class="pi pi-lock text-[10px]"></i> {{ isTimeUp() ? "Time's Up" : "Locked" }}
@@ -865,9 +912,15 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
               }
             </div>
 
-            <h1 class="text-xl font-bold leading-snug text-slate-900 dark:text-white">
+            <h1 class="text-xl font-bold leading-snug text-slate-900 dark:text-white whitespace-pre-line">
               {{ stats.poll.question }}
             </h1>
+
+            @if (stats.poll.imageUrl) {
+              <div class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 flex justify-center shadow-xs">
+                <img [src]="stats.poll.imageUrl" alt="Question image" class="max-h-60 w-auto object-contain rounded-xl" />
+              </div>
+            }
           </div>
 
           <!-- If already voted -->
@@ -1037,6 +1090,9 @@ import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCor
                   <span class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm shrink-0 border border-slate-200 dark:border-slate-700">
                     {{ opt.id }}
                   </span>
+                  @if (opt.imageUrl) {
+                    <img [src]="opt.imageUrl" alt="" class="h-10 w-auto object-contain rounded-lg bg-white p-0.5 border border-slate-200 shrink-0" />
+                  }
                   <span class="text-sm font-bold text-slate-800 dark:text-slate-100 flex-1">
                     {{ opt.text }}
                   </span>
@@ -1171,6 +1227,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private pollService = inject(MatiPollService);
+  pollTypeLabel = pollTypeLabel;
 
   showEnterCodeCard = signal<boolean>(false);
   showChangeRoomModal = signal<boolean>(false);

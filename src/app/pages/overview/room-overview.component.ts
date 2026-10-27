@@ -8,6 +8,7 @@ import { MessageService } from 'primeng/api';
 import { MatiPollService } from '../../services/mati-poll.service';
 import { AuthService } from '../../services/auth.service';
 import { DetailedSessionSummary, Poll, Room } from '../../models/poll.model';
+import { pollTypeLabel } from '../../utils/poll-answer';
 import QRCode from 'qrcode';
 
 @Component({
@@ -444,15 +445,26 @@ import QRCode from 'qrcode';
                         <span class="w-6 h-6 rounded-lg bg-gray-100 text-gray-700 font-mono font-bold text-xs flex items-center justify-center shrink-0">
                           {{ q.order || (idx + 1) }}
                         </span>
-                        <h4 class="text-sm sm:text-base font-bold text-gray-900 leading-snug">
-                          {{ q.question }}
-                        </h4>
+                        <div class="space-y-1 min-w-0">
+                          <span class="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            {{ pollTypeLabel(q.type, q.moodleType) }}
+                          </span>
+                          <h4 class="text-sm sm:text-base font-bold text-gray-900 leading-snug whitespace-pre-line">
+                            {{ q.question }}
+                          </h4>
+                        </div>
                       </div>
 
                       <div class="flex items-center gap-1.5 shrink-0 text-xs font-bold font-mono text-gray-500">
                         <span>{{ q.totalVotes }} votes</span>
                       </div>
                     </div>
+
+                    @if (q.imageUrl) {
+                      <div class="rounded-xl overflow-hidden border border-gray-200 bg-gray-50 p-2.5 flex justify-center">
+                        <img [src]="q.imageUrl" alt="Question image" class="max-h-52 w-auto object-contain rounded-lg" />
+                      </div>
+                    }
 
                     <!-- Scored or Consensus Status Badge -->
                     <div class="flex items-center gap-2 text-xs">
@@ -492,6 +504,9 @@ import QRCode from 'qrcode';
                                 [ngClass]="opt.isCorrect ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700'">
                                 {{ getOptionLetter(optIdx) }}
                               </span>
+                              @if (opt.imageUrl) {
+                                <img [src]="opt.imageUrl" alt="" class="h-8 w-auto object-contain rounded bg-white p-0.5 border border-gray-200 shrink-0" />
+                              }
                               <span class="truncate" [ngClass]="opt.isCorrect ? 'font-bold text-emerald-950' : 'text-gray-800'">
                                 {{ opt.text }}
                               </span>
@@ -571,6 +586,7 @@ export class RoomOverviewComponent implements OnInit, OnDestroy {
   private pollService = inject(MatiPollService);
   private authService = inject(AuthService);
   private messageService = inject(MessageService);
+  pollTypeLabel = pollTypeLabel;
 
   roomCode = signal<string>('MATI01');
   room = signal<Room | null>(null);

@@ -108,12 +108,19 @@ export function describeCorrectAnswer(poll: Poll): string {
 }
 
 /** Short label for UI badges. */
-export function pollTypeLabel(type: Poll['type'] | undefined): string {
+export function pollTypeLabel(type: Poll['type'] | undefined, moodleType?: string): string {
+  switch (moodleType) {
+    case 'ddimageortext': return 'Drag & Drop Image';
+    case 'ddmarker': return 'Drag & Drop Marker';
+    case 'ddwtos': return 'Drag & Drop Text';
+    case 'gapselect': return 'Select Missing Words';
+    case 'gapfill': return 'Gap Fill';
+  }
   switch (type) {
-    case 'multi_select': return 'Multiple answers';
+    case 'multi_select': return 'Multiple Answers';
     case 'true_false': return 'True / False';
-    case 'short_answer': return 'Short answer';
+    case 'short_answer': return 'Short Answer';
     case 'matching': return 'Matching';
-    default: return 'Single choice';
+    default: return 'Single Choice';
   }
 }

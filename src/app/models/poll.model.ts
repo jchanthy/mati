@@ -2,6 +2,8 @@ export interface PollOption {
   id: number;
   text: string;
   isCorrect?: boolean;
+  /** Optional embedded or external image for image-based options. */
+  imageUrl?: string;
 }
 
 /**
@@ -18,12 +20,18 @@ export interface MatchPair {
   id: number;
   prompt: string;
   answer: string;
+  /** Optional embedded image shown alongside the prompt. */
+  imageUrl?: string;
 }
 
 export interface Poll {
   id: string;
   question: string;
   type: PollType;
+  /** Original Moodle question type (e.g. multichoice, ddimageortext, ddmarker, ddwtos, gapselect, gapfill). */
+  moodleType?: string;
+  /** Optional question-level image or diagram (data URL or external URL). */
+  imageUrl?: string;
   order: number;
   isLocked: boolean;
   isSkipped?: boolean;
@@ -91,12 +99,14 @@ export interface PollStats {
   /** Aggregated typed answers (short_answer). */
   textResponses?: { text: string; count: number; isCorrect: boolean }[];
   /** Per-prompt breakdown (matching). */
-  pairStats?: { pairId: number; prompt: string; answer: string; correct: number; total: number }[];
+  pairStats?: { pairId: number; prompt: string; answer: string; imageUrl?: string; correct: number; total: number }[];
 }
 
 export interface QuestionResultSummary {
   pollId: string;
   type?: PollType;
+  moodleType?: string;
+  imageUrl?: string;
   /** True when the question has an answer key and counts toward accuracy. */
   isScored?: boolean;
   /** Human readable correct answer (any question type). */
@@ -115,6 +125,7 @@ export interface QuestionResultSummary {
   options: {
     id: number;
     text: string;
+    imageUrl?: string;
     votes: number;
     percentage: number;
     isCorrect: boolean;

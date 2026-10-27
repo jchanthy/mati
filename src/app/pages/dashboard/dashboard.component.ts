@@ -14,6 +14,7 @@ import { MatiPollService } from '../../services/mati-poll.service';
 import { AuthService } from '../../services/auth.service';
 import { Room, Poll } from '../../models/poll.model';
 import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } from '../../utils/moodle-xml-parser';
+import { isCorrectOption, isScoredPoll, pollTypeLabel } from '../../utils/poll-answer';
 
 @Component({
   selector: 'app-dashboard',
@@ -632,12 +633,15 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                 : (poll.isSkipped ? 'border-dashed border-gray-200 bg-gray-50/70 opacity-65' : 'border-gray-200 bg-white hover:border-gray-300')">
               
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div class="space-y-1.5 flex-1 min-w-0">
+                <div class="space-y-2 flex-1 min-w-0">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <span class="w-6 h-6 rounded-full bg-gray-100 text-xs font-bold flex items-center justify-center text-gray-700">
+                    <span class="w-6 h-6 rounded-full bg-gray-100 text-xs font-bold flex items-center justify-center text-gray-700 shrink-0">
                       {{ idx + 1 }}
                     </span>
-                    <h3 class="text-sm font-bold leading-snug break-words"
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
+                      {{ pollTypeLabel(poll.type, poll.moodleType) }}
+                    </span>
+                    <h3 class="text-sm font-bold leading-snug break-words whitespace-pre-line"
                       [ngClass]="poll.isSkipped ? 'line-through text-gray-400' : 'text-gray-900'">
                       {{ poll.question }}
                     </h3>
@@ -659,20 +663,65 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                     }
                   </div>
 
-                  <!-- Options list -->
-                  <div class="flex flex-wrap gap-1.5 pt-1">
-                    @for (opt of poll.options; track opt.id) {
-                      <span class="text-xs px-2.5 py-1 rounded-md border flex items-center gap-1.5"
-                        [ngClass]="poll.correctOptionId === opt.id 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold' 
-                          : 'bg-gray-50 text-gray-600 border-gray-200'">
-                        <span>{{ opt.id }}. {{ opt.text }}</span>
-                        @if (poll.correctOptionId === opt.id) {
+                  @if (poll.imageUrl) {
+                    <div class="pt-1">
+                      <img [src]="poll.imageUrl" alt="Question illustration" class="max-h-44 w-auto rounded-xl border border-gray-200 bg-white p-1.5 object-contain shadow-2xs" />
+                    </div>
+                  }
+
+                  <!-- Options / Answers preview by question type -->
+                  @if (poll.type === 'short_answer') {
+                    <div class="flex flex-wrap gap-1.5 pt-1">
+                      @for (ans of poll.acceptedAnswers || []; track ans) {
+                        <span class="text-xs px-2.5 py-1 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-300 font-bold flex items-center gap-1.5">
                           <i class="pi pi-check text-[10px]"></i>
+                          <span>{{ ans }}</span>
+                        </span>
+                      }
+                    </div>
+                  } @else if (poll.type === 'matching') {
+                    <div class="flex flex-wrap gap-2 pt-1">
+                      @for (pair of poll.matchPairs || []; track pair.id) {
+                        <div class="text-xs px-2.5 py-1.5 rounded-lg border bg-gray-50 text-gray-700 border-gray-200 flex items-center gap-2">
+                          @if (pair.imageUrl) {
+                            <img [src]="pair.imageUrl" alt="" class="w-10 h-10 object-contain rounded border border-gray-200 bg-white p-0.5 shrink-0" />
+                          }
+                          <span class="font-semibold">{{ pair.prompt }}</span>
+                          <i class="pi pi-arrow-right text-[9px] text-indigo-500"></i>
+                          <span class="font-bold text-emerald-700">{{ pair.answer }}</span>
+                        </div>
+                      }
+                    </div>
+                    @if (hasPollOptionImages(poll)) {
+                      <div class="flex flex-wrap gap-2 pt-1">
+                        @for (opt of poll.options; track opt.id) {
+                          @if (opt.imageUrl) {
+                            <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-indigo-100 bg-indigo-50/40 text-xs">
+                              <img [src]="opt.imageUrl" alt="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-200" />
+                              <span class="font-semibold text-gray-700">{{ opt.text }}</span>
+                            </div>
+                          }
                         }
-                      </span>
+                      </div>
                     }
-                  </div>
+                  } @else {
+                    <div class="flex flex-wrap gap-1.5 pt-1">
+                      @for (opt of poll.options; track opt.id) {
+                        <span class="text-xs px-2.5 py-1 rounded-md border flex items-center gap-1.5"
+                          [ngClass]="isCorrectOption(poll, opt.id)
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold'
+                            : 'bg-gray-50 text-gray-600 border-gray-200'">
+                          @if (opt.imageUrl) {
+                            <img [src]="opt.imageUrl" alt="" class="w-9 h-9 object-contain rounded bg-white p-0.5 border border-gray-200" />
+                          }
+                          <span>{{ opt.id }}. {{ opt.text }}</span>
+                          @if (isCorrectOption(poll, opt.id)) {
+                            <i class="pi pi-check text-[10px]"></i>
+                          }
+                        </span>
+                      }
+                    </div>
+                  }
                 </div>
 
                 <!-- Action buttons -->
@@ -1053,24 +1102,57 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                   Target Room: <strong class="text-indigo-600 dark:text-indigo-400 font-bold">{{ targetRoomForImport() }}</strong>
                 </span>
               </div>
-              <div class="max-h-52 overflow-y-auto space-y-2 pr-1 border border-gray-200 dark:border-gray-800 rounded-xl p-2 bg-gray-50/60 dark:bg-gray-900/60">
-                @for (q of parsedQuestions; track q.question; let idx = $index) {
-                  <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-xs shadow-xs">
+              <div class="max-h-64 overflow-y-auto space-y-2 pr-1 border border-gray-200 dark:border-gray-800 rounded-xl p-2 bg-gray-50/60 dark:bg-gray-900/60">
+                @for (q of parsedQuestions; track $index; let idx = $index) {
+                  <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-xs shadow-xs space-y-2">
                     <div class="font-bold text-gray-900 dark:text-white flex items-start gap-1.5">
                       <span class="text-indigo-600 dark:text-indigo-400 font-black">{{ idx + 1 }}.</span>
-                      <span class="flex-1">{{ q.question }}</span>
+                      <span class="flex-1 whitespace-pre-line">{{ q.question }}</span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                        {{ pollTypeLabel(q.pollType, q.moodleType) }}
+                      </span>
                     </div>
-                    <div class="text-gray-500 mt-2 flex flex-wrap gap-1.5">
-                      @for (opt of q.options; track opt; let optIdx = $index) {
-                        <span class="px-2 py-0.5 rounded-md flex items-center gap-1"
-                          [ngClass]="optIdx === q.correctOptionIndex ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
-                          @if (optIdx === q.correctOptionIndex) {
+                    @if (q.imageUrl) {
+                      <img [src]="q.imageUrl" alt="" class="max-h-36 w-auto rounded-lg border border-gray-200 bg-white p-1 object-contain" />
+                    }
+                    @if (q.pollType === 'short_answer') {
+                      <div class="text-gray-500 flex flex-wrap gap-1.5">
+                        @for (ans of q.acceptedAnswers || []; track ans) {
+                          <span class="px-2 py-0.5 rounded-md flex items-center gap-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700">
                             <i class="pi pi-check text-[10px]"></i>
-                          }
-                          <span>{{ opt }}</span>
-                        </span>
-                      }
-                    </div>
+                            <span>{{ ans }}</span>
+                          </span>
+                        }
+                      </div>
+                    } @else if (q.pollType === 'matching') {
+                      <div class="text-gray-500 flex flex-wrap gap-1.5">
+                        @for (pair of q.matchPairs || []; track $index) {
+                          <span class="px-2 py-1 rounded-md flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
+                            @if (pair.imageUrl) {
+                              <img [src]="pair.imageUrl" alt="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-200" />
+                            }
+                            <span>{{ pair.prompt }}</span>
+                            <i class="pi pi-arrow-right text-[9px] text-indigo-500"></i>
+                            <strong class="text-emerald-700 dark:text-emerald-300">{{ pair.answer }}</strong>
+                          </span>
+                        }
+                      </div>
+                    } @else {
+                      <div class="text-gray-500 flex flex-wrap gap-1.5">
+                        @for (opt of q.options; track $index; let optIdx = $index) {
+                          <span class="px-2 py-0.5 rounded-md flex items-center gap-1.5"
+                            [ngClass]="isParsedOptionCorrect(q, optIdx) ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
+                            @if (isParsedOptionCorrect(q, optIdx)) {
+                              <i class="pi pi-check text-[10px]"></i>
+                            }
+                            @if (q.optionImages?.[optIdx]) {
+                              <img [src]="q.optionImages![optIdx]" alt="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-200" />
+                            }
+                            <span>{{ opt }}</span>
+                          </span>
+                        }
+                      </div>
+                    }
                   </div>
                 }
               </div>
@@ -1193,19 +1275,31 @@ import { QuestionImporter, MoodleXmlParser, CsvQuestionParser, ParsedQuestion } 
                     (change)="toggleQuestionSelection(p.id)" 
                     class="mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                       <span class="text-xs font-mono font-black"
                         [ngClass]="isQuestionSelected(p.id) ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'">
                         #{{ p.order || (idx + 1) }}
+                      </span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        {{ pollTypeLabel(p.type, p.moodleType) }}
                       </span>
                       <span class="text-xs font-bold text-gray-900 dark:text-gray-100 leading-snug">
                         {{ p.question }}
                       </span>
                     </div>
-                    <div class="text-[11px] text-gray-500 mt-0.5">
-                      {{ p.options.length }} choices
-                      @if (p.correctOptionId !== undefined) {
-                        • <span class="text-emerald-600 font-semibold">Scored (Option #{{ p.correctOptionId }})</span>
+                    <div class="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      @if (p.type === 'short_answer') {
+                        <span>{{ (p.acceptedAnswers || []).length }} accepted answer(s)</span>
+                      } @else if (p.type === 'matching') {
+                        <span>{{ (p.matchPairs || []).length }} pairs</span>
+                      } @else {
+                        <span>{{ p.options.length }} choices</span>
+                      }
+                      @if (isScoredPoll(p)) {
+                        • <span class="text-emerald-600 font-semibold">Scored</span>
+                      }
+                      @if (p.imageUrl) {
+                        • <span class="text-indigo-600 font-semibold inline-flex items-center gap-1"><i class="pi pi-image text-[10px]"></i> Has image</span>
                       }
                     </div>
                   </div>
@@ -1277,6 +1371,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private pollService = inject(MatiPollService);
   private authService = inject(AuthService);
   private messageService = inject(MessageService);
+
+  readonly pollTypeLabel = pollTypeLabel;
+  readonly isCorrectOption = isCorrectOption;
+  readonly isScoredPoll = isScoredPoll;
+
+  hasPollOptionImages(poll: Poll): boolean {
+    return (poll.options || []).some(o => !!o.imageUrl);
+  }
+
+  isParsedOptionCorrect(q: ParsedQuestion, optIdx: number): boolean {
+    return q.correctOptionIndices ? q.correctOptionIndices.includes(optIdx) : optIdx === q.correctOptionIndex;
+  }
 
   currentUser = this.authService.currentUser;
   isAdmin = this.authService.isAdmin;
@@ -2191,7 +2297,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     reader.readAsText(file, 'utf-8');
   }
 
-  onXmlContentChange() {
+  async onXmlContentChange() {
     if (!this.xmlContent.trim()) {
       this.parsedQuestions = [];
       return;
@@ -2200,6 +2306,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const result = QuestionImporter.parse(this.xmlContent, this.uploadedFileName());
       this.detectedFormat.set(result.format);
       this.parsedQuestions = result.questions;
+      // Asynchronously compress images and draw drop-zone markers for ddimageortext/ddmarker
+      this.parsedQuestions = await QuestionImporter.compressAndAnnotateQuestions(result.questions);
     } catch (err: any) {
       this.parsedQuestions = [];
       this.messageService.add({
@@ -2287,9 +2395,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.importProgressPercent = 0;
     try {
       const targetRoom = this.targetRoomForImport() || this.selectedRoomCode();
+      const readyQuestions = await QuestionImporter.compressAndAnnotateQuestions(this.parsedQuestions);
       const count = await this.pollService.createPollsBatch(
         targetRoom, 
-        this.parsedQuestions,
+        readyQuestions,
         (current, total) => {
           this.importCurrent = current;
           this.importTotal = total;

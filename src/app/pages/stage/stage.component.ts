@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService, normalizeRoomCode } from '../../services/mati-poll.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
-import { describeCorrectAnswer, isCorrectOption, isScoredPoll } from '../../utils/poll-answer';
+import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } from '../../utils/poll-answer';
 import QRCode from 'qrcode';
 
 @Component({
@@ -850,6 +850,10 @@ import QRCode from 'qrcode';
                       [ngClass]="isLight() ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'">
                       Question #{{ stats.poll.order }}
                     </span>
+                    <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase border shadow-2xs"
+                      [ngClass]="isLight() ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-slate-800 text-slate-200 border-slate-700'">
+                      {{ pollTypeLabel(stats.poll.type, stats.poll.moodleType) }}
+                    </span>
 
                     @if (remainingSeconds() !== null) {
                       @if (remainingSeconds()! > 10) {
@@ -889,10 +893,15 @@ import QRCode from 'qrcode';
                     }
                   </div>
 
-                  <h1 class="text-base sm:text-lg md:text-xl lg:text-2xl font-bold tracking-normal leading-snug max-w-3xl mx-auto px-2 break-words"
+                  <h1 class="text-base sm:text-lg md:text-xl lg:text-2xl font-bold tracking-normal leading-snug max-w-3xl mx-auto px-2 break-words whitespace-pre-line"
                     [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
                     {{ stats.poll.question }}
                   </h1>
+                  @if (stats.poll.imageUrl) {
+                    <div class="flex justify-center pt-1">
+                      <img [src]="stats.poll.imageUrl" alt="Question illustration" class="max-h-[26vh] w-auto rounded-2xl border border-slate-300 dark:border-slate-700 bg-white p-1.5 object-contain shadow-md" />
+                    </div>
+                  }
                   @if (stats.poll.type === 'multi_select') {
                     <p class="text-xs font-bold uppercase tracking-wider text-indigo-500">Select all that apply</p>
                   } @else if (stats.poll.type === 'short_answer') {
@@ -955,11 +964,16 @@ import QRCode from 'qrcode';
                         [ngClass]="stats.poll.showCorrectAnswer
                           ? (isLight() ? 'border-emerald-500 bg-emerald-50/90' : 'border-emerald-500 bg-emerald-950/70')
                           : (isLight() ? 'bg-white border-slate-200/90' : 'bg-slate-900/90 border-slate-800')">
-                        <div class="min-w-0">
-                          <div class="text-sm font-semibold break-words">{{ ps.prompt }}</div>
-                          @if (stats.poll.showCorrectAnswer) {
-                            <div class="text-xs font-bold mt-0.5" [ngClass]="isLight() ? 'text-emerald-800' : 'text-emerald-300'">→ {{ ps.answer }}</div>
+                        <div class="min-w-0 flex items-center gap-2.5">
+                          @if (ps.imageUrl) {
+                            <img [src]="ps.imageUrl" alt="" class="w-12 h-12 object-contain rounded-lg border border-slate-200 bg-white p-0.5 shrink-0" />
                           }
+                          <div class="min-w-0">
+                            <div class="text-sm font-semibold break-words">{{ ps.prompt }}</div>
+                            @if (stats.poll.showCorrectAnswer) {
+                              <div class="text-xs font-bold mt-0.5" [ngClass]="isLight() ? 'text-emerald-800' : 'text-emerald-300'">→ {{ ps.answer }}</div>
+                            }
+                          </div>
                         </div>
                         <div class="shrink-0 text-right">
                           @if (stats.poll.showResults) {
@@ -1010,6 +1024,9 @@ import QRCode from 'qrcode';
                               : (isLight() ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'))">
                           {{ opt.id }}
                         </div>
+                        @if (opt.imageUrl) {
+                          <img [src]="opt.imageUrl" alt="" class="w-12 h-12 object-contain rounded-lg border border-slate-200 bg-white p-0.5 shrink-0" />
+                        }
                         <div class="text-xs sm:text-sm font-semibold leading-snug break-words flex-1"
                           [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)
                             ? (isLight() ? 'text-emerald-950 font-bold' : 'text-emerald-100 font-bold')
@@ -1143,6 +1160,7 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   private pollService = inject(MatiPollService);
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+  readonly pollTypeLabel = pollTypeLabel;
 
   hasMounted = signal<boolean>(false);
   currentTheme = signal<'dark' | 'light'>(this.resolveInitialStageTheme());

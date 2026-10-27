@@ -35,12 +35,15 @@ import {
 export interface NewPollInput {
   question: string;
   options: string[];
+  optionImages?: (string | undefined)[];
   correctOptionIndex?: number;
   correctOptionIndices?: number[];
   pollType?: PollType;
+  moodleType?: string;
+  imageUrl?: string;
   acceptedAnswers?: string[];
   caseSensitive?: boolean;
-  matchPairs?: { prompt: string; answer: string }[];
+  matchPairs?: { prompt: string; answer: string; imageUrl?: string }[];
 }
 
 /**
@@ -680,7 +683,7 @@ export class MatiPollService {
   /** Strip undefined fields from a Poll and its options so Firestore never rejects the payload. */
   private sanitizePollForFirestore(poll: Poll): Poll {
     const cleanOptions = (poll.options || []).map((o, idx) => {
-      const opt: { id: number; text: string; isCorrect?: boolean } = {
+      const opt: { id: number; text: string; isCorrect?: boolean; imageUrl?: string } = {
         id: o.id ?? (idx + 1),
         text: o.text ?? ''
       };
@@ -690,6 +693,9 @@ export class MatiPollService {
         opt.isCorrect = poll.correctOptionIds.includes(opt.id);
       } else if (poll.correctOptionId !== undefined) {
         opt.isCorrect = opt.id === poll.correctOptionId;
+      }
+      if (o.imageUrl) {
+        opt.imageUrl = o.imageUrl;
       }
       return opt;
     });
@@ -704,6 +710,12 @@ export class MatiPollService {
       showCorrectAnswer: poll.showCorrectAnswer ?? false,
       options: cleanOptions
     };
+    if (poll.moodleType) {
+      clean.moodleType = poll.moodleType;
+    }
+    if (poll.imageUrl) {
+      clean.imageUrl = poll.imageUrl;
+    }
     if (poll.correctOptionId !== undefined && poll.correctOptionId !== null) {
       clean.correctOptionId = poll.correctOptionId;
     }
@@ -717,7 +729,12 @@ export class MatiPollService {
       clean.caseSensitive = poll.caseSensitive;
     }
     if (poll.matchPairs && poll.matchPairs.length > 0) {
-      clean.matchPairs = poll.matchPairs.map(p => ({ id: p.id, prompt: p.prompt, answer: p.answer }));
+      clean.matchPairs = poll.matchPairs.map(p => ({
+        id: p.id,
+        prompt: p.prompt,
+        answer: p.answer,
+        ...(p.imageUrl ? { imageUrl: p.imageUrl } : {})
+      }));
     }
     return clean;
   }
@@ -773,12 +790,12 @@ export class MatiPollService {
     // Multi-answer questions keep their per-option correctness flags (matched by position)
     const keepFlags = pollType === 'multi_select';
 
-    let cleanOptions: { id: number; text: string; isCorrect?: boolean }[] = existing?.options || [];
+    let cleanOptions: { id: number; text: string; isCorrect?: boolean; imageUrl?: string }[] = existing?.options || [];
     let effectiveCorrectId: number | undefined = correctOptionId;
     let multiIds: number[] = [];
     if (!questionOnly) {
       cleanOptions = optionTexts.map((text, idx) => {
-        const opt: { id: number; text: string; isCorrect?: boolean } = {
+        const opt: { id: number; text: string; isCorrect?: boolean; imageUrl?: string } = {
           id: idx + 1,
           text
         };
@@ -786,6 +803,9 @@ export class MatiPollService {
           opt.isCorrect = !!existing?.options?.[idx]?.isCorrect;
         } else if (correctOptionId !== undefined) {
           opt.isCorrect = (idx + 1 === correctOptionId);
+        }
+        if (existing?.options?.[idx]?.imageUrl) {
+          opt.imageUrl = existing.options[idx].imageUrl;
         }
         return opt;
       });
@@ -914,6 +934,8 @@ export class MatiPollService {
       id: pollId,
       question: q.question,
       type: pollType,
+      ...(q.moodleType ? { moodleType: q.moodleType } : {}),
+      ...(q.imageUrl ? { imageUrl: q.imageUrl } : {}),
       order,
       isLocked: false,
       showResults: false,
@@ -921,7 +943,8 @@ export class MatiPollService {
       options: q.options.map((text, idx) => ({
         id: idx + 1,
         text,
-        ...(optionBased && correctIds.length > 0 ? { isCorrect: correctIds.includes(idx + 1) } : {})
+        ...(optionBased && correctIds.length > 0 ? { isCorrect: correctIds.includes(idx + 1) } : {}),
+        ...(q.optionImages?.[idx] ? { imageUrl: q.optionImages[idx] } : {})
       }))
     };
 
@@ -934,7 +957,12 @@ export class MatiPollService {
       poll.caseSensitive = !!q.caseSensitive;
     }
     if (pollType === 'matching') {
-      poll.matchPairs = (q.matchPairs || []).map((p, i) => ({ id: i + 1, prompt: p.prompt, answer: p.answer }));
+      poll.matchPairs = (q.matchPairs || []).map((p, i) => ({
+        id: i + 1,
+        prompt: p.prompt,
+        answer: p.answer,
+        ...(p.imageUrl ? { imageUrl: p.imageUrl } : {})
+      }));
     }
     return this.sanitizePollForFirestore(poll);
   }
@@ -943,14 +971,18 @@ export class MatiPollService {
   private pollToInput(p: Poll): NewPollInput {
     const optionBased = p.type !== 'short_answer' && p.type !== 'matching';
     const correctIds = optionBased ? getCorrectOptionIds(p) : [];
+    const optImgs = (p.options || []).map(o => o.imageUrl);
     return {
       question: p.question,
       options: (p.options || []).map(o => o.text),
+      optionImages: optImgs.some(Boolean) ? optImgs : undefined,
       pollType: p.type,
+      moodleType: p.moodleType,
+      imageUrl: p.imageUrl,
       correctOptionIndices: correctIds.length > 0 ? correctIds.map(id => id - 1) : undefined,
       acceptedAnswers: p.acceptedAnswers,
       caseSensitive: p.caseSensitive,
-      matchPairs: p.matchPairs?.map(m => ({ prompt: m.prompt, answer: m.answer }))
+      matchPairs: p.matchPairs?.map(m => ({ prompt: m.prompt, answer: m.answer, imageUrl: m.imageUrl }))
     };
   }
 
@@ -1774,6 +1806,8 @@ export class MatiPollService {
         order: p.order || (idx + 1),
         question: p.question,
         type: p.type,
+        moodleType: p.moodleType,
+        imageUrl: p.imageUrl,
         isScored,
         totalVotes: qTotalVotes,
         correctOptionId,
@@ -1788,6 +1822,7 @@ export class MatiPollService {
         options: p.options.map(opt => ({
           id: opt.id,
           text: opt.text,
+          imageUrl: opt.imageUrl,
           votes: optCounts[opt.id] || 0,
           percentage: qTotalVotes > 0 ? Math.round(((optCounts[opt.id] || 0) / qTotalVotes) * 100) : 0,
           isCorrect: isScored && optionBased ? isCorrectOption(p, opt.id) : false
@@ -2378,7 +2413,14 @@ export class MatiPollService {
         const correct = answered.filter(v =>
           normalizeAnswerText(v.matches![String(pair.id)]) === normalizeAnswerText(pair.answer)
         ).length;
-        return { pairId: pair.id, prompt: pair.prompt, answer: pair.answer, correct, total: totalVotes };
+        return {
+          pairId: pair.id,
+          prompt: pair.prompt,
+          answer: pair.answer,
+          ...(pair.imageUrl ? { imageUrl: pair.imageUrl } : {}),
+          correct,
+          total: totalVotes
+        };
       });
     }
 

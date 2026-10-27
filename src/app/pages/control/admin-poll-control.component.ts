@@ -447,6 +447,11 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
                   <span class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 font-mono font-bold text-xs">
                     Q {{ getCurrentQuestionIndex() }} / {{ playablePolls().length }}
                   </span>
+                  @if (currentPoll(); as cp) {
+                    <span class="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] border border-indigo-200 dark:border-indigo-800">
+                      {{ typeLabel(cp) }}
+                    </span>
+                  }
                   @if (isLocked) {
                     <span class="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 font-semibold text-[11px] border border-red-200 dark:border-red-800 flex items-center gap-1">
                       <i class="pi pi-lock text-[10px]"></i> Locked
@@ -488,11 +493,16 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
                 </div>
               </div>
 
-              <!-- Question Title -->
-              <div>
-                <h2 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-snug">
+              <!-- Question Title & Image -->
+              <div class="space-y-3">
+                <h2 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-snug whitespace-pre-line">
                   {{ currentPoll()?.question || 'No question active' }}
                 </h2>
+                @if (currentPoll()?.imageUrl) {
+                  <div>
+                    <img [src]="currentPoll()!.imageUrl" alt="Question illustration" class="max-h-64 w-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white p-1.5 object-contain shadow-xs" />
+                  </div>
+                }
               </div>
 
               <!-- Live Options Breakdown Bars -->
@@ -519,7 +529,12 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
                     <div class="space-y-1.5">
                       @for (ps of stats()?.pairStats || []; track ps.pairId) {
                         <div class="p-2.5 rounded-xl border bg-gray-50/70 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2 text-xs font-semibold text-gray-800 dark:text-gray-200">
-                          <span class="break-words">{{ ps.prompt }} → <strong class="text-emerald-700 dark:text-emerald-300">{{ ps.answer }}</strong></span>
+                          <div class="flex items-center gap-2 min-w-0">
+                            @if (ps.imageUrl) {
+                              <img [src]="ps.imageUrl" alt="" class="w-10 h-10 object-contain rounded border border-gray-200 bg-white p-0.5 shrink-0" />
+                            }
+                            <span class="break-words">{{ ps.prompt }} → <strong class="text-emerald-700 dark:text-emerald-300">{{ ps.answer }}</strong></span>
+                          </div>
                           <span class="font-mono font-bold shrink-0">{{ pairPercent(ps) }}% ({{ ps.correct }}/{{ ps.total }})</span>
                         </div>
                       }
@@ -534,12 +549,15 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
                       <div class="flex justify-between items-center text-xs font-semibold">
                         <span class="text-gray-800 dark:text-gray-200 flex items-center gap-2">
                           <span 
-                            class="w-5 h-5 rounded-md text-[11px] font-bold flex items-center justify-center border shadow-2xs"
+                            class="w-5 h-5 rounded-md text-[11px] font-bold flex items-center justify-center border shadow-2xs shrink-0"
                             [ngClass]="showCorrectAnswer && isCorrectOpt(currentPoll(), opt.id)
                               ? 'bg-emerald-600 text-white border-emerald-600'
                               : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600'">
                             {{ opt.id }}
                           </span>
+                          @if (opt.imageUrl) {
+                            <img [src]="opt.imageUrl" alt="" class="w-10 h-10 object-contain rounded border border-gray-200 bg-white p-0.5 shrink-0" />
+                          }
                           <span [ngClass]="showCorrectAnswer && isCorrectOpt(currentPoll(), opt.id) ? 'font-bold text-emerald-900 dark:text-emerald-100' : ''">
                             {{ opt.text }}
                           </span>
@@ -860,7 +878,11 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
                   <!-- Bottom row: Metadata on left + Action icons on right -->
                   <div class="flex items-center justify-between gap-2 pl-8">
                     <div class="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1.5">
-                      <span>{{ typeLabel(p) }}{{ (p.options || []).length ? ' · ' + (p.options || []).length + ' options' : '' }}{{ isScored(p) ? ' • Scored' : '' }}</span>
+                      <span class="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px]">{{ typeLabel(p) }}</span>
+                      <span>{{ (p.options || []).length ? (p.options || []).length + ' options' : '' }}{{ isScored(p) ? ' • Scored' : '' }}</span>
+                      @if (p.imageUrl) {
+                        <span class="text-indigo-600 dark:text-indigo-400 font-semibold"><i class="pi pi-image text-[10px]"></i></span>
+                      }
                       @if (p.isLocked) {
                         <span class="text-[10px] font-semibold text-red-600 dark:text-red-400">• Locked</span>
                       }
@@ -1362,33 +1384,45 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
                   Target Room: <strong class="text-indigo-600 dark:text-indigo-400 font-bold">{{ roomCode() }}</strong>
                 </span>
               </div>
-              <div class="max-h-52 overflow-y-auto space-y-2 pr-1 border border-gray-200 dark:border-gray-800 rounded-xl p-2 bg-gray-50/60 dark:bg-gray-900/60">
-                @for (q of parsedQuestions; track q.question; let idx = $index) {
-                  <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-xs shadow-xs">
+              <div class="max-h-64 overflow-y-auto space-y-2 pr-1 border border-gray-200 dark:border-gray-800 rounded-xl p-2 bg-gray-50/60 dark:bg-gray-900/60">
+                @for (q of parsedQuestions; track $index; let idx = $index) {
+                  <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-xs shadow-xs space-y-2">
                     <div class="font-bold text-gray-900 dark:text-white flex items-start gap-1.5">
                       <span class="text-indigo-600 dark:text-indigo-400 font-black">{{ idx + 1 }}.</span>
-                      <span class="flex-1">{{ q.question }}</span>
+                      <span class="flex-1 whitespace-pre-line">{{ q.question }}</span>
                       <span class="shrink-0 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase tracking-wide">{{ parsedTypeLabel(q) }}</span>
                     </div>
+                    @if (q.imageUrl) {
+                      <img [src]="q.imageUrl" alt="" class="max-h-36 w-auto rounded-lg border border-gray-200 bg-white p-1 object-contain" />
+                    }
                     @if (q.pollType === 'short_answer') {
-                      <div class="text-gray-500 mt-2 flex flex-wrap gap-1.5">
+                      <div class="text-gray-500 flex flex-wrap gap-1.5">
                         @for (a of q.acceptedAnswers || []; track a) {
                           <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700">{{ a }}</span>
                         }
                       </div>
                     } @else if (q.pollType === 'matching') {
-                      <div class="text-gray-600 dark:text-gray-300 mt-2 space-y-0.5">
-                        @for (m of q.matchPairs || []; track m.prompt) {
-                          <div>{{ m.prompt }} <span class="text-emerald-700 dark:text-emerald-300 font-semibold">→ {{ m.answer }}</span></div>
+                      <div class="text-gray-600 dark:text-gray-300 flex flex-wrap gap-1.5">
+                        @for (m of q.matchPairs || []; track $index) {
+                          <span class="px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center gap-1.5 border border-gray-200 dark:border-gray-600">
+                            @if (m.imageUrl) {
+                              <img [src]="m.imageUrl" alt="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-200" />
+                            }
+                            <span>{{ m.prompt }}</span>
+                            <span class="text-emerald-700 dark:text-emerald-300 font-semibold">→ {{ m.answer }}</span>
+                          </span>
                         }
                       </div>
                     } @else {
-                    <div class="text-gray-500 mt-2 flex flex-wrap gap-1.5">
-                      @for (opt of q.options; track opt; let optIdx = $index) {
-                        <span class="px-2 py-0.5 rounded-md flex items-center gap-1"
+                    <div class="text-gray-500 flex flex-wrap gap-1.5">
+                      @for (opt of q.options; track $index; let optIdx = $index) {
+                        <span class="px-2 py-0.5 rounded-md flex items-center gap-1.5"
                           [ngClass]="isParsedCorrect(q, optIdx) ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
                           @if (isParsedCorrect(q, optIdx)) {
                             <i class="pi pi-check text-[10px]"></i>
+                          }
+                          @if (q.optionImages?.[optIdx]) {
+                            <img [src]="q.optionImages![optIdx]" alt="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-200" />
                           }
                           <span>{{ opt }}</span>
                         </span>
@@ -1646,7 +1680,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     reader.readAsText(file, 'utf-8');
   }
 
-  onXmlContentChange() {
+  async onXmlContentChange() {
     if (!this.xmlContent.trim()) {
       this.parsedQuestions = [];
       this.importSkipped.set([]);
@@ -1657,6 +1691,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       this.detectedFormat.set(result.format);
       this.parsedQuestions = result.questions;
       this.importSkipped.set(result.skipped || []);
+      this.parsedQuestions = await QuestionImporter.compressAndAnnotateQuestions(result.questions);
     } catch (err: any) {
       this.parsedQuestions = [];
       this.importSkipped.set([]);
@@ -1718,9 +1753,10 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.importTotal = this.parsedQuestions.length;
     this.importProgressPercent = 0;
     try {
+      const readyQuestions = await QuestionImporter.compressAndAnnotateQuestions(this.parsedQuestions);
       await this.pollService.createPollsBatch(
         this.roomCode(), 
-        this.parsedQuestions,
+        readyQuestions,
         (current, total) => {
           this.importCurrent = current;
           this.importTotal = total;
@@ -2350,7 +2386,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   typeLabel(poll: Poll): string {
-    return pollTypeLabel(poll.type);
+    return pollTypeLabel(poll.type, poll.moodleType);
   }
 
   pairPercent(pair: { correct: number; total: number }): number {
@@ -2364,7 +2400,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   parsedTypeLabel(q: ParsedQuestion): string {
-    return pollTypeLabel(q.pollType);
+    return pollTypeLabel(q.pollType, q.moodleType);
   }
 
   resetPollForm() {
