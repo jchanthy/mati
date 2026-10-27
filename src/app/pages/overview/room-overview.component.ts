@@ -456,7 +456,7 @@ import QRCode from 'qrcode';
 
                     <!-- Scored or Consensus Status Badge -->
                     <div class="flex items-center gap-2 text-xs">
-                      @if (q.correctOptionId !== undefined) {
+                      @if (q.isScored) {
                         <span class="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold flex items-center gap-1">
                           <i class="pi pi-check text-[11px] text-emerald-600"></i>
                           <span>Correct answer: <strong>{{ q.correctOptionText }}</strong></span>
@@ -473,6 +473,13 @@ import QRCode from 'qrcode';
 
                     <!-- Options Distribution Bars -->
                     <div class="space-y-2 pt-1">
+                      @for (r of q.textResponses || []; track r.text) {
+                        <div class="p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs font-semibold"
+                          [ngClass]="r.isCorrect ? 'border-emerald-300 bg-emerald-50/40 text-emerald-900' : 'border-gray-200 bg-gray-50/40 text-gray-800'">
+                          <span class="break-words">{{ r.text }}</span>
+                          <span class="font-mono font-bold shrink-0">{{ r.count }}×</span>
+                        </div>
+                      }
                       @for (opt of q.options; track opt.id; let optIdx = $index) {
                         <div class="p-2.5 rounded-xl border transition-colors space-y-1.5"
                           [ngClass]="opt.isCorrect 
@@ -630,7 +637,7 @@ export class RoomOverviewComponent implements OnInit, OnDestroy {
 
   // Quiz performance (scored questions only)
   scoredQuestionResults = computed(() =>
-    this.sessionStats().questionResults.filter(q => q.correctOptionId !== undefined)
+    this.sessionStats().questionResults.filter(q => q.isScored)
   );
   scoredQuestionsCount = computed(() => this.scoredQuestionResults().length);
   totalCorrectVotes = computed(() =>

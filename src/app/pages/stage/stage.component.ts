@@ -6,6 +6,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService, normalizeRoomCode } from '../../services/mati-poll.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
+import { describeCorrectAnswer, isCorrectOption, isScoredPoll } from '../../utils/poll-answer';
 import QRCode from 'qrcode';
 
 @Component({
@@ -336,7 +337,7 @@ import QRCode from 'qrcode';
                           : (isLight() ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800')"
                         class="px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer shrink-0 flex items-center gap-1">
                         <span>Q{{ q.order || (idx + 1) }}</span>
-                        @if (q.correctOptionId !== undefined) {
+                        @if (q.isScored) {
                           <span class="text-[10px]" [ngClass]="q.correctPercentage >= 50 ? 'text-emerald-400' : 'text-amber-400'">{{ q.correctPercentage }}%</span>
                         }
                       </button>
@@ -372,7 +373,7 @@ import QRCode from 'qrcode';
 
                         <!-- Result Highlight Pill -->
                         <div class="flex items-center gap-2 flex-wrap text-xs">
-                          @if (q.correctOptionId !== undefined) {
+                          @if (q.isScored) {
                             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold border"
                               [ngClass]="isLight() ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-950/40 text-emerald-300 border-emerald-800'">
                               <i class="pi pi-check-circle text-xs text-emerald-600 dark:text-emerald-400"></i>
@@ -395,8 +396,8 @@ import QRCode from 'qrcode';
                             <div class="p-2.5 rounded-xl border transition-colors space-y-1.5"
                               [ngClass]="{
                                 'border-emerald-500/60 bg-emerald-50/50 dark:bg-emerald-950/20 ring-1 ring-emerald-500/40': opt.isCorrect,
-                                'border-indigo-400/50 bg-indigo-50/30 dark:bg-indigo-950/20': !opt.isCorrect && opt.id === q.winningOptionId && q.correctOptionId === undefined,
-                                'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50': !opt.isCorrect && (opt.id !== q.winningOptionId || q.correctOptionId !== undefined)
+                                'border-indigo-400/50 bg-indigo-50/30 dark:bg-indigo-950/20': !opt.isCorrect && opt.id === q.winningOptionId && !q.isScored,
+                                'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50': !opt.isCorrect && (opt.id !== q.winningOptionId || q.isScored)
                               }">
                               <div class="flex items-center justify-between text-xs font-semibold gap-2">
                                 <div class="flex items-center gap-2 min-w-0">
@@ -504,7 +505,7 @@ import QRCode from 'qrcode';
                           <div class="p-4 rounded-2xl border-2 transition-all space-y-2"
                             [ngClass]="opt.isCorrect 
                               ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30 ring-2 ring-emerald-500/30' 
-                              : (opt.id === spotQ.winningOptionId && spotQ.correctOptionId === undefined
+                              : (opt.id === spotQ.winningOptionId && !spotQ.isScored
                                 ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30'
                                 : (isLight() ? 'border-slate-200 bg-slate-50/70' : 'border-slate-800 bg-slate-800/40'))">
                             
@@ -881,7 +882,7 @@ import QRCode from 'qrcode';
                       </span>
                     }
 
-                    @if (stats.poll.showCorrectAnswer && stats.poll.correctOptionId !== undefined) {
+                    @if (stats.poll.showCorrectAnswer && isScored(stats.poll)) {
                       <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-sm shadow-emerald-600/30">
                         <i class="pi pi-check-circle text-xs"></i> Answer Revealed
                       </span>
@@ -892,6 +893,13 @@ import QRCode from 'qrcode';
                     [ngClass]="isLight() ? 'text-slate-900' : 'text-white'">
                     {{ stats.poll.question }}
                   </h1>
+                  @if (stats.poll.type === 'multi_select') {
+                    <p class="text-xs font-bold uppercase tracking-wider text-indigo-500">Select all that apply</p>
+                  } @else if (stats.poll.type === 'short_answer') {
+                    <p class="text-xs font-bold uppercase tracking-wider text-indigo-500">Type your answer on your phone</p>
+                  } @else if (stats.poll.type === 'matching') {
+                    <p class="text-xs font-bold uppercase tracking-wider text-indigo-500">Match each item on your phone</p>
+                  }
 
                   <!-- Slim TV Stage Progress Bar -->
                   @if (remainingSeconds() !== null && remainingSeconds()! > 0) {
@@ -909,15 +917,71 @@ import QRCode from 'qrcode';
                   }
                 </div>
 
+                @if (stats.poll.type === 'short_answer') {
+                  <!-- Typed answers -->
+                  <div class="w-full max-w-3xl mx-auto my-auto space-y-2">
+                    @if (stats.poll.showCorrectAnswer) {
+                      <div class="p-2.5 px-4 rounded-xl border text-sm font-bold flex items-center gap-2"
+                        [ngClass]="isLight() ? 'bg-emerald-50 border-emerald-400 text-emerald-900' : 'bg-emerald-950/60 border-emerald-500/60 text-emerald-200'">
+                        <i class="pi pi-check-circle"></i>
+                        <span>Accepted answer: {{ correctText(stats.poll) }}</span>
+                      </div>
+                    }
+                    @if (stats.poll.showResults) {
+                      @for (r of stats.textResponses || []; track r.text) {
+                        <div class="p-2.5 px-4 rounded-xl border flex items-center justify-between gap-3"
+                          [ngClass]="stats.poll.showCorrectAnswer && r.isCorrect
+                            ? (isLight() ? 'border-emerald-500 bg-emerald-50/90' : 'border-emerald-500 bg-emerald-950/70')
+                            : (isLight() ? 'bg-white border-slate-200/90' : 'bg-slate-900/90 border-slate-800')">
+                          <span class="text-sm font-semibold break-words">{{ r.text }}</span>
+                          <span class="font-mono font-bold shrink-0">{{ r.count }}×</span>
+                        </div>
+                      } @empty {
+                        <div class="text-center text-sm font-semibold opacity-60">No answers yet</div>
+                      }
+                    } @else {
+                      <div class="flex items-center justify-center gap-1.5 text-xs font-semibold px-2.5 py-2 rounded-lg border"
+                        [ngClass]="isLight() ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-slate-800/80 text-slate-400 border-slate-700'">
+                        <i class="pi pi-lock text-[10px]"></i>
+                        <span>{{ stats.totalVotes }} answers received · hidden</span>
+                      </div>
+                    }
+                  </div>
+                } @else if (stats.poll.type === 'matching') {
+                  <!-- Matching pairs -->
+                  <div class="w-full max-w-4xl mx-auto my-auto grid gap-2 sm:gap-2.5 grid-cols-1 sm:grid-cols-2">
+                    @for (ps of stats.pairStats || []; track ps.pairId) {
+                      <div class="p-2.5 px-4 rounded-xl border flex items-center justify-between gap-3"
+                        [ngClass]="stats.poll.showCorrectAnswer
+                          ? (isLight() ? 'border-emerald-500 bg-emerald-50/90' : 'border-emerald-500 bg-emerald-950/70')
+                          : (isLight() ? 'bg-white border-slate-200/90' : 'bg-slate-900/90 border-slate-800')">
+                        <div class="min-w-0">
+                          <div class="text-sm font-semibold break-words">{{ ps.prompt }}</div>
+                          @if (stats.poll.showCorrectAnswer) {
+                            <div class="text-xs font-bold mt-0.5" [ngClass]="isLight() ? 'text-emerald-800' : 'text-emerald-300'">→ {{ ps.answer }}</div>
+                          }
+                        </div>
+                        <div class="shrink-0 text-right">
+                          @if (stats.poll.showResults) {
+                            <div class="font-mono font-bold text-lg leading-none">{{ pairPercent(ps) }}%</div>
+                            <div class="text-[10px] font-medium opacity-60">correct</div>
+                          } @else {
+                            <i class="pi pi-lock text-[10px] opacity-60"></i>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
                 <!-- Fixed Screen Poll Results Options (Always visible for audience) -->
                 <div class="w-full max-w-4xl mx-auto overflow-hidden my-auto grid gap-2 sm:gap-2.5"
                   [ngClass]="stats.poll.options.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-xl'">
                   @for (opt of stats.poll.options; track opt.id; let last = $last) {
                     <div class="p-2 sm:p-2.5 px-3 sm:px-4 rounded-xl border relative overflow-hidden transition-all duration-300 shadow-2xs flex items-center justify-between gap-2.5 min-h-[2.75rem] sm:min-h-[3rem]"
                       [class.sm:col-span-2]="stats.poll.options.length % 2 !== 0 && last"
-                      [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                      [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)
                         ? (isLight() ? 'border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-50/90 shadow-emerald-500/10' : 'border-emerald-500 ring-2 ring-emerald-500/40 bg-emerald-950/70 shadow-emerald-500/20')
-                        : (stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId !== undefined && stats.poll.correctOptionId !== opt.id
+                        : (stats.poll.showResults && stats.poll.showCorrectAnswer && isScored(stats.poll) && !isCorrectOpt(stats.poll, opt.id)
                           ? (isLight() ? 'bg-white/60 border-slate-200/60 opacity-60' : 'bg-slate-900/60 border-slate-800/60 opacity-50')
                           : (stats.poll.showResults && isLeadingOption(stats, opt.id) && stats.totalVotes > 0
                             ? (isLight() ? 'border-amber-400/90 ring-1 ring-amber-400/30 bg-amber-50/20' : 'border-amber-400/60 ring-1 ring-amber-400/30 bg-slate-900/95') 
@@ -928,7 +992,7 @@ import QRCode from 'qrcode';
                         <div 
                           class="absolute top-0 bottom-0 left-0 transition-all duration-700 ease-out" 
                           [style.width.%]="stats.percentages[opt.id] || 0"
-                          [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                          [ngClass]="stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)
                             ? (isLight() ? 'bg-emerald-300/40' : 'bg-gradient-to-r from-emerald-500/45 via-emerald-400/30 to-green-500/20')
                             : (isLeadingOption(stats, opt.id) && stats.totalVotes > 0
                               ? (isLight() ? 'bg-amber-300/35' : 'bg-gradient-to-r from-amber-500/35 via-amber-400/25 to-yellow-500/15') 
@@ -939,7 +1003,7 @@ import QRCode from 'qrcode';
                       <!-- Option Number & Text -->
                       <div class="relative z-10 flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
                         <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border shadow-2xs"
-                          [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                          [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                             : (stats.poll.showResults && isLeadingOption(stats, opt.id) && stats.totalVotes > 0
                               ? (isLight() ? 'bg-amber-500 text-white border-amber-600' : 'bg-amber-400/30 text-amber-200 border-amber-400/40') 
@@ -947,12 +1011,12 @@ import QRCode from 'qrcode';
                           {{ opt.id }}
                         </div>
                         <div class="text-xs sm:text-sm font-semibold leading-snug break-words flex-1"
-                          [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                          [ngClass]="stats.poll.showResults && stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)
                             ? (isLight() ? 'text-emerald-950 font-bold' : 'text-emerald-100 font-bold')
                             : (isLight() ? 'text-slate-800' : 'text-slate-100')">
                           {{ opt.text }}
                         </div>
-                        @if (stats.poll.showResults && stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id) {
+                        @if (stats.poll.showResults && stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)) {
                           <span class="px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1 shrink-0 bg-emerald-600 text-white shadow-2xs">
                             <i class="pi pi-check text-[10px]"></i> Correct
                           </span>
@@ -968,7 +1032,7 @@ import QRCode from 'qrcode';
                       <div class="relative z-10 text-right shrink-0 pl-2 flex flex-col items-end justify-center">
                         @if (stats.poll.showResults) {
                           <div class="text-base sm:text-lg md:text-xl font-bold font-mono leading-none"
-                            [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                            [ngClass]="stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)
                               ? (isLight() ? 'text-emerald-800 font-black' : 'text-emerald-300 font-black')
                               : (isLeadingOption(stats, opt.id) && stats.totalVotes > 0
                                 ? (isLight() ? 'text-amber-700' : 'text-amber-300') 
@@ -976,7 +1040,7 @@ import QRCode from 'qrcode';
                             {{ stats.percentages[opt.id] || 0 }}%
                           </div>
                           <div class="text-[10px] sm:text-[11px] font-medium mt-0.5"
-                            [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                            [ngClass]="stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)
                               ? (isLight() ? 'text-emerald-700 font-semibold' : 'text-emerald-400 font-semibold')
                               : 'text-slate-400 dark:text-slate-500'">
                             {{ stats.votesPerOption[opt.id] || 0 }} votes
@@ -992,6 +1056,7 @@ import QRCode from 'qrcode';
                     </div>
                   }
                 </div>
+                }
 
 
               } @else {
@@ -1165,13 +1230,13 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   highestAccuracyQuestion = computed(() => {
-    const list = this.sessionStats().questionResults.filter(q => q.correctOptionId !== undefined);
+    const list = this.sessionStats().questionResults.filter(q => q.isScored);
     if (!list || list.length === 0) return null;
     return [...list].sort((a, b) => b.correctPercentage - a.correctPercentage)[0];
   });
 
   toughestQuestion = computed(() => {
-    const list = this.sessionStats().questionResults.filter(q => q.correctOptionId !== undefined && q.totalVotes > 0);
+    const list = this.sessionStats().questionResults.filter(q => q.isScored && q.totalVotes > 0);
     if (!list || list.length === 0) return null;
     return [...list].sort((a, b) => a.correctPercentage - b.correctPercentage)[0];
   });
@@ -1592,6 +1657,22 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
     if (clearRemaining) {
       this.remainingSeconds.set(null);
     }
+  }
+
+  isScored(poll: Poll): boolean {
+    return isScoredPoll(poll);
+  }
+
+  isCorrectOpt(poll: Poll, optionId: number): boolean {
+    return isCorrectOption(poll, optionId);
+  }
+
+  correctText(poll: Poll): string {
+    return describeCorrectAnswer(poll);
+  }
+
+  pairPercent(pair: { correct: number; total: number }): number {
+    return pair.total > 0 ? Math.round((pair.correct / pair.total) * 100) : 0;
   }
 
   isLeadingOption(stats: PollStats, optionId: number): boolean {

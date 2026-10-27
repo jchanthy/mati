@@ -20,7 +20,28 @@ import {
   writeBatch
 } from '@angular/fire/firestore';
 import { Observable, BehaviorSubject, of, combineLatest, map } from 'rxjs';
-import { Room, Poll, Vote, PollStats, DetailedSessionSummary, QuestionResultSummary, QuizLeaderboardEntry } from '../models/poll.model';
+import { Room, Poll, PollType, Vote, PollStats, DetailedSessionSummary, QuestionResultSummary, QuizLeaderboardEntry } from '../models/poll.model';
+import {
+  PollAnswer,
+  describeCorrectAnswer,
+  evaluateVote,
+  getCorrectOptionIds,
+  isCorrectOption,
+  isScoredPoll,
+  normalizeAnswerText
+} from '../utils/poll-answer';
+
+/** Everything needed to create a question of any supported type. */
+export interface NewPollInput {
+  question: string;
+  options: string[];
+  correctOptionIndex?: number;
+  correctOptionIndices?: number[];
+  pollType?: PollType;
+  acceptedAnswers?: string[];
+  caseSensitive?: boolean;
+  matchPairs?: { prompt: string; answer: string }[];
+}
 
 /**
  * Normalizes any room code:
@@ -597,8 +618,7 @@ export class MatiPollService {
 
     // Clone all polls
     for (const p of sourcePolls) {
-      const optTexts = (p.options || []).map(o => o.text);
-      await this.createPoll(newCode, p.question, optTexts, p.correctOptionId);
+      await this.createPollsBatch(newCode, [this.pollToInput(p)]);
     }
 
     return newCode;
@@ -666,6 +686,8 @@ export class MatiPollService {
       };
       if (o.isCorrect !== undefined) {
         opt.isCorrect = o.isCorrect;
+      } else if (poll.correctOptionIds && poll.correctOptionIds.length > 0) {
+        opt.isCorrect = poll.correctOptionIds.includes(opt.id);
       } else if (poll.correctOptionId !== undefined) {
         opt.isCorrect = opt.id === poll.correctOptionId;
       }
@@ -684,6 +706,18 @@ export class MatiPollService {
     };
     if (poll.correctOptionId !== undefined && poll.correctOptionId !== null) {
       clean.correctOptionId = poll.correctOptionId;
+    }
+    if (poll.correctOptionIds && poll.correctOptionIds.length > 0) {
+      clean.correctOptionIds = [...poll.correctOptionIds];
+    }
+    if (poll.acceptedAnswers && poll.acceptedAnswers.length > 0) {
+      clean.acceptedAnswers = [...poll.acceptedAnswers];
+    }
+    if (poll.caseSensitive !== undefined) {
+      clean.caseSensitive = poll.caseSensitive;
+    }
+    if (poll.matchPairs && poll.matchPairs.length > 0) {
+      clean.matchPairs = poll.matchPairs.map(p => ({ id: p.id, prompt: p.prompt, answer: p.answer }));
     }
     return clean;
   }
@@ -732,28 +766,56 @@ export class MatiPollService {
    */
   async updatePoll(roomCode: string, pollId: string, question: string, optionTexts: string[], correctOptionId?: number): Promise<void> {
     const code = normalizeRoomCode(roomCode);
-    const cleanOptions = optionTexts.map((text, idx) => {
-      const opt: { id: number; text: string; isCorrect?: boolean } = {
-        id: idx + 1,
-        text
-      };
-      if (correctOptionId !== undefined) {
-        opt.isCorrect = (idx + 1 === correctOptionId);
+    const existing = (this.mockPolls$.getValue().get(code) || []).find(p => p.id === pollId);
+    const pollType = existing?.type;
+    // Short answer / matching keep their answer key; only the question text is editable here
+    const questionOnly = pollType === 'short_answer' || pollType === 'matching';
+    // Multi-answer questions keep their per-option correctness flags (matched by position)
+    const keepFlags = pollType === 'multi_select';
+
+    let cleanOptions: { id: number; text: string; isCorrect?: boolean }[] = existing?.options || [];
+    let effectiveCorrectId: number | undefined = correctOptionId;
+    let multiIds: number[] = [];
+    if (!questionOnly) {
+      cleanOptions = optionTexts.map((text, idx) => {
+        const opt: { id: number; text: string; isCorrect?: boolean } = {
+          id: idx + 1,
+          text
+        };
+        if (keepFlags) {
+          opt.isCorrect = !!existing?.options?.[idx]?.isCorrect;
+        } else if (correctOptionId !== undefined) {
+          opt.isCorrect = (idx + 1 === correctOptionId);
+        }
+        return opt;
+      });
+      if (keepFlags) {
+        multiIds = cleanOptions.filter(o => o.isCorrect).map(o => o.id);
+        effectiveCorrectId = multiIds[0];
       }
-      return opt;
-    });
-    const changes: any = { question, options: cleanOptions, correctOptionId: correctOptionId !== undefined ? correctOptionId : deleteField() };
+    }
+
+    const changes: any = { question };
+    const roomChanges: any = { 'activePoll.question': question };
+    if (!questionOnly) {
+      const correctValue = effectiveCorrectId !== undefined ? effectiveCorrectId : deleteField();
+      changes.options = cleanOptions;
+      changes.correctOptionId = correctValue;
+      roomChanges['activePoll.options'] = cleanOptions;
+      roomChanges['activePoll.correctOptionId'] = correctValue;
+      if (keepFlags) {
+        const idsValue = multiIds.length > 0 ? multiIds : deleteField();
+        changes.correctOptionIds = idsValue;
+        roomChanges['activePoll.correctOptionIds'] = idsValue;
+      }
+    }
 
     if (this.firestore) {
       try {
         await updateDoc(doc(this.firestore, `rooms/${code}/polls/${pollId}`), changes);
         const room = await this.getRoom(code);
         if (room?.activePollId === pollId) {
-          await updateDoc(doc(this.firestore, `rooms/${code}`), {
-            'activePoll.question': question,
-            'activePoll.options': cleanOptions,
-            'activePoll.correctOptionId': correctOptionId !== undefined ? correctOptionId : deleteField()
-          });
+          await updateDoc(doc(this.firestore, `rooms/${code}`), roomChanges);
         }
       } catch (err) {
         console.warn('[Mati] Firebase updatePoll error:', err);
@@ -761,9 +823,16 @@ export class MatiPollService {
     }
 
     const applyLocal = (p: Poll): Poll => {
-      const next: Poll = { ...p, question, options: cleanOptions };
-      if (correctOptionId !== undefined) next.correctOptionId = correctOptionId;
-      else delete next.correctOptionId;
+      const next: Poll = { ...p, question };
+      if (!questionOnly) {
+        next.options = cleanOptions;
+        if (effectiveCorrectId !== undefined) next.correctOptionId = effectiveCorrectId;
+        else delete next.correctOptionId;
+        if (keepFlags) {
+          if (multiIds.length > 0) next.correctOptionIds = multiIds;
+          else delete next.correctOptionIds;
+        }
+      }
       return next;
     };
     const pollsMap = this.mockPolls$.getValue();
@@ -779,7 +848,6 @@ export class MatiPollService {
       this.currentRoom.set({ ...room });
     }
   }
-
   /**
    * Step 2: createPoll(roomCode: string, question: string, options: string[])
    * Appends poll to sub-collection.
@@ -833,13 +901,66 @@ export class MatiPollService {
     return newPoll;
   }
 
+  /** Builds a Firestore-safe poll of any supported type from import / clone input. */
+  private buildPollFromInput(q: NewPollInput, pollId: string, order: number): Poll {
+    const pollType: PollType = q.pollType || 'multiple_choice';
+    const optionBased = pollType !== 'short_answer' && pollType !== 'matching';
+    const correctIndices = q.correctOptionIndices && q.correctOptionIndices.length > 0
+      ? q.correctOptionIndices
+      : (q.correctOptionIndex !== undefined ? [q.correctOptionIndex] : []);
+    const correctIds = correctIndices.map(i => i + 1);
+
+    const poll: Poll = {
+      id: pollId,
+      question: q.question,
+      type: pollType,
+      order,
+      isLocked: false,
+      showResults: false,
+      showCorrectAnswer: false,
+      options: q.options.map((text, idx) => ({
+        id: idx + 1,
+        text,
+        ...(optionBased && correctIds.length > 0 ? { isCorrect: correctIds.includes(idx + 1) } : {})
+      }))
+    };
+
+    if (optionBased && correctIds.length > 0) {
+      poll.correctOptionId = correctIds[0];
+      if (pollType === 'multi_select') poll.correctOptionIds = correctIds;
+    }
+    if (pollType === 'short_answer') {
+      poll.acceptedAnswers = q.acceptedAnswers || [];
+      poll.caseSensitive = !!q.caseSensitive;
+    }
+    if (pollType === 'matching') {
+      poll.matchPairs = (q.matchPairs || []).map((p, i) => ({ id: i + 1, prompt: p.prompt, answer: p.answer }));
+    }
+    return this.sanitizePollForFirestore(poll);
+  }
+
+  /** Converts a stored poll back into creation input (used when cloning a room). */
+  private pollToInput(p: Poll): NewPollInput {
+    const optionBased = p.type !== 'short_answer' && p.type !== 'matching';
+    const correctIds = optionBased ? getCorrectOptionIds(p) : [];
+    return {
+      question: p.question,
+      options: (p.options || []).map(o => o.text),
+      pollType: p.type,
+      correctOptionIndices: correctIds.length > 0 ? correctIds.map(id => id - 1) : undefined,
+      acceptedAnswers: p.acceptedAnswers,
+      caseSensitive: p.caseSensitive,
+      matchPairs: p.matchPairs?.map(m => ({ prompt: m.prompt, answer: m.answer }))
+    };
+  }
+
   /**
    * Batch append multiple parsed questions to a room with high-performance writeBatch
    * and live progress callback for large question sets (CSV / Moodle XML).
    */
   async createPollsBatch(
     roomCode: string, 
-    questions: { question: string; options: string[]; correctOptionIndex?: number }[],
+    questions: NewPollInput[],
     onProgress?: (current: number, total: number) => void
   ): Promise<number> {
     const code = normalizeRoomCode(roomCode);
@@ -863,23 +984,7 @@ export class MatiPollService {
       for (const q of chunk) {
         const pollId = 'poll_' + Math.random().toString(36).substring(2, 9);
         if (!firstPollId) firstPollId = pollId;
-        const correctOptionId = (q.correctOptionIndex !== undefined) ? q.correctOptionIndex + 1 : undefined;
-
-        const newPoll: Poll = this.sanitizePollForFirestore({
-          id: pollId,
-          question: q.question,
-          type: 'multiple_choice',
-          order: order++,
-          isLocked: false,
-          showResults: false,
-          showCorrectAnswer: false,
-          options: q.options.map((text, idx) => ({
-            id: idx + 1,
-            text,
-            ...(correctOptionId !== undefined ? { isCorrect: idx + 1 === correctOptionId } : {})
-          })),
-          ...(correctOptionId !== undefined ? { correctOptionId } : {})
-        });
+        const newPoll: Poll = this.buildPollFromInput(q, pollId, order++);
 
         newPolls.push(newPoll);
 
@@ -1628,29 +1733,37 @@ export class MatiPollService {
       const optCounts: { [optId: number]: number } = {};
       for (const opt of p.options) optCounts[opt.id] = 0;
       for (const v of voteList) {
-        if (optCounts[v.optionId] !== undefined) {
-          optCounts[v.optionId]++;
+        const picked = (v.optionIds && v.optionIds.length > 0) ? v.optionIds : [v.optionId];
+        for (const id of picked) {
+          if (optCounts[id] !== undefined) {
+            optCounts[id]++;
+          }
         }
       }
 
+      const isScored = isScoredPoll(p);
+      const optionBased = p.type !== 'short_answer' && p.type !== 'matching';
       const correctOptionId = p.correctOptionId;
-      const correctOption = correctOptionId ? p.options.find(o => o.id === correctOptionId) : undefined;
-      const correctVotes = correctOptionId ? (optCounts[correctOptionId] || 0) : 0;
+      const correctVotes = isScored ? voteList.filter(v => evaluateVote(p, v)).length : 0;
       const correctPercentage = qTotalVotes > 0 ? Math.round((correctVotes / qTotalVotes) * 100) : 0;
 
-      let winningOpt = p.options[0] || { id: 1, text: '' };
-      let maxOptVotes = -1;
-      for (const opt of p.options) {
-        const c = optCounts[opt.id] || 0;
-        if (c > maxOptVotes) {
-          maxOptVotes = c;
-          winningOpt = opt;
+      let winningOpt = optionBased ? (p.options[0] || { id: 1, text: '' }) : { id: 0, text: '' };
+      let maxOptVotes = optionBased ? -1 : 0;
+      if (optionBased) {
+        for (const opt of p.options) {
+          const c = optCounts[opt.id] || 0;
+          if (c > maxOptVotes) {
+            maxOptVotes = c;
+            winningOpt = opt;
+          }
         }
       }
-      const winningPercentage = qTotalVotes > 0 ? Math.round((maxOptVotes / qTotalVotes) * 100) : 0;
+      const winningPercentage = optionBased
+        ? (qTotalVotes > 0 ? Math.round((maxOptVotes / qTotalVotes) * 100) : 0)
+        : correctPercentage;
       consensusSum += winningPercentage;
 
-      if (correctOptionId !== undefined) {
+      if (isScored) {
         totalScoredQuestions++;
         totalScoredVotes += qTotalVotes;
         totalCorrectVotes += correctVotes;
@@ -1660,9 +1773,13 @@ export class MatiPollService {
         pollId: p.id,
         order: p.order || (idx + 1),
         question: p.question,
+        type: p.type,
+        isScored,
         totalVotes: qTotalVotes,
         correctOptionId,
-        correctOptionText: correctOption?.text,
+        correctOptionText: isScored ? describeCorrectAnswer(p) : undefined,
+        correctAnswerText: isScored ? describeCorrectAnswer(p) : undefined,
+        textResponses: p.type === 'short_answer' ? this.aggregateTextResponses(p, voteList) : undefined,
         correctVotes,
         correctPercentage,
         winningOptionId: winningOpt.id,
@@ -1673,7 +1790,7 @@ export class MatiPollService {
           text: opt.text,
           votes: optCounts[opt.id] || 0,
           percentage: qTotalVotes > 0 ? Math.round(((optCounts[opt.id] || 0) / qTotalVotes) * 100) : 0,
-          isCorrect: correctOptionId !== undefined ? (opt.id === correctOptionId) : false
+          isCorrect: isScored && optionBased ? isCorrectOption(p, opt.id) : false
         }))
       });
     }
@@ -1693,7 +1810,7 @@ export class MatiPollService {
     for (let idx = 0; idx < polls.length; idx++) {
       const p = polls[idx];
       const voteList = voteListPerPoll[idx] || votesMap.get(`${code}_${p.id}`) || [];
-      const hasCorrect = p.correctOptionId !== undefined;
+      const hasCorrect = isScoredPoll(p);
 
       for (const v of voteList) {
         let entry = participantMap.get(v.voterId);
@@ -1713,7 +1830,7 @@ export class MatiPollService {
         entry.totalAnswered++;
         const spent = (typeof v.timeSpentSeconds === 'number' && v.timeSpentSeconds > 0) ? v.timeSpentSeconds : 6.0;
         entry.totalTimeSeconds += spent;
-        if (hasCorrect && v.optionId === p.correctOptionId) {
+        if (hasCorrect && evaluateVote(p, v)) {
           entry.correctAnswers++;
         }
       }
@@ -1779,12 +1896,33 @@ export class MatiPollService {
     voterName?: string,
     timeSpentSeconds?: number
   ): Promise<void> {
+    return this.submitAnswer(roomCode, pollId, voterId, { optionIds: [optionId] }, voterName, timeSpentSeconds);
+  }
+
+  /**
+   * Records an answer of any question type (single/multiple options, typed text, or matching pairs).
+   * One voter keeps one answer per poll; submitting again replaces the previous one.
+   */
+  async submitAnswer(
+    roomCode: string,
+    pollId: string,
+    voterId: string,
+    answer: PollAnswer,
+    voterName?: string,
+    timeSpentSeconds?: number
+  ): Promise<void> {
     const code = normalizeRoomCode(roomCode);
     const voteKey = `${code}_${pollId}`;
+    const optionIds = Array.from(new Set(answer.optionIds || [])).sort((a, b) => a - b);
+    const textAnswer = (answer.textAnswer || '').trim();
+    const optionId = optionIds[0] ?? 0;
     const newVote: Vote = {
       voterId,
       optionId,
       timestamp: new Date().toISOString(),
+      ...(optionIds.length > 1 ? { optionIds } : {}),
+      ...(textAnswer ? { textAnswer } : {}),
+      ...(answer.matches && Object.keys(answer.matches).length > 0 ? { matches: { ...answer.matches } } : {}),
       ...(voterName ? { voterName } : {}),
       ...(timeSpentSeconds !== undefined ? { timeSpentSeconds } : {})
     };
@@ -1812,7 +1950,34 @@ export class MatiPollService {
     // Save voter record in localStorage for quick client check
     if (this.isBrowser) {
       localStorage.setItem(`mati_voted_${code}_${pollId}`, optionId.toString());
+      localStorage.setItem(`mati_answer_${code}_${pollId}`, JSON.stringify({
+        optionIds: optionIds.length > 0 ? optionIds : undefined,
+        textAnswer: textAnswer || undefined,
+        matches: newVote.matches
+      } as PollAnswer));
     }
+  }
+
+  /** Full answer this device submitted for a poll (any question type), if any. */
+  getSubmittedAnswer(roomCode: string, pollId: string): PollAnswer | null {
+    if (!this.isBrowser) return null;
+    const code = normalizeRoomCode(roomCode);
+    const raw = localStorage.getItem(`mati_answer_${code}_${pollId}`);
+    if (raw) {
+      try {
+        return JSON.parse(raw) as PollAnswer;
+      } catch { /* fall through to legacy value */ }
+    }
+    const legacy = this.getVotedOption(code, pollId);
+    return legacy !== null ? { optionIds: legacy > 0 ? [legacy] : [] } : null;
+  }
+
+  /** Forgets this device's stored answer so the participant can answer again. */
+  clearSubmittedAnswer(roomCode: string, pollId: string): void {
+    if (!this.isBrowser) return;
+    const code = normalizeRoomCode(roomCode);
+    localStorage.removeItem(`mati_voted_${code}_${pollId}`);
+    localStorage.removeItem(`mati_answer_${code}_${pollId}`);
   }
 
   /**
@@ -2190,9 +2355,12 @@ export class MatiPollService {
     });
 
     votes.forEach(vote => {
-      if (votesPerOption[vote.optionId] !== undefined) {
-        votesPerOption[vote.optionId]++;
-      }
+      const picked = (vote.optionIds && vote.optionIds.length > 0) ? vote.optionIds : [vote.optionId];
+      picked.forEach(id => {
+        if (votesPerOption[id] !== undefined) {
+          votesPerOption[id]++;
+        }
+      });
     });
 
     poll.options.forEach(opt => {
@@ -2200,14 +2368,49 @@ export class MatiPollService {
       percentages[opt.id] = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
     });
 
+    const scored = isScoredPoll(poll);
+    const correctCount = scored ? votes.filter(v => evaluateVote(poll, v)).length : undefined;
+
+    let pairStats: PollStats['pairStats'];
+    if (poll.type === 'matching' && poll.matchPairs) {
+      pairStats = poll.matchPairs.map(pair => {
+        const answered = votes.filter(v => v.matches && v.matches[String(pair.id)] !== undefined);
+        const correct = answered.filter(v =>
+          normalizeAnswerText(v.matches![String(pair.id)]) === normalizeAnswerText(pair.answer)
+        ).length;
+        return { pairId: pair.id, prompt: pair.prompt, answer: pair.answer, correct, total: totalVotes };
+      });
+    }
+
     return {
       poll,
       totalVotes,
       votesPerOption,
       percentages,
       timerDuration,
-      timerEndsAt
+      timerEndsAt,
+      correctCount,
+      correctPercentage: correctCount !== undefined && totalVotes > 0 ? Math.round((correctCount / totalVotes) * 100) : undefined,
+      textResponses: poll.type === 'short_answer' ? this.aggregateTextResponses(poll, votes) : undefined,
+      pairStats
     };
+  }
+
+  /** Groups typed answers (case/space-insensitive) and marks the ones matching the answer key. */
+  private aggregateTextResponses(poll: Poll, votes: Vote[]): { text: string; count: number; isCorrect: boolean }[] {
+    const groups = new Map<string, { text: string; count: number; isCorrect: boolean }>();
+    for (const v of votes) {
+      const raw = (v.textAnswer || '').replace(/\s+/g, ' ').trim();
+      if (!raw) continue;
+      const key = normalizeAnswerText(raw, !!poll.caseSensitive);
+      const existing = groups.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        groups.set(key, { text: raw, count: 1, isCorrect: evaluateVote(poll, v) });
+      }
+    }
+    return Array.from(groups.values()).sort((a, b) => b.count - a.count);
   }
 
   async getRoom(roomCode: string): Promise<Room | null> {

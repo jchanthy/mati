@@ -16,6 +16,7 @@ import { MatiPollService } from '../../services/mati-poll.service';
 import { AuthService } from '../../services/auth.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
 import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser';
+import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } from '../../utils/poll-answer';
 
 @Component({
   selector: 'app-admin-poll-control',
@@ -497,25 +498,52 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
               <!-- Live Options Breakdown Bars -->
               <div class="space-y-2.5">
                 @if (currentPoll()) {
+                  @if (currentPoll()!.type === 'short_answer') {
+                    <div class="space-y-1.5">
+                      @for (r of stats()?.textResponses || []; track r.text) {
+                        <div class="p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs font-semibold"
+                          [ngClass]="showCorrectAnswer && r.isCorrect
+                            ? 'bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-500 text-emerald-900 dark:text-emerald-100'
+                            : 'bg-gray-50/70 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200'">
+                          <span class="break-words">{{ r.text }}</span>
+                          <span class="font-mono font-bold shrink-0">{{ r.count }}×</span>
+                        </div>
+                      } @empty {
+                        <div class="text-xs text-gray-500 text-center py-2">No answers yet</div>
+                      }
+                      @if (isScored(currentPoll())) {
+                        <div class="text-[11px] text-gray-500">Accepted: <strong>{{ correctText(currentPoll()) }}</strong></div>
+                      }
+                    </div>
+                  } @else if (currentPoll()!.type === 'matching') {
+                    <div class="space-y-1.5">
+                      @for (ps of stats()?.pairStats || []; track ps.pairId) {
+                        <div class="p-2.5 rounded-xl border bg-gray-50/70 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2 text-xs font-semibold text-gray-800 dark:text-gray-200">
+                          <span class="break-words">{{ ps.prompt }} → <strong class="text-emerald-700 dark:text-emerald-300">{{ ps.answer }}</strong></span>
+                          <span class="font-mono font-bold shrink-0">{{ pairPercent(ps) }}% ({{ ps.correct }}/{{ ps.total }})</span>
+                        </div>
+                      }
+                    </div>
+                  } @else {
                   @for (opt of currentPoll()!.options; track opt.id) {
                     <div 
                       class="p-3 rounded-xl border space-y-1.5 transition-all"
-                      [ngClass]="showCorrectAnswer && currentPoll()?.correctOptionId === opt.id 
+                      [ngClass]="showCorrectAnswer && isCorrectOpt(currentPoll(), opt.id) 
                         ? 'bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-500 dark:border-emerald-600 ring-2 ring-emerald-500/30' 
                         : 'bg-gray-50/70 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800'">
                       <div class="flex justify-between items-center text-xs font-semibold">
                         <span class="text-gray-800 dark:text-gray-200 flex items-center gap-2">
                           <span 
                             class="w-5 h-5 rounded-md text-[11px] font-bold flex items-center justify-center border shadow-2xs"
-                            [ngClass]="showCorrectAnswer && currentPoll()?.correctOptionId === opt.id
+                            [ngClass]="showCorrectAnswer && isCorrectOpt(currentPoll(), opt.id)
                               ? 'bg-emerald-600 text-white border-emerald-600'
                               : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600'">
                             {{ opt.id }}
                           </span>
-                          <span [ngClass]="showCorrectAnswer && currentPoll()?.correctOptionId === opt.id ? 'font-bold text-emerald-900 dark:text-emerald-100' : ''">
+                          <span [ngClass]="showCorrectAnswer && isCorrectOpt(currentPoll(), opt.id) ? 'font-bold text-emerald-900 dark:text-emerald-100' : ''">
                             {{ opt.text }}
                           </span>
-                          @if (currentPoll()?.correctOptionId === opt.id) {
+                          @if (isCorrectOpt(currentPoll(), opt.id)) {
                             @if (showCorrectAnswer) {
                               <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white flex items-center gap-1 shadow-2xs">
                                 <i class="pi pi-check text-[9px]"></i> Correct Answer
@@ -525,18 +553,19 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
                             }
                           }
                         </span>
-                        <span class="font-bold font-mono" [ngClass]="showCorrectAnswer && currentPoll()?.correctOptionId === opt.id ? 'text-emerald-700 dark:text-emerald-300' : 'text-indigo-600 dark:text-indigo-400'">
+                        <span class="font-bold font-mono" [ngClass]="showCorrectAnswer && isCorrectOpt(currentPoll(), opt.id) ? 'text-emerald-700 dark:text-emerald-300' : 'text-indigo-600 dark:text-indigo-400'">
                           {{ stats()?.votesPerOption?.[opt.id] || 0 }} ({{ stats()?.percentages?.[opt.id] || 0 }}%)
                         </span>
                       </div>
                       <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
                         <div 
                           class="h-2 rounded-full transition-all duration-500" 
-                          [ngClass]="(showCorrectAnswer && currentPoll()?.correctOptionId === opt.id) || currentPoll()?.correctOptionId === opt.id ? 'bg-emerald-500' : 'bg-indigo-600'"
+                          [ngClass]="(showCorrectAnswer && isCorrectOpt(currentPoll(), opt.id)) || isCorrectOpt(currentPoll(), opt.id) ? 'bg-emerald-500' : 'bg-indigo-600'"
                           [style.width.%]="stats()?.percentages?.[opt.id] || 0">
                         </div>
                       </div>
                     </div>
+                  }
                   }
                 }
               </div>
@@ -585,7 +614,7 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
                     </button>
 
                     <!-- Show / Hide Correct Answer (Presenter Action) -->
-                    @if (currentPoll()?.correctOptionId !== undefined) {
+                    @if (isScored(currentPoll())) {
                       <button 
                         type="button" 
                         (click)="toggleCorrectAnswer()"
@@ -831,7 +860,7 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
                   <!-- Bottom row: Metadata on left + Action icons on right -->
                   <div class="flex items-center justify-between gap-2 pl-8">
                     <div class="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1.5">
-                      <span>{{ (p.options || []).length }} options {{ p.correctOptionId !== undefined ? '• Scored' : '' }}</span>
+                      <span>{{ typeLabel(p) }}{{ (p.options || []).length ? ' · ' + (p.options || []).length + ' options' : '' }}{{ isScored(p) ? ' • Scored' : '' }}</span>
                       @if (p.isLocked) {
                         <span class="text-[10px] font-semibold text-red-600 dark:text-red-400">• Locked</span>
                       }
@@ -910,14 +939,27 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
             <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Question</label>
             <input pInputText type="text" [(ngModel)]="newPollQuestion" placeholder="e.g. Which technology stack do you prefer?" class="w-full" />
           </div>
+          @if (editingPollType === 'short_answer' || editingPollType === 'matching') {
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Only the question text can be edited for this question type. The answer key imported from Moodle is kept as is.
+            </p>
+          } @else {
+          @if (editingPollType === 'multi_select') {
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Multiple-answer question: the correct options are kept by position. Edit the wording of each option, one per line.
+            </p>
+          }
           <div>
             <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Options (One per line)</label>
             <textarea [(ngModel)]="newPollOptionsRaw" rows="4" placeholder="Option 1&#10;Option 2&#10;Option 3&#10;Option 4" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
           </div>
+          @if (editingPollType !== 'multi_select') {
           <div>
             <label class="block text-xs font-bold uppercase text-gray-600 dark:text-gray-300 mb-1">Correct Option Number (Optional, 1-based)</label>
             <input pInputText type="number" [(ngModel)]="newPollCorrectIndex" placeholder="e.g. 1" class="w-full" />
           </div>
+          }
+          }
         </div>
         <ng-template pTemplate="footer">
           <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="showNewPollDialog = false"></button>
@@ -1038,9 +1080,9 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
                       </span>
                     </div>
                     <div class="text-[11px] text-gray-500 mt-0.5">
-                      {{ p.options.length }} choices
-                      @if (p.correctOptionId !== undefined) {
-                        • <span class="text-emerald-600 font-semibold">Scored (Option #{{ p.correctOptionId }})</span>
+                      {{ typeLabel(p) }}{{ p.options.length ? ' · ' + p.options.length + ' choices' : '' }}
+                      @if (isScored(p)) {
+                        • <span class="text-emerald-600 font-semibold">Scored</span>
                       }
                     </div>
                   </div>
@@ -1136,7 +1178,7 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
                 </div>
 
                 <div class="flex items-center gap-2 text-xs">
-                  @if (q.correctOptionId !== undefined) {
+                  @if (q.isScored) {
                     <span class="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
                       ✓ Correct: {{ q.correctOptionText }} ({{ q.correctPercentage }}% correct)
                     </span>
@@ -1169,6 +1211,13 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
                           [ngClass]="opt.isCorrect ? 'bg-emerald-500' : (opt.id === q.winningOptionId ? 'bg-indigo-600' : 'bg-gray-400')">
                         </div>
                       </div>
+                    </div>
+                  }
+                  @for (r of q.textResponses || []; track r.text) {
+                    <div class="p-2 rounded-lg border text-xs flex items-center justify-between gap-2"
+                      [ngClass]="r.isCorrect ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-bold' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200'">
+                      <span class="break-words">{{ r.text }}</span>
+                      <span class="font-mono font-bold shrink-0">{{ r.count }}×</span>
                     </div>
                   }
                 </div>
@@ -1287,6 +1336,20 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
             <textarea [(ngModel)]="xmlContent" (ngModelChange)="onXmlContentChange()" rows="5" placeholder="Paste CSV or Moodle XML content here..." class="w-full p-3 font-mono text-xs rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"></textarea>
           </div>
 
+          @if (importSkipped().length > 0) {
+            <div class="p-3 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-xs text-amber-800 dark:text-amber-300 space-y-0.5">
+              <div class="font-bold flex items-center gap-1.5">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>{{ importSkippedTotal() }} question(s) skipped — type not supported yet</span>
+              </div>
+              <div>
+                @for (s of importSkipped(); track s.type; let last = $last) {
+                  <span class="font-mono">{{ s.type }} ×{{ s.count }}</span>@if (!last) {<span>, </span>}
+                }
+              </div>
+            </div>
+          }
+
           <!-- Parsed Preview -->
           @if (parsedQuestions.length > 0) {
             <div class="space-y-2">
@@ -1305,18 +1368,33 @@ import { QuestionImporter, ParsedQuestion } from '../../utils/moodle-xml-parser'
                     <div class="font-bold text-gray-900 dark:text-white flex items-start gap-1.5">
                       <span class="text-indigo-600 dark:text-indigo-400 font-black">{{ idx + 1 }}.</span>
                       <span class="flex-1">{{ q.question }}</span>
+                      <span class="shrink-0 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase tracking-wide">{{ parsedTypeLabel(q) }}</span>
                     </div>
+                    @if (q.pollType === 'short_answer') {
+                      <div class="text-gray-500 mt-2 flex flex-wrap gap-1.5">
+                        @for (a of q.acceptedAnswers || []; track a) {
+                          <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700">{{ a }}</span>
+                        }
+                      </div>
+                    } @else if (q.pollType === 'matching') {
+                      <div class="text-gray-600 dark:text-gray-300 mt-2 space-y-0.5">
+                        @for (m of q.matchPairs || []; track m.prompt) {
+                          <div>{{ m.prompt }} <span class="text-emerald-700 dark:text-emerald-300 font-semibold">→ {{ m.answer }}</span></div>
+                        }
+                      </div>
+                    } @else {
                     <div class="text-gray-500 mt-2 flex flex-wrap gap-1.5">
                       @for (opt of q.options; track opt; let optIdx = $index) {
                         <span class="px-2 py-0.5 rounded-md flex items-center gap-1"
-                          [ngClass]="optIdx === q.correctOptionIndex ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
-                          @if (optIdx === q.correctOptionIndex) {
+                          [ngClass]="isParsedCorrect(q, optIdx) ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
+                          @if (isParsedCorrect(q, optIdx)) {
                             <i class="pi pi-check text-[10px]"></i>
                           }
                           <span>{{ opt }}</span>
                         </span>
                       }
                     </div>
+                    }
                   </div>
                 }
               </div>
@@ -1543,6 +1621,9 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   parsedQuestions: ParsedQuestion[] = [];
   uploadedFileName = signal<string | null>(null);
   detectedFormat = signal<'csv' | 'xml' | null>(null);
+  /** Moodle question types found in the file that MATI cannot import yet. */
+  importSkipped = signal<{ type: string; count: number }[]>([]);
+  importSkippedTotal = computed(() => this.importSkipped().reduce((sum, s) => sum + s.count, 0));
 
   openImportDialog() {
     this.showImportDialog = true;
@@ -1550,6 +1631,7 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.parsedQuestions = [];
     this.uploadedFileName.set(null);
     this.detectedFormat.set(null);
+    this.importSkipped.set([]);
   }
 
   onFileSelected(event: any) {
@@ -1567,14 +1649,17 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   onXmlContentChange() {
     if (!this.xmlContent.trim()) {
       this.parsedQuestions = [];
+      this.importSkipped.set([]);
       return;
     }
     try {
       const result = QuestionImporter.parse(this.xmlContent, this.uploadedFileName() || undefined);
       this.detectedFormat.set(result.format);
       this.parsedQuestions = result.questions;
+      this.importSkipped.set(result.skipped || []);
     } catch (err: any) {
       this.parsedQuestions = [];
+      this.importSkipped.set([]);
     }
   }
 
@@ -1793,6 +1878,8 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   newPollOptionsRaw = 'Option 1\nOption 2\nOption 3\nOption 4';
   newPollCorrectIndex: number | null = null;
   editingPollId: string | null = null;
+  /** Type of the question being edited (answer key editing depends on it). */
+  editingPollType: Poll['type'] | null = null;
 
   roomCode = signal<string>('MATI01');
   allRooms = signal<Room[]>([]);
@@ -2180,6 +2267,20 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   async createNewPoll() {
     if (!this.newPollQuestion.trim()) return;
+
+    // Short answer / matching keep their imported answer key; only the wording changes
+    if (this.editingPollId && (this.editingPollType === 'short_answer' || this.editingPollType === 'matching')) {
+      await this.pollService.updatePoll(this.roomCode(), this.editingPollId, this.newPollQuestion.trim(), []);
+      this.showNewPollDialog = false;
+      this.resetPollForm();
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Question Updated ✅',
+        detail: 'Changes saved.'
+      });
+      return;
+    }
+
     const opts = this.newPollOptionsRaw
       .split('\n')
       .map(o => o.trim())
@@ -2229,14 +2330,46 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
 
   openEditPoll(p: Poll) {
     this.editingPollId = p.id;
+    this.editingPollType = p.type || 'multiple_choice';
     this.newPollQuestion = p.question;
     this.newPollOptionsRaw = p.options.map(o => o.text).join('\n');
     this.newPollCorrectIndex = p.correctOptionId ?? null;
     this.showNewPollDialog = true;
   }
 
+  isScored(poll: Poll | null | undefined): boolean {
+    return isScoredPoll(poll);
+  }
+
+  isCorrectOpt(poll: Poll | null | undefined, optionId: number): boolean {
+    return !!poll && isCorrectOption(poll, optionId);
+  }
+
+  correctText(poll: Poll | null | undefined): string {
+    return poll ? describeCorrectAnswer(poll) : '';
+  }
+
+  typeLabel(poll: Poll): string {
+    return pollTypeLabel(poll.type);
+  }
+
+  pairPercent(pair: { correct: number; total: number }): number {
+    return pair.total > 0 ? Math.round((pair.correct / pair.total) * 100) : 0;
+  }
+
+  isParsedCorrect(q: ParsedQuestion, optionIndex: number): boolean {
+    return q.correctOptionIndices && q.correctOptionIndices.length > 0
+      ? q.correctOptionIndices.includes(optionIndex)
+      : optionIndex === q.correctOptionIndex;
+  }
+
+  parsedTypeLabel(q: ParsedQuestion): string {
+    return pollTypeLabel(q.pollType);
+  }
+
   resetPollForm() {
     this.editingPollId = null;
+    this.editingPollType = null;
     this.newPollQuestion = '';
     this.newPollOptionsRaw = 'Option 1\nOption 2\nOption 3\nOption 4';
     this.newPollCorrectIndex = null;

@@ -6,12 +6,14 @@ import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService, normalizeRoomCode } from '../../services/mati-poll.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
+import { AnswerInputComponent } from '../../components/answer-input.component';
+import { PollAnswer, describeCorrectAnswer, evaluateAnswer, isComplexPoll, isCorrectOption, isScoredPoll } from '../../utils/poll-answer';
 
 
 @Component({
   selector: 'app-student-view',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, AnswerInputComponent],
   template: `
     <div class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between max-w-md mx-auto shadow-2xl relative">
       <!-- Mobile Top Bar -->
@@ -490,10 +492,10 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                             {{ p.question }}
                           </span>
                         </div>
-                        @if (p.correctOptionId !== undefined) {
+                        @if (isScored(p) && hasVotedFor(p.id)) {
                           <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase shrink-0 border"
-                            [ngClass]="getVotedOptionFor(p.id) === p.correctOptionId ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' : 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800'">
-                            {{ getVotedOptionFor(p.id) === p.correctOptionId ? '✓ Correct' : '✗ Incorrect' }}
+                            [ngClass]="isMyAnswerCorrect(p) ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' : 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800'">
+                            {{ isMyAnswerCorrect(p) ? '✓ Correct' : '✗ Incorrect' }}
                           </span>
                         } @else if (hasVotedFor(p.id)) {
                           <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
@@ -503,30 +505,40 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                       </div>
 
                       <!-- Options List Review -->
+                      @if (p.type === 'short_answer' || p.type === 'matching') {
+                        <div class="text-[11px] p-2.5 rounded-xl border space-y-1"
+                          [ngClass]="!isScored(p) ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400' : (isMyAnswerCorrect(p) ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200' : 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200')">
+                          <div><span class="font-bold">Your answer:</span> {{ answerSummary(p) }}</div>
+                          @if (isScored(p)) {
+                            <div><span class="font-bold">Correct answer:</span> {{ correctText(p) }}</div>
+                          }
+                        </div>
+                      } @else {
                       <div class="space-y-1 pt-1">
                         @for (opt of p.options; track opt.id) {
                           <div class="text-[11px] p-2 rounded-xl flex items-center justify-between border"
                             [ngClass]="{
-                              'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold': p.correctOptionId === opt.id,
-                              'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200 font-medium': getVotedOptionFor(p.id) === opt.id && p.correctOptionId !== opt.id && p.correctOptionId !== undefined,
-                              'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 font-bold': p.correctOptionId === undefined && getVotedOptionFor(p.id) === opt.id,
-                              'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400': (p.correctOptionId !== opt.id || p.correctOptionId === undefined) && getVotedOptionFor(p.id) !== opt.id
+                              'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold': isScored(p) && isCorrectOpt(p, opt.id),
+                              'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200 font-medium': votedHas(p.id, opt.id) && isScored(p) && !isCorrectOpt(p, opt.id),
+                              'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 font-bold': !isScored(p) && votedHas(p.id, opt.id),
+                              'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400': !(isScored(p) && isCorrectOpt(p, opt.id)) && !votedHas(p.id, opt.id)
                             }">
                             <div class="flex items-center gap-1.5 min-w-0">
                               <span class="font-bold">{{ opt.id }}.</span>
                               <span class="truncate">{{ opt.text }}</span>
                             </div>
                             <div class="flex items-center gap-1 shrink-0 font-bold">
-                              @if (getVotedOptionFor(p.id) === opt.id) {
+                              @if (votedHas(p.id, opt.id)) {
                                 <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">Your choice</span>
                               }
-                              @if (p.correctOptionId === opt.id) {
+                              @if (isScored(p) && isCorrectOpt(p, opt.id)) {
                                 <i class="pi pi-check text-emerald-600 dark:text-emerald-400"></i>
                               }
                             </div>
                           </div>
                         }
                       </div>
+                      }
                     </div>
                   }
                 </div>
@@ -557,8 +569,8 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                           <div class="p-2 rounded-xl border bg-white dark:bg-slate-900 text-xs space-y-1"
                             [ngClass]="{
                               'border-emerald-500/70 bg-emerald-50/50 dark:bg-emerald-950/20': opt.isCorrect,
-                              'border-indigo-400/60 bg-indigo-50/30 dark:bg-indigo-950/20': !opt.isCorrect && getVotedOptionFor(q.pollId) === opt.id,
-                              'border-slate-200 dark:border-slate-800': !opt.isCorrect && getVotedOptionFor(q.pollId) !== opt.id
+                              'border-indigo-400/60 bg-indigo-50/30 dark:bg-indigo-950/20': !opt.isCorrect && votedHas(q.pollId, opt.id),
+                              'border-slate-200 dark:border-slate-800': !opt.isCorrect && !votedHas(q.pollId, opt.id)
                             }">
                             <div class="flex items-center justify-between gap-1">
                               <div class="flex items-center gap-1.5 min-w-0">
@@ -566,7 +578,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                                 <span class="truncate font-medium text-slate-800 dark:text-slate-200" [ngClass]="opt.isCorrect ? 'font-bold text-emerald-900 dark:text-emerald-200' : ''">
                                   {{ opt.text }}
                                 </span>
-                                @if (getVotedOptionFor(q.pollId) === opt.id) {
+                                @if (votedHas(q.pollId, opt.id)) {
                                   <span class="text-[9px] uppercase tracking-wider px-1 py-0.2 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 shrink-0 font-bold">You</span>
                                 }
                                 @if (opt.isCorrect) {
@@ -581,9 +593,15 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                             <div class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                               <div class="h-full rounded-full transition-all duration-300"
                                 [style.width.%]="opt.percentage"
-                                [ngClass]="opt.isCorrect ? 'bg-emerald-500' : (getVotedOptionFor(q.pollId) === opt.id ? 'bg-indigo-600' : 'bg-slate-400')">
+                                [ngClass]="opt.isCorrect ? 'bg-emerald-500' : (votedHas(q.pollId, opt.id) ? 'bg-indigo-600' : 'bg-slate-400')">
                               </div>
                             </div>
+                          </div>
+                        }
+                        @if ((q.type === 'short_answer' || q.type === 'matching') && q.isScored) {
+                          <div class="p-2 rounded-xl border border-emerald-300/70 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs space-y-0.5">
+                            <div class="font-bold text-emerald-900 dark:text-emerald-200">Correct answer: {{ q.correctAnswerText }}</div>
+                            <div class="text-slate-600 dark:text-slate-400">{{ q.correctPercentage }}% answered correctly</div>
                           </div>
                         }
                       </div>
@@ -684,8 +702,22 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   {{ sPoll.question }}
                 </h2>
 
+                <!-- Multi-answer / short answer / matching -->
+                @if (isComplexPoll(sPoll)) {
+                  @if (hasVotedFor(sPoll.id)) {
+                    <div class="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Your answer: <span class="text-indigo-600 dark:text-indigo-400 font-bold">{{ answerSummary(sPoll) }}</span>
+                    </div>
+                  } @else {
+                    <app-answer-input
+                      [poll]="sPoll"
+                      [disabled]="isSubmitting() || !!sPoll.isLocked"
+                      (answered)="voteSurveyAnswer(sPoll.id, $event)" />
+                  }
+                }
+
                 <!-- Options -->
-                <div class="space-y-2.5">
+                <div class="space-y-2.5" [class.hidden]="isComplexPoll(sPoll)">
                   @for (opt of sPoll.options; track opt.id) {
                     <button
                       type="button"
@@ -858,24 +890,24 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
               </div>
 
               <div class="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-emerald-100 dark:border-emerald-900 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Selected choice: <span class="text-indigo-600 dark:text-indigo-400 font-bold">#{{ selectedOptionId() }}</span>
+                Your answer: <span class="text-indigo-600 dark:text-indigo-400 font-bold">{{ answerSummary(stats.poll) }}</span>
               </div>
 
               <!-- Correct Answer Result Banner (Live Quiz Mode) -->
-              @if (stats.poll.showCorrectAnswer && stats.poll.correctOptionId !== undefined) {
+              @if (stats.poll.showCorrectAnswer && isScored(stats.poll)) {
                 <div class="p-3.5 rounded-2xl border text-center space-y-1 animate-fadein shadow-xs"
-                  [ngClass]="selectedOptionId() === stats.poll.correctOptionId 
+                  [ngClass]="isMyAnswerCorrect(stats.poll) 
                     ? 'bg-emerald-100 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200' 
                     : 'bg-red-100 dark:bg-red-950/70 border-red-300 dark:border-red-700 text-red-900 dark:text-red-200'">
                   <div class="text-sm font-black flex items-center justify-center gap-1.5">
-                    @if (selectedOptionId() === stats.poll.correctOptionId) {
+                    @if (isMyAnswerCorrect(stats.poll)) {
                       <span>🎉 Correct Answer!</span>
                     } @else {
                       <span>❌ Incorrect</span>
                     }
                   </div>
                   <p class="text-xs opacity-90">
-                    Correct choice: <span class="font-bold underline">#{{ stats.poll.correctOptionId }}</span>
+                    Correct answer: <span class="font-bold underline">{{ correctText(stats.poll) }}</span>
                   </p>
                 </div>
               }
@@ -892,18 +924,18 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   <span>Live Audience Tally</span>
                   <span>{{ stats.totalVotes }} votes</span>
                 </div>
-                @for (opt of stats.poll.options; track opt.id) {
+                @for (opt of tallyOptions(stats.poll); track opt.id) {
                   <div class="space-y-1">
                     <div class="flex justify-between text-xs font-semibold">
                       <span class="flex items-center gap-1.5"
-                        [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                        [ngClass]="stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)
                           ? 'text-emerald-700 dark:text-emerald-300 font-bold'
-                          : (selectedOptionId() === opt.id ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-700 dark:text-slate-300')">
+                          : (votedHas(stats.poll.id, opt.id) ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-700 dark:text-slate-300')">
                         <span>{{ opt.text }}</span>
-                        @if (selectedOptionId() === opt.id) {
+                        @if (votedHas(stats.poll.id, opt.id)) {
                           <span class="text-[9px] uppercase px-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold">You</span>
                         }
-                        @if (stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id) {
+                        @if (stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)) {
                           <span class="text-[9px] uppercase px-1.5 py-0.2 rounded bg-emerald-600 text-white font-black">✓ Correct</span>
                         }
                       </span>
@@ -912,9 +944,9 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     <div class="h-2 w-full bg-slate-200/80 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div class="h-full rounded-full transition-all duration-500"
                         [style.width.%]="stats.percentages[opt.id] || 0"
-                        [ngClass]="stats.poll.showCorrectAnswer && stats.poll.correctOptionId === opt.id
+                        [ngClass]="stats.poll.showCorrectAnswer && isCorrectOpt(stats.poll, opt.id)
                           ? 'bg-emerald-500'
-                          : (selectedOptionId() === opt.id ? 'bg-indigo-600' : 'bg-slate-400 dark:bg-slate-600')">
+                          : (votedHas(stats.poll.id, opt.id) ? 'bg-indigo-600' : 'bg-slate-400 dark:bg-slate-600')">
                       </div>
                     </div>
                   </div>
@@ -938,7 +970,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                     <span>Audience Results</span>
                     <span>{{ stats.totalVotes }} votes</span>
                   </div>
-                  @for (opt of stats.poll.options; track opt.id) {
+                  @for (opt of tallyOptions(stats.poll); track opt.id) {
                     <div class="space-y-1">
                       <div class="flex justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
                         <span>{{ opt.text }}</span>
@@ -971,7 +1003,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                   <span>Audience Results</span>
                   <span>{{ stats.totalVotes }} votes</span>
                 </div>
-                @for (opt of stats.poll.options; track opt.id) {
+                @for (opt of tallyOptions(stats.poll); track opt.id) {
                   <div class="space-y-1">
                     <div class="flex justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
                       <span>{{ opt.text }}</span>
@@ -988,8 +1020,14 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
             </div>
           } @else {
             <!-- Interactive Choice Cards (Touch Friendly) -->
+            @if (isComplexPoll(stats.poll)) {
+              <app-answer-input
+                [poll]="stats.poll"
+                [disabled]="isSubmitting() || isTimeUp()"
+                (answered)="submitAnswer($event)" />
+            } @else {
             <div class="space-y-3">
-              @for (opt of stats.poll.options; track opt.id) {
+              @for (opt of tallyOptions(stats.poll); track opt.id) {
                 <button
                   type="button"
                   (click)="vote(opt.id)"
@@ -1006,6 +1044,7 @@ import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll
                 </button>
               }
             </div>
+            }
           }
         } @else {
           <!-- Waiting Screen (No active question launched yet or host hasn't started) -->
@@ -1180,6 +1219,8 @@ export class StudentViewComponent implements OnInit, OnDestroy {
   activeTab = signal<'live' | 'survey'>('live');
   selectedSurveyPollId = signal<string | null>(null);
   votedOptionsMap = signal<{ [pollId: string]: number }>({});
+  /** Full answers given from this device (any question type), keyed by poll id. */
+  answersMap = signal<{ [pollId: string]: PollAnswer }>({});
 
   voterId = signal<string>('');
   voterIdShort = signal<string>('');
@@ -1442,6 +1483,57 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.selectedSurveyPollId.set(pollId);
   }
 
+  isScored(poll: Poll): boolean {
+    return isScoredPoll(poll);
+  }
+
+  isComplexPoll(poll: Poll): boolean {
+    return isComplexPoll(poll);
+  }
+
+  isCorrectOpt(poll: Poll, optionId: number): boolean {
+    return isCorrectOption(poll, optionId);
+  }
+
+  /** Option list for the live tally; typed / matching answers have no per-option tally. */
+  tallyOptions(poll: Poll) {
+    return poll.type === 'short_answer' || poll.type === 'matching' ? [] : poll.options;
+  }
+
+  /** The answer this participant gave for a poll (any question type). */
+  answerFor(pollId: string): PollAnswer | null {
+    const inMap = this.answersMap()[pollId];
+    if (inMap) return inMap;
+    return this.pollService.getSubmittedAnswer(this.roomCode(), pollId);
+  }
+
+  votedHas(pollId: string, optionId: number): boolean {
+    return !!this.answerFor(pollId)?.optionIds?.includes(optionId);
+  }
+
+  isMyAnswerCorrect(poll: Poll): boolean {
+    return evaluateAnswer(poll, this.answerFor(poll.id));
+  }
+
+  correctText(poll: Poll): string {
+    return describeCorrectAnswer(poll);
+  }
+
+  /** Readable summary of the participant's own answer. */
+  answerSummary(poll: Poll): string {
+    const answer = this.answerFor(poll.id);
+    if (!answer) return '—';
+    if (poll.type === 'short_answer') return answer.textAnswer || '—';
+    if (poll.type === 'matching') {
+      return (poll.matchPairs || [])
+        .map(p => `${p.prompt} → ${answer.matches?.[String(p.id)] || '?'}`)
+        .join('; ') || '—';
+    }
+    const ids = answer.optionIds || [];
+    const texts = poll.options.filter(o => ids.includes(o.id)).map(o => o.text);
+    return texts.length > 0 ? texts.join(' + ') : '—';
+  }
+
   hasVotedFor(pollId: string): boolean {
     return this.getVotedOptionFor(pollId) !== null;
   }
@@ -1504,8 +1596,37 @@ export class StudentViewComponent implements OnInit, OnDestroy {
       const currentMap = { ...this.votedOptionsMap() };
       currentMap[pollId] = optionId;
       this.votedOptionsMap.set(currentMap);
+      this.answersMap.update(m => ({ ...m, [pollId]: { optionIds: [optionId] } }));
       
       // Auto-advance to next question if available
+      const list = this.polls();
+      const idx = this.getSurveyIndex(pollId);
+      if (idx < list.length - 1) {
+        setTimeout(() => {
+          this.selectedSurveyPollId.set(list[idx + 1].id);
+        }, 300);
+      }
+    } finally {
+      this.isSubmitting.set(false);
+    }
+  }
+
+  /** Survey mode: submit a multi-answer / short answer / matching response. */
+  async voteSurveyAnswer(pollId: string, answer: PollAnswer) {
+    if (this.isSubmitting()) return;
+    this.isSubmitting.set(true);
+    try {
+      await this.pollService.submitAnswer(
+        this.roomCode(),
+        pollId,
+        this.voterId(),
+        answer,
+        this.participantName(),
+        5.0
+      );
+      this.votedOptionsMap.update(m => ({ ...m, [pollId]: answer.optionIds?.[0] ?? 0 }));
+      this.answersMap.update(m => ({ ...m, [pollId]: answer }));
+
       const list = this.polls();
       const idx = this.getSurveyIndex(pollId);
       if (idx < list.length - 1) {
@@ -1522,6 +1643,12 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     const currentMap = { ...this.votedOptionsMap() };
     delete currentMap[pollId];
     this.votedOptionsMap.set(currentMap);
+    this.answersMap.update(m => {
+      const copy = { ...m };
+      delete copy[pollId];
+      return copy;
+    });
+    this.pollService.clearSubmittedAnswer(this.roomCode(), pollId);
   }
 
   private listenToRoomPolls(code: string) {
@@ -1649,6 +1776,7 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     this.selectedOptionId.set(optionId);
     this.hasVoted.set(true);
     this.votedOptionsMap.update(m => ({ ...m, [stats.poll.id]: optionId }));
+    this.answersMap.update(m => ({ ...m, [stats.poll.id]: { optionIds: [optionId] } }));
 
     const elapsedMs = this.questionShownAt() > 0 ? (Date.now() - this.questionShownAt()) : 5000;
     const timeSpentSeconds = Math.max(1, Math.round(elapsedMs / 100) / 10);
@@ -1670,11 +1798,48 @@ export class StudentViewComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Live mode: submit a multi-answer / short answer / matching response. */
+  async submitAnswer(answer: PollAnswer) {
+    const stats = this.pollStats();
+    if (!stats || stats.poll.isLocked || this.isTimeUp() || this.isSubmitting()) return;
+
+    const firstOption = answer.optionIds?.[0] ?? 0;
+    this.selectedOptionId.set(firstOption);
+    this.hasVoted.set(true);
+    this.votedOptionsMap.update(m => ({ ...m, [stats.poll.id]: firstOption }));
+    this.answersMap.update(m => ({ ...m, [stats.poll.id]: answer }));
+
+    const elapsedMs = this.questionShownAt() > 0 ? (Date.now() - this.questionShownAt()) : 5000;
+    const timeSpentSeconds = Math.max(1, Math.round(elapsedMs / 100) / 10);
+
+    this.isSubmitting.set(true);
+    try {
+      await this.pollService.submitAnswer(
+        this.roomCode(),
+        stats.poll.id,
+        this.voterId(),
+        answer,
+        this.participantName(),
+        timeSpentSeconds
+      );
+    } catch (err) {
+      console.error('[StudentView] Failed to submit answer:', err);
+    } finally {
+      this.isSubmitting.set(false);
+    }
+  }
+
   changeVote() {
     this.hasVoted.set(false);
     this.selectedOptionId.set(null);
     const pollId = this.pollStats()?.poll.id;
     if (pollId) {
+      this.answersMap.update(m => {
+        const copy = { ...m };
+        delete copy[pollId];
+        return copy;
+      });
+      this.pollService.clearSubmittedAnswer(this.roomCode(), pollId);
       this.votedOptionsMap.update(m => {
         const copy = { ...m };
         delete copy[pollId];

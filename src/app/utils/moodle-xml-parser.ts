@@ -1,35 +1,82 @@
+import { MatchPair, PollType } from '../models/poll.model';
+
 export interface ParsedQuestion {
   question: string;
   options: string[];
+  /** Index of the (first) correct option. Kept for single-choice compatibility. */
   correctOptionIndex?: number;
-  type?: 'multichoice' | 'truefalse' | 'shortanswer';
+  /** Indices of every correct option (multi-answer questions). */
+  correctOptionIndices?: number[];
+  type?: 'multichoice' | 'truefalse' | 'shortanswer' | 'matching';
+  /** MATI question type this question is imported as. Defaults to single choice. */
+  pollType?: PollType;
+  /** Accepted answers (short answer). */
+  acceptedAnswers?: string[];
+  caseSensitive?: boolean;
+  /** Prompt → answer pairs (matching). `options` holds every selectable answer. */
+  matchPairs?: Omit<MatchPair, 'id'>[];
+}
+
+/** Result of parsing a Moodle XML export, including question types MATI cannot import yet. */
+export interface MoodleParseReport {
+  questions: ParsedQuestion[];
+  /** Number of skipped questions per unsupported Moodle type. */
+  skipped: { type: string; count: number }[];
 }
 
 /**
  * Service to parse Moodle XML and standard XML formats into question objects.
+ *
+ * Supported Moodle question types:
+ * - multichoice (single or multiple answers), truefalse, shortanswer, matching
  */
 export class MoodleXmlParser {
   /**
    * Cleans HTML markup (e.g., <p>, <br>, &nbsp;) and CDATA from question texts.
+   * Uses an inert DOMParser document so embedded images are never fetched.
    */
   private static cleanText(raw: string): string {
     if (!raw) return '';
     let text = raw.trim();
     // Remove CDATA markers
     text = text.replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1');
-    // Strip HTML tags using browser DOMParser if available or regex fallback
-    const temp = document.createElement('div');
-    temp.innerHTML = text;
-    const clean = temp.textContent || temp.innerText || '';
-    return clean.trim();
+    // Preserve visual line breaks before stripping tags
+    text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|tr)>/gi, '\n');
+    const parsed = new DOMParser().parseFromString(text, 'text/html');
+    const clean = parsed.body?.textContent || '';
+    return clean.replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  /** Text inside the direct `<text>` child of an element (Moodle wraps most values this way). */
+  private static childText(parent: Element | null | undefined): string {
+    if (!parent) return '';
+    const textEl = Array.from(parent.children).find(c => c.tagName.toLowerCase() === 'text');
+    return this.cleanText(textEl?.textContent ?? parent.textContent ?? '');
+  }
+
+  private static directChildren(parent: Element, tag: string): Element[] {
+    return Array.from(parent.children).filter(c => c.tagName.toLowerCase() === tag);
+  }
+
+  private static isTrue(value: string | null | undefined): boolean {
+    const v = (value || '').trim().toLowerCase();
+    return v === 'true' || v === '1' || v === 'yes';
   }
 
   /**
    * Parses Moodle XML format string into ParsedQuestion array.
    */
   static parse(xmlString: string): ParsedQuestion[] {
+    return this.parseWithReport(xmlString).questions;
+  }
+
+  /**
+   * Parses Moodle XML and also reports which question types were skipped.
+   */
+  static parseWithReport(xmlString: string): MoodleParseReport {
     const results: ParsedQuestion[] = [];
-    if (!xmlString || !xmlString.trim()) return results;
+    const skippedMap = new Map<string, number>();
+    if (!xmlString || !xmlString.trim()) return { questions: results, skipped: [] };
 
     let doc: Document | null = null;
     try {
@@ -44,68 +91,29 @@ export class MoodleXmlParser {
     }
 
     if (doc) {
-      const questionElements = doc.querySelectorAll('question');
-      questionElements.forEach((qEl) => {
+      const questionElements = Array.from(doc.querySelectorAll('question'));
+      for (const qEl of questionElements) {
         const type = qEl.getAttribute('type') || 'multichoice';
-        if (type === 'category') return;
+        if (type === 'category') continue;
 
         // Extract Question Text
-        const questionTextEl = qEl.querySelector('questiontext > text');
-        let questionText = questionTextEl?.textContent || '';
-        questionText = this.cleanText(questionText);
-
+        let questionText = this.childText(this.directChildren(qEl, 'questiontext')[0]);
         if (!questionText) {
-          const nameEl = qEl.querySelector('name > text');
-          questionText = this.cleanText(nameEl?.textContent || '');
+          questionText = this.childText(this.directChildren(qEl, 'name')[0]);
         }
+        if (!questionText) continue;
 
-        if (!questionText) return;
-
-        const options: string[] = [];
-        let correctIndex: number | undefined = undefined;
-
-        // Parse answers
-        const answerElements = qEl.querySelectorAll('answer');
-        answerElements.forEach((aEl, idx) => {
-          const textEl = aEl.querySelector('text');
-          let answerText = textEl?.textContent || aEl.textContent || '';
-          answerText = this.cleanText(answerText);
-          if (answerText) {
-            options.push(answerText);
-            const fraction = parseFloat(aEl.getAttribute('fraction') || '0');
-            if (fraction > 0 && correctIndex === undefined) {
-              correctIndex = idx;
-            }
-          }
-        });
-
-        if (options.length === 0) {
-          const genericOpts = qEl.querySelectorAll('option, choice');
-          genericOpts.forEach((optEl, idx) => {
-            const optText = this.cleanText(optEl.textContent || '');
-            if (optText) {
-              options.push(optText);
-            }
-          });
+        const parsed = this.parseQuestionByType(qEl, type, questionText);
+        if (parsed === 'unsupported') {
+          skippedMap.set(type, (skippedMap.get(type) || 0) + 1);
+        } else if (parsed) {
+          results.push(parsed);
         }
-
-        if (type === 'truefalse' && options.length === 0) {
-          options.push('True (ពិត)', 'False (មិនពិត)');
-        }
-
-        if (options.length >= 2) {
-          results.push({
-            question: questionText,
-            options,
-            correctOptionIndex: correctIndex,
-            type: type as any
-          });
-        }
-      });
+      }
     }
 
     // If DOMParser failed or returned 0 questions, use Regex extractor
-    if (results.length === 0) {
+    if (!doc && results.length === 0) {
       const questionBlocks = xmlString.match(/<question[\s\S]*?<\/question>/gi) || [];
       for (const block of questionBlocks) {
         if (/type=["']category["']/i.test(block)) continue;
@@ -148,7 +156,119 @@ export class MoodleXmlParser {
       }
     }
 
-    return results;
+    return {
+      questions: results,
+      skipped: Array.from(skippedMap.entries()).map(([type, count]) => ({ type, count }))
+    };
+  }
+
+  /**
+   * Converts one Moodle `<question>` element into a ParsedQuestion.
+   * Returns 'unsupported' for question types MATI cannot render yet, or null when the question is malformed.
+   */
+  private static parseQuestionByType(qEl: Element, type: string, questionText: string): ParsedQuestion | 'unsupported' | null {
+    const answerEls = this.directChildren(qEl, 'answer');
+
+    switch (type) {
+      case 'multichoice': {
+        const options: string[] = [];
+        const fractions: number[] = [];
+        for (const aEl of answerEls) {
+          const text = this.childText(aEl);
+          if (!text) continue;
+          options.push(text);
+          fractions.push(parseFloat(aEl.getAttribute('fraction') || '0'));
+        }
+        if (options.length < 2) return null;
+
+        const isSingle = this.isTrue(this.directChildren(qEl, 'single')[0]?.textContent ?? 'true');
+        if (isSingle) {
+          // Single answer: the option with the highest positive fraction is the key
+          const best = Math.max(...fractions);
+          const correctIndex = best > 0 ? fractions.indexOf(best) : undefined;
+          return {
+            question: questionText,
+            options,
+            correctOptionIndex: correctIndex,
+            correctOptionIndices: correctIndex !== undefined ? [correctIndex] : undefined,
+            type: 'multichoice',
+            pollType: 'multiple_choice'
+          };
+        }
+
+        // Multiple answers: every positively weighted option must be selected
+        const correctIndices = fractions.map((f, i) => (f > 0 ? i : -1)).filter(i => i >= 0);
+        return {
+          question: questionText,
+          options,
+          correctOptionIndex: correctIndices[0],
+          correctOptionIndices: correctIndices.length > 0 ? correctIndices : undefined,
+          type: 'multichoice',
+          pollType: 'multi_select'
+        };
+      }
+
+      case 'truefalse': {
+        const options = ['True (ពិត)', 'False (មិនពិត)'];
+        let correctIndex: number | undefined;
+        for (const aEl of answerEls) {
+          const text = this.childText(aEl).toLowerCase();
+          const fraction = parseFloat(aEl.getAttribute('fraction') || '0');
+          if (fraction > 0) {
+            correctIndex = text === 'false' ? 1 : 0;
+            break;
+          }
+        }
+        return {
+          question: questionText,
+          options,
+          correctOptionIndex: correctIndex,
+          correctOptionIndices: correctIndex !== undefined ? [correctIndex] : undefined,
+          type: 'truefalse',
+          pollType: 'true_false'
+        };
+      }
+
+      case 'shortanswer': {
+        // Only fully weighted answers count (all-or-nothing grading)
+        const accepted = answerEls
+          .filter(a => parseFloat(a.getAttribute('fraction') || '0') >= 99.99)
+          .map(a => this.childText(a))
+          .filter(t => t.length > 0);
+        if (accepted.length === 0) return null;
+        return {
+          question: questionText,
+          options: [],
+          type: 'shortanswer',
+          pollType: 'short_answer',
+          acceptedAnswers: Array.from(new Set(accepted)),
+          caseSensitive: this.isTrue(this.directChildren(qEl, 'usecase')[0]?.textContent)
+        };
+      }
+
+      case 'matching': {
+        const pairs: Omit<MatchPair, 'id'>[] = [];
+        const options: string[] = [];
+        for (const sub of this.directChildren(qEl, 'subquestion')) {
+          const prompt = this.childText(sub);
+          const answer = this.childText(this.directChildren(sub, 'answer')[0]);
+          if (!answer) continue;
+          if (!options.includes(answer)) options.push(answer);
+          if (prompt) pairs.push({ prompt, answer });
+        }
+        if (pairs.length === 0 || options.length < 2) return null;
+        return {
+          question: questionText,
+          options,
+          type: 'matching',
+          pollType: 'matching',
+          matchPairs: pairs
+        };
+      }
+
+      default:
+        return 'unsupported';
+    }
   }
 }
 
@@ -343,7 +463,7 @@ export class CsvQuestionParser {
  * Unified Question Importer: auto-detects CSV or Moodle XML format.
  */
 export class QuestionImporter {
-  static parse(content: string, filename?: string): { format: 'csv' | 'xml'; questions: ParsedQuestion[] } {
+  static parse(content: string, filename?: string): { format: 'csv' | 'xml'; questions: ParsedQuestion[]; skipped?: { type: string; count: number }[] } {
     const trimmed = (content || '').trim();
     if (!trimmed) {
       return { format: 'csv', questions: [] };
@@ -353,9 +473,10 @@ export class QuestionImporter {
     const isExplicitXml = filename?.toLowerCase().endsWith('.xml');
 
     if (isExplicitXml || (trimmed.startsWith('<') && trimmed.includes('</'))) {
-      const xmlQuestions = MoodleXmlParser.parse(content);
-      if (xmlQuestions.length > 0 || isExplicitXml) {
-        return { format: 'xml', questions: xmlQuestions };
+      const xmlReport = MoodleXmlParser.parseWithReport(content);
+      const xmlQuestions = xmlReport.questions;
+      if (xmlQuestions.length > 0 || isExplicitXml || xmlReport.skipped.length > 0) {
+        return { format: 'xml', questions: xmlQuestions, skipped: xmlReport.skipped };
       }
     }
 
