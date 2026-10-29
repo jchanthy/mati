@@ -1265,15 +1265,27 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
       </p-dialog>
 
       <!-- Import Questions Dialog (CSV & Moodle XML) -->
-      <p-dialog header="Import Questions (CSV / Moodle XML)" [(visible)]="showImportDialog" [modal]="true" [style]="{width: '740px'}" [closable]="!isImporting" class="p-fluid">
+      <p-dialog header="Import Questions (CSV / Moodle XML)" [(visible)]="showImportDialog" [modal]="true" [style]="{width: '520px', maxWidth: '95vw'}" [closable]="!isImporting" class="p-fluid">
         <div class="space-y-4 pt-2">
-          <!-- Live Import Progress Bar -->
           @if (isImporting) {
-            <div class="p-4 bg-emerald-50 dark:bg-emerald-950/60 rounded-2xl border-2 border-emerald-400 dark:border-emerald-600 shadow-sm space-y-2.5">
+            <!-- Live Import Progress Bar (Shown after file upload) -->
+            <div class="p-5 bg-emerald-50 dark:bg-emerald-950/60 rounded-2xl border-2 border-emerald-400 dark:border-emerald-600 shadow-sm space-y-3">
+              @if (uploadedFileName()) {
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/80 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs font-semibold border border-emerald-200 dark:border-emerald-700">
+                  <i class="pi pi-file text-xs"></i>
+                  <span class="truncate max-w-xs">{{ uploadedFileName() }}</span>
+                </div>
+              }
               <div class="flex items-center justify-between text-xs sm:text-sm font-bold text-emerald-950 dark:text-emerald-100">
                 <span class="flex items-center gap-2">
                   <i class="pi pi-spin pi-spinner text-emerald-600 dark:text-emerald-400 text-sm"></i>
-                  <span>Importing questions... ({{ importCurrent }} of {{ importTotal }})</span>
+                  <span>
+                    @if (importTotal > 0) {
+                      Importing questions... ({{ importCurrent }} of {{ importTotal }})
+                    } @else {
+                      Preparing file...
+                    }
+                  </span>
                 </span>
                 <span class="font-mono text-emerald-700 dark:text-emerald-300 font-extrabold text-sm">{{ importProgressPercent }}%</span>
               </div>
@@ -1287,150 +1299,20 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
                 <span>Please do not close this window</span>
               </div>
             </div>
-          }
-          <!-- Information Banner -->
-          <div class="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 text-xs text-indigo-950 dark:text-indigo-200 space-y-2">
-            <div class="font-bold flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400">
-              <i class="pi pi-file-excel text-sm"></i>
-              <span>Supported Formats: CSV, TSV, or Moodle XML</span>
-            </div>
-            <p class="leading-relaxed">
-              Upload a <strong>CSV spreadsheet</strong> or a <strong>Moodle XML</strong> export file. Mati automatically detects questions, answer options (2 to 8 choices), and marks correct answers.
-            </p>
-            <div class="flex flex-wrap items-center gap-2 pt-1">
-              <button 
-                type="button" 
-                (click)="downloadCsvTemplate()" 
-                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all cursor-pointer">
-                <i class="pi pi-download"></i>
-                <span>Download CSV Template</span>
-              </button>
-              <button 
-                type="button" 
-                (click)="loadSampleCsv()" 
-                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 transition-all cursor-pointer">
-                <i class="pi pi-file-edit"></i>
-                <span>Load Sample CSV</span>
-              </button>
-              <button 
-                type="button" 
-                (click)="loadSampleXml()" 
-                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 transition-all cursor-pointer">
-                <i class="pi pi-code"></i>
-                <span>Load Sample XML</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- File Upload Zone -->
-          <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-5 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/50">
-            <input type="file" #fileInput (change)="onFileSelected($event)" accept=".csv,.tsv,.xml,text/csv,text/xml,application/xml" class="hidden" />
-            <div class="space-y-1.5 cursor-pointer" (click)="fileInput.click()">
-              <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-lg">
-                <i class="pi pi-cloud-upload"></i>
-              </div>
-              <div class="text-sm font-bold text-gray-800 dark:text-gray-200">
-                Click to browse CSV or XML file
-              </div>
-              <div class="text-xs text-gray-500">
-                Supports .csv, .tsv, .xml • UTF-8 Unicode &amp; Khmer font supported
-              </div>
-              @if (uploadedFileName()) {
-                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium">
-                  <i class="pi pi-file"></i>
-                  <span>{{ uploadedFileName() }}</span>
+          } @else {
+            <!-- File Upload Zone (Hidden once upload starts) -->
+            <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-8 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/50">
+              <input type="file" #fileInput (change)="onFileSelected($event)" accept=".csv,.tsv,.xml,text/csv,text/xml,application/xml" class="hidden" />
+              <div class="space-y-2 cursor-pointer" (click)="fileInput.click()">
+                <div class="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-xl">
+                  <i class="pi pi-cloud-upload"></i>
                 </div>
-              }
-            </div>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-xs font-bold uppercase text-gray-600 dark:text-gray-300">Raw Content (CSV or XML)</label>
-              @if (parsedQuestions.length > 0) {
-                <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                  [ngClass]="detectedFormat() === 'csv' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300' : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300'">
-                  <i [class]="detectedFormat() === 'csv' ? 'pi pi-table' : 'pi pi-code'"></i>
-                  <span>{{ detectedFormat() === 'csv' ? 'CSV Format Detected' : 'Moodle XML Detected' }}</span>
-                </span>
-              }
-            </div>
-            <textarea [(ngModel)]="xmlContent" (ngModelChange)="onXmlContentChange()" rows="5" placeholder="Paste CSV or Moodle XML content here..." class="w-full p-3 font-mono text-xs rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"></textarea>
-          </div>
-
-          @if (importSkipped().length > 0) {
-            <div class="p-3 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-xs text-amber-800 dark:text-amber-300 space-y-0.5">
-              <div class="font-bold flex items-center gap-1.5">
-                <i class="pi pi-exclamation-triangle"></i>
-                <span>{{ importSkippedTotal() }} question(s) skipped — type not supported yet</span>
-              </div>
-              <div>
-                @for (s of importSkipped(); track s.type; let last = $last) {
-                  <span class="font-mono">{{ s.type }} ×{{ s.count }}</span>@if (!last) {<span>, </span>}
-                }
-              </div>
-            </div>
-          }
-
-          <!-- Parsed Preview -->
-          @if (parsedQuestions.length > 0) {
-            <div class="space-y-2">
-              <div class="flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                <span class="flex items-center gap-1.5">
-                  <i class="pi pi-check-circle"></i>
-                  <span>Ready to import {{ parsedQuestions.length }} question(s)</span>
-                </span>
-                <span class="text-gray-500 dark:text-gray-400 font-normal">
-                  Target Room: <strong class="text-indigo-600 dark:text-indigo-400 font-bold">{{ roomCode() }}</strong>
-                </span>
-              </div>
-              <div class="max-h-64 overflow-y-auto space-y-2 pr-1 border border-gray-200 dark:border-gray-800 rounded-xl p-2 bg-gray-50/60 dark:bg-gray-900/60">
-                @for (q of parsedQuestions; track $index; let idx = $index) {
-                  <div class="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-xs shadow-xs space-y-2">
-                    <div class="font-bold text-gray-900 dark:text-white flex items-start gap-1.5">
-                      <span class="text-indigo-600 dark:text-indigo-400 font-black">{{ idx + 1 }}.</span>
-                      <span class="flex-1 whitespace-pre-line">{{ q.question }}</span>
-                      <span class="shrink-0 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase tracking-wide">{{ parsedTypeLabel(q) }}</span>
-                    </div>
-                    @if (q.imageUrl) {
-                      <img [src]="q.imageUrl" alt="" class="max-h-36 w-auto rounded-lg border border-gray-200 bg-white p-1 object-contain" />
-                    }
-                    @if (q.pollType === 'short_answer') {
-                      <div class="text-gray-500 flex flex-wrap gap-1.5">
-                        @for (a of q.acceptedAnswers || []; track a) {
-                          <span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700">{{ a }}</span>
-                        }
-                      </div>
-                    } @else if (q.pollType === 'matching') {
-                      <div class="text-gray-600 dark:text-gray-300 flex flex-wrap gap-1.5">
-                        @for (m of q.matchPairs || []; track $index) {
-                          <span class="px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center gap-1.5 border border-gray-200 dark:border-gray-600">
-                            @if (m.imageUrl) {
-                              <img [src]="m.imageUrl" alt="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-200" />
-                            }
-                            <span>{{ m.prompt }}</span>
-                            <span class="text-emerald-700 dark:text-emerald-300 font-semibold">→ {{ m.answer }}</span>
-                          </span>
-                        }
-                      </div>
-                    } @else {
-                    <div class="text-gray-500 flex flex-wrap gap-1.5">
-                      @for (opt of q.options; track $index; let optIdx = $index) {
-                        <span class="px-2 py-0.5 rounded-md flex items-center gap-1.5"
-                          [ngClass]="isParsedCorrect(q, optIdx) ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
-                          @if (isParsedCorrect(q, optIdx)) {
-                            <i class="pi pi-check text-[10px]"></i>
-                          }
-                          @if (q.optionImages?.[optIdx]) {
-                            <img [src]="q.optionImages![optIdx]" alt="" class="w-8 h-8 object-contain rounded bg-white p-0.5 border border-gray-200" />
-                          }
-                          <span>{{ opt }}</span>
-                        </span>
-                      }
-                    </div>
-                    }
-                  </div>
-                }
+                <div class="text-sm font-bold text-gray-800 dark:text-gray-200">
+                  Click to browse CSV or XML file
+                </div>
+                <div class="text-xs text-gray-500">
+                  Supports .csv, .tsv, .xml • UTF-8 Unicode &amp; Khmer font supported
+                </div>
               </div>
             </div>
           }
@@ -1438,13 +1320,6 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
 
         <ng-template pTemplate="footer">
           <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" [disabled]="isImporting" (click)="showImportDialog = false"></button>
-          <button pButton 
-            [label]="isImporting ? ('Importing ' + importCurrent + ' / ' + importTotal + ' (' + importProgressPercent + '%)') : ('Import ' + parsedQuestions.length + ' Questions')" 
-            [icon]="isImporting ? 'pi pi-spin pi-spinner' : 'pi pi-check'" 
-            class="p-button-primary" 
-            [disabled]="parsedQuestions.length === 0 || isImporting" 
-            (click)="importParsedQuestions()">
-          </button>
         </ng-template>
       </p-dialog>
 
@@ -1663,19 +1538,40 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
     this.showImportDialog = true;
     this.xmlContent = '';
     this.parsedQuestions = [];
+    this.isImporting = false;
+    this.importCurrent = 0;
+    this.importTotal = 0;
+    this.importProgressPercent = 0;
     this.uploadedFileName.set(null);
     this.detectedFormat.set(null);
     this.importSkipped.set([]);
   }
 
   onFileSelected(event: any) {
-    const file = event.target?.files?.[0];
+    const target = event.target as HTMLInputElement;
+    const file = target?.files?.[0];
     if (!file) return;
     this.uploadedFileName.set(file.name);
+    this.isImporting = true;
+    this.importCurrent = 0;
+    this.importTotal = 0;
+    this.importProgressPercent = 0;
+
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       this.xmlContent = (e.target?.result as string) || '';
-      this.onXmlContentChange();
+      if (target) target.value = '';
+      await new Promise(res => setTimeout(res, 20));
+      await this.onXmlContentChange();
+      if (this.parsedQuestions.length > 0) {
+        await this.importParsedQuestions();
+      } else {
+        this.isImporting = false;
+      }
+    };
+    reader.onerror = () => {
+      this.isImporting = false;
+      if (target) target.value = '';
     };
     reader.readAsText(file, 'utf-8');
   }
@@ -1690,8 +1586,8 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       const result = QuestionImporter.parse(this.xmlContent, this.uploadedFileName() || undefined);
       this.detectedFormat.set(result.format);
       this.parsedQuestions = result.questions;
+      this.importTotal = result.questions.length;
       this.importSkipped.set(result.skipped || []);
-      this.parsedQuestions = await QuestionImporter.compressAndAnnotateQuestions(result.questions);
     } catch (err: any) {
       this.parsedQuestions = [];
       this.importSkipped.set([]);
@@ -1747,14 +1643,14 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
   }
 
   async importParsedQuestions() {
-    if (this.parsedQuestions.length === 0 || this.isImporting) return;
+    if (this.parsedQuestions.length === 0) return;
     this.isImporting = true;
     this.importCurrent = 0;
     this.importTotal = this.parsedQuestions.length;
     this.importProgressPercent = 0;
     try {
       const readyQuestions = await QuestionImporter.compressAndAnnotateQuestions(this.parsedQuestions);
-      await this.pollService.createPollsBatch(
+      const count = await this.pollService.createPollsBatch(
         this.roomCode(), 
         readyQuestions,
         (current, total) => {
@@ -1768,6 +1664,11 @@ export class AdminPollControlComponent implements OnInit, OnDestroy {
       this.showImportDialog = false;
       this.xmlContent = '';
       this.parsedQuestions = [];
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Questions Imported',
+        detail: `Successfully added ${count} question(s) to room ${this.roomCode()}!`
+      });
     } catch (err: any) {
       console.error('[Import] Failed:', err);
     } finally {

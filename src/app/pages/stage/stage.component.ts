@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatiPollService, normalizeRoomCode } from '../../services/mati-poll.service';
 import { DetailedSessionSummary, Poll, PollStats, Room } from '../../models/poll.model';
-import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } from '../../utils/poll-answer';
+import { describeCorrectAnswer, isCorrectOption, isScoredPoll } from '../../utils/poll-answer';
 import QRCode from 'qrcode';
 
 @Component({
@@ -850,10 +850,6 @@ import QRCode from 'qrcode';
                       [ngClass]="isLight() ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'">
                       Question #{{ stats.poll.order }}
                     </span>
-                    <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase border shadow-2xs"
-                      [ngClass]="isLight() ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-slate-800 text-slate-200 border-slate-700'">
-                      {{ pollTypeLabel(stats.poll.type, stats.poll.moodleType) }}
-                    </span>
 
                     @if (remainingSeconds() !== null) {
                       @if (remainingSeconds()! > 10) {
@@ -1160,7 +1156,6 @@ export class StageComponent implements OnInit, AfterViewInit, OnDestroy {
   private pollService = inject(MatiPollService);
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
-  readonly pollTypeLabel = pollTypeLabel;
 
   hasMounted = signal<boolean>(false);
   currentTheme = signal<'dark' | 'light'>(this.resolveInitialStageTheme());
