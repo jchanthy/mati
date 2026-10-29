@@ -575,16 +575,16 @@ import { isCorrectOption, isScoredPoll, pollTypeLabel } from '../../utils/poll-a
               </span>
               @if (totalPollCount() > 0) {
                 @if (skippedPollCount() > 0) {
-                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1"
+                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1 whitespace-nowrap shrink-0"
                     title="{{ activePlayableCount() }} polls will show on TV stage out of {{ totalPollCount() }} total">
                     <i class="pi pi-desktop text-[10px]"></i>
                     <span>{{ activePlayableCount() }}/{{ totalPollCount() }} on TV</span>
                   </span>
-                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap shrink-0">
                     {{ skippedPollCount() }} skipped
                   </span>
                 } @else {
-                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200 whitespace-nowrap shrink-0">
                     {{ totalPollCount() }} polls
                   </span>
                 }

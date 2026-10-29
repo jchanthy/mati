@@ -752,40 +752,53 @@ import { describeCorrectAnswer, isCorrectOption, isScoredPoll, pollTypeLabel } f
         <div class="lg:col-span-5 space-y-4">
           <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200/90 dark:border-gray-800 shadow-2xs space-y-3">
             <!-- Playlist Header -->
-            <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-              <div class="flex items-center gap-2">
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Questions</h3>
-                @if (skippedCount() > 0) {
-                  <span class="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800"
-                    title="{{ playablePolls().length }} of {{ polls().length }} questions will show on TV stage">
-                    {{ playablePolls().length }}/{{ polls().length }} on TV
-                  </span>
-                  <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300">
-                    {{ skippedCount() }} skipped
-                  </span>
-                } @else {
-                  <span class="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold text-xs">
+            <div class="space-y-2.5 pb-3 border-b border-gray-100 dark:border-gray-800">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <h3 class="text-sm font-bold text-gray-900 dark:text-white">Questions</h3>
+                  <span class="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold text-xs whitespace-nowrap">
                     {{ polls().length }}
                   </span>
-                }
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button 
+                    type="button" 
+                    (click)="openImportDialog()" 
+                    title="Import questions from CSV or Moodle XML"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors cursor-pointer shadow-2xs flex items-center gap-1 border border-gray-200 dark:border-gray-700 whitespace-nowrap">
+                    <i class="pi pi-upload text-xs"></i>
+                    <span>Import</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    (click)="showNewPollDialog = true" 
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer shadow-2xs flex items-center gap-1 whitespace-nowrap">
+                    <i class="pi pi-plus text-xs"></i>
+                    <span>Add Question</span>
+                  </button>
+                </div>
               </div>
-              <div class="flex items-center gap-1.5">
-                <button 
-                  type="button" 
-                  (click)="openImportDialog()" 
-                  title="Import questions from CSV or Moodle XML"
-                  class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all cursor-pointer shadow-2xs flex items-center gap-1 border border-gray-200 dark:border-gray-700">
-                  <i class="pi pi-upload text-xs"></i>
-                  <span>Import</span>
-                </button>
-                <button 
-                  type="button" 
-                  (click)="showNewPollDialog = true" 
-                  class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer shadow-2xs flex items-center gap-1">
-                  <i class="pi pi-plus text-xs"></i>
-                  <span>Add Question</span>
-                </button>
-              </div>
+
+              <!-- Stage Visibility Strip (shown if any questions are skipped) -->
+              @if (skippedCount() > 0) {
+                <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 text-xs">
+                  <div class="flex items-center gap-1.5 text-amber-900 dark:text-amber-200 min-w-0">
+                    <i class="pi pi-desktop text-amber-600 dark:text-amber-400 text-xs shrink-0"></i>
+                    <span class="font-medium truncate">
+                      <strong class="font-bold">{{ playablePolls().length }}</strong> of {{ polls().length }} on TV
+                    </span>
+                    <span class="text-amber-700/80 dark:text-amber-400 text-[11px] shrink-0">
+                      • {{ skippedCount() }} skipped
+                    </span>
+                  </div>
+                  <button 
+                    type="button" 
+                    (click)="openPickQuestionsDialog()" 
+                    class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline shrink-0 cursor-pointer">
+                    Manage
+                  </button>
+                </div>
+              }
             </div>
 
             <!-- Compact Search Filter -->
